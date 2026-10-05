@@ -247,6 +247,17 @@ tr.rec input{font-family:var(--f-mono);font-size:12px;width:62px;padding:2px 4px
 .wk-res{margin:8px 0;padding:8px 10px;border-radius:8px;background:var(--accent-soft);font-size:13px}
 .wk-two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;margin-top:10px}.wk-two h4{margin:0 0 6px;font-size:13.5px}.wk-sn,.wk-ck{margin:0;padding-left:18px;font-size:13px}.wk-sn li,.wk-ck li{margin-bottom:4px}
 @media (max-width:760px){.wk-top,.wk-two{grid-template-columns:minmax(0,1fr)}}
+.kb{display:flex;align-items:center;gap:3px;min-width:0;border-radius:5px;padding:1px 5px;font-size:11px;line-height:1.5;font-weight:600;white-space:nowrap;overflow:hidden}
+.kb em{font-style:normal;font-weight:500;opacity:.8;flex:0 0 auto;width:3.3em;overflow:hidden}.kb .t{overflow:hidden;text-overflow:ellipsis}.kb b{margin-left:auto}
+.b-l{background:var(--up);color:#fff}.b-s{background:var(--down);color:#fff}.b-wl{background:var(--up-soft);color:var(--up);box-shadow:inset 0 0 0 1px var(--up)}.b-ws{background:var(--down-soft);color:var(--down);box-shadow:inset 0 0 0 1px var(--down)}
+.b-cu{background:color-mix(in srgb,var(--up) 10%,var(--surface-2));color:var(--fg)}.b-cd{background:color-mix(in srgb,var(--down) 12%,var(--surface-2));color:var(--fg)}.b-cx{background:color-mix(in srgb,var(--cash) 18%,var(--surface-2));color:var(--fg)}.b-cn{background:var(--surface-2);color:var(--muted)}.b-no{background:transparent;color:var(--muted)}
+.b-l b.ok,.b-s b.ok{color:#fff}.b-l b.ng,.b-s b.ng{color:#fff;opacity:.85}
+.kb.star{outline:1.5px solid var(--accent);outline-offset:-1.5px}
+.cc{gap:3px}.cc.fut{background:color-mix(in srgb,var(--accent) 5%,var(--surface));border-style:dashed}.cc .dn i.now{color:var(--accent);font-weight:700}
+.cal-key{display:flex;flex-wrap:wrap;gap:4px;margin:0 0 8px}.cal-key .kb{font-size:10.5px}
+.wkx{display:flex;flex-wrap:wrap;align-items:center;gap:4px;font-size:11.5px}.wkx small{color:var(--muted)}.wk-bar.mini{height:7px;width:100%;flex-basis:100%}
+td.hm{padding:3px 4px}td.hm .kb{justify-content:center}
+@media (max-width:640px){.kb em{display:none}.kb{font-size:10px;padding:1px 3px}.cal-key .kb{font-size:10px}}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden}
 .seg button{border:0;background:transparent;color:var(--muted);font:inherit;font-size:12.5px;padding:4px 12px;cursor:pointer}
 .seg button.on{background:var(--accent);color:#fff}
@@ -346,7 +357,7 @@ small.ref{font-size:10px;color:var(--muted);border:1px solid var(--line);border-
       <span id="calNav" class="calnav"><button type="button" class="mini" id="calPrev" aria-label="이전 달">◀</button><b id="calYm"></b><button type="button" class="mini" id="calNext" aria-label="다음 달">▶</button><button type="button" class="mini" id="calNow">최근</button></span>
       <label class="cut" id="calMkL">시장 <select id="calMk"></select></label>
     </div>
-    <p class="note" style="margin:0 0 8px">칸 날짜 = 판단에 쓴 마지막 종가 날짜(그다음 거래일용). 지난 날짜는 그날까지의 종가만으로 규칙을 다시 돌린 결과라, 직접 입력·잠정값은 들어가지 않습니다. ✓ 적중 · ✗ 빗나감 · … 결과 대기</p>
+    <p class="note" style="margin:0 0 8px">칸 날짜 = 그 판단을 쓰는 날 (전 거래일 종가 기준). 지난 날짜는 그날까지의 종가만으로 다시 계산한 판단, ★는 주간 리포트(뉴스·수급 근거 포함) 판단입니다. ✓ 적중 · ✗ 빗나감 · … 결과 대기</p>
     <div id="calBody"></div>
   </section>
 
@@ -1294,7 +1305,7 @@ function renderValid(){
   ${kpi("최대 누적 손실",m.mdd==null?"–":m.mdd.toFixed(2)+"%p",`매수·매도 ${m.tradeN}건 누적`)}${kpi("실제 평균 수익",`${sp(m.evReal)}`,`예상했던 수익 ${sp(m.evPred)}`)}
   ${kpi("확률 점수",m.brier==null?"–":m.brier.toFixed(3),"낮을수록 좋음 · 찍기 수준 0.667")}${kpi("헛신호 / 놓친 기회",`${m.fp} / ${m.fn}`,"틀린 진입 / 놓친 큰 움직임")}</div>`;
   const bins=calibBins(recs,hk);
-  const calib=`<div><h3>확률이 믿을 만한가 (예측 vs 실제)</h3><div class="tbl-wrap"><table><thead><tr><th>예측한 확률</th><th>건수</th><th>평균 예측</th><th>실제로 일어난 비율</th><th></th></tr></thead><tbody>${bins.map(b=>`<tr><td class="num">${b.lo}–${b.hi}%</td><td class="num">${b.n}</td><td class="num">${b.p==null?"–":b.p.toFixed(0)+"%"}</td><td class="num">${b.o==null?"–":b.o.toFixed(0)+"%"}</td><td>${b.n?`<div class="cbar"><i style="width:${b.p}%;background:var(--accent)"></i><i style="width:${b.o}%;background:var(--cash)"></i></div>`:""}</td></tr>`).join("")}</tbody></table></div><p class="note">파랑 = 예측, 주황 = 실제. 두 막대 길이가 비슷할수록 확률이 믿을 만합니다. 오를 확률과 내릴 확률을 함께 집계.</p></div>`;
+  const calib=`<div><h3>확률이 믿을 만한가 (예측 vs 실제)</h3><div class="tbl-wrap"><table><thead><tr><th>예측한 확률</th><th>건수</th><th>평균 예측</th><th>실제로 일어난 비율</th><th></th></tr></thead><tbody>${bins.map(b=>`<tr><td class="num">${b.lo}–${b.hi}%</td><td class="num">${b.n}</td><td class="num">${b.p==null?"–":b.p.toFixed(0)+"%"}</td><td class="num">${b.o==null?"–":b.o.toFixed(0)+"%"}</td><td>${b.n?`<div class="kb"><i style="width:${b.p}%;background:var(--accent)"></i><i style="width:${b.o}%;background:var(--cash)"></i></div>`:""}</td></tr>`).join("")}</tbody></table></div><p class="note">파랑 = 예측, 주황 = 실제. 두 막대 길이가 비슷할수록 확률이 믿을 만합니다. 오를 확률과 내릴 확률을 함께 집계.</p></div>`;
   const cm=buildCalibMap(recs,hk),ck=Object.entries(cm).sort((a,b)=>b[1].n-a[1].n).slice(0,12);
   const cond=`<div><h3>조건별 성적과 자동 보정</h3><div class="tbl-wrap"><table><thead><tr><th>조건 (국면 · 60일선 · 수급)</th><th>건수</th><th>적중</th><th>신뢰도 조정</th></tr></thead><tbody>${ck.map(([k,e])=>{const adj=clamp(Math.round((e.hit-0.5)*40),-10,10);return`<tr><td style="white-space:normal">${esc(ko(k.split("|").join(" · ")))}</td><td class="num">${e.n}</td><td class="num">${pct(e.hit)}</td><td class="num">${e.n>=20?(adj>0?"+":adj<0?"−":"")+Math.abs(adj):'<span class="muted">표본 부족</span>'}</td></tr>`}).join("")}</tbody></table></div><p class="note">${live?"저장한 판단의 성적이 오늘 판단에 자동 반영됩니다.":"과거 시험 결과는 참고용이며 오늘 판단에는 반영하지 않습니다."} 20건 미만인 조건은 조정하지 않습니다.</p></div>`;
   html+=`<div class="vgrid">${gTable("국면별 성적",groupEval(recs,hk,x=>x.regime||"–",REGIMES))}${gTable("버전별 성적",groupEval(recs,hk,x=>x.version==="backtest"?"과거 시험":x.version||"–"))}${gTable("시간대별 성적",groupEval(recs,hk,x=>x.slot||"–",SLOTS))}${gTable("시장별 성적",groupEval(recs,hk,x=>x.market||"–"))}</div>
@@ -1849,9 +1860,20 @@ function calBuild(){const sig=calSig();if(CAL.sig===sig||CAL.busy)return;
       CAL.w[m.id]=o;CAL.m=CAL.m||{};CAL.m[m.id]={sum:monthlySummary(bars.map(b=>b.d),bars.map(b=>b.c)),mon:toMonthly(bars.map(b=>b.d),bars.map(b=>b.c))}});
   }
   CAL.total=jobs.length;
-  const step=()=>{const f=jobs.shift();if(f){try{f()}catch(e){console.warn("cal",e)}CAL.done++;renderCalBody();setTimeout(step,0)}else{CAL.busy=false;renderCal()}};
+  const step=()=>{const f=jobs.shift();if(f){try{f()}catch(e){console.warn("cal",e)}CAL.done++;renderCalBody();setTimeout(step,0)}else{calApply();CAL.busy=false;renderCal()}};
   setTimeout(step,30);
 }
+// 칸 날짜 = 그 판단을 '쓰는 날' (전 거래일 종가로 낸 판단). 주간 = 그 주에 쓰는 판단 (전 주 마지막 종가)
+function calNextTD(d,cal){let t=new Date(d+"T12:00:00Z");for(let k=0;k<10;k++){t=new Date(t.getTime()+864e5);const s=t.toISOString().slice(0,10);if(isTradingDay(s,cal))return s}return d}
+function calApply(){CAL.a={};CAL.wa={};
+  for(const id in CAL.d){const o=CAL.d[id],ks=Object.keys(o).sort(),a=CAL.a[id]={};ks.forEach((k,i)=>{const nx=ks[i+1]||calNextTD(k,CAL_OF[id]);a[nx]={...o[k],from:k}})}
+  for(const id in CAL.w){const o=CAL.w[id],a=CAL.wa[id]={};for(const k in o){const t=new Date(new Date(k+"T12:00:00Z").getTime()+7*864e5).toISOString().slice(0,10);a[t]={...o[k],from:o[k].d}}}}
+function calReport(ds){if(typeof WEEKLY_RECS==="undefined")return null;const k=calWeekKey(ds);return WEEKLY_RECS.find(r=>r.weekEnd&&calWeekKey(r.weekEnd)===k)||null}
+function calCls(x){if(!x)return"b-no";if(x.pos==="LONG"||x.j==="LONG"||x.j==="STRONG LONG")return"b-l";if(x.pos==="SHORT"||x.j==="SHORT")return"b-s";const w=x.wait||(/^WAIT/.test(x.j)?x.j:null);if(w==="WAIT LONG")return"b-wl";if(w==="WAIT SHORT")return"b-ws";
+  return/TREND UP|GRIND UP/.test(x.reg)?"b-cu":/TREND DOWN|PANIC/.test(x.reg)?"b-cd":/DISTRIBUTION/.test(x.reg)?"b-cx":"b-cn"}
+function calTxt(x){if(!x)return"–";const c=calCls(x);return{"b-l":"매수","b-s":"매도","b-wl":"매수대기","b-ws":"매도대기","b-cu":"관망↗","b-cd":"관망↘","b-cx":"관망⤵","b-cn":"관망"}[c]||"관망"}
+function calBar(x,id,o){o=o||{};const h=o.star?null:calHit(x),mk=h===true?'<b class="ok">✓</b>':h===false?'<b class="ng">✗</b>':(x&&!o.star&&(x.pos==="LONG"||x.pos==="SHORT")&&x.o5==null?'<b class="pd">…</b>':"");
+  return`<span class="kb ${calCls(x)}${o.star?" star":""}" title="${o.star?"주간 리포트 판단 (근거 포함)":"가격만으로 다시 계산한 판단"}">${o.name?`<em>${CAL_SHORT[id]}</em>`:""}<span class="t">${calTxt(x)}${o.star?"★":""}</span>${mk}</span>`}
 function calChip(x,big){if(!x)return`<span class="cchip none">–</span>`;
   const c=x.pos==="LONG"?"l":x.pos==="SHORT"?"s":x.wait==="WAIT LONG"?"wl":x.wait==="WAIT SHORT"?"ws":"c";
   const t=x.pos==="LONG"?"매수":x.pos==="SHORT"?"매도":x.wait==="WAIT LONG"?"매수대기":x.wait==="WAIT SHORT"?"매도대기":"관망";
@@ -1859,7 +1881,7 @@ function calChip(x,big){if(!x)return`<span class="cchip none">–</span>`;
   return`<span class="cchip ${c}${big?" big":""}">${t}${mk}</span>`}
 function calSt(){state.cal=state.cal||{};const c=state.cal;if(!c.tab)c.tab="d";if(!c.mk)c.mk="top3";return c}
 function calShown(){const c=calSt();return c.mk==="top3"?CAL_DEF3:[c.mk]}
-function calLastDate(){let nd="";for(const id in CAL.d){const ks=Object.keys(CAL.d[id]);const l=ks[ks.length-1]||"";if(l>nd)nd=l}return nd}
+function calLastDate(){let nd="";const S=CAL.a||CAL.d;for(const id in S){const ks=Object.keys(S[id]).sort();const l=ks[ks.length-1]||"";if(l>nd)nd=l}return nd}
 function calWkLabel(x,P){return x?REG_KO[x.reg]||x.reg:""}
 function renderCal(){const sec=$("#cal");if(!sec)return;const c=calSt();
   document.querySelectorAll("#calTabs button").forEach(b=>b.classList.toggle("on",b.dataset.t===c.tab));
@@ -1874,45 +1896,50 @@ function renderCalBody(){const el=$("#calBody");if(!el)return;
   const det=$("#calDet");if(det&&c.sel&&det.dataset.open==="1")det.scrollIntoView({block:"nearest"});
 }
 function calYm(){const c=calSt();if(!c.ym){const l=calLastDate()||new Date().toISOString().slice(0,10);c.ym=l.slice(0,7)}return c.ym}
-function calDaily(){const c=calSt(),ym=calYm(),[y,mo]=ym.split("-").map(Number),ids=calShown(),last=calLastDate();
+function calDaily(){const c=calSt(),ym=calYm(),[y,mo]=ym.split("-").map(Number),ids=calShown(),last=calLastDate(),A=CAL.a||{},WA=CAL.wa||{};
   $("#calYm").textContent=`${y}년 ${mo}월`;
-  const first=new Date(Date.UTC(y,mo-1,1)),dim=new Date(Date.UTC(y,mo,0)).getUTCDate();
-  let start=new Date(first);start.setUTCDate(1-((first.getUTCDay()+6)%7));
-  let h=`<div class="cal-grid"><div class="ch">월</div><div class="ch">화</div><div class="ch">수</div><div class="ch">목</div><div class="ch">금</div><div class="ch wk">주간 (20주선)</div>`;
-  const st={L:[0,0],S:[0,0]};
-  for(let w=0;w<6;w++){const mon=new Date(start);mon.setUTCDate(start.getUTCDate()+w*7);if(w>0&&mon.getUTCMonth()!==mo-1&&mon>first)break;if(last&&w>0&&mon.toISOString().slice(0,10)>last)break;
+  let maxD=last;if(typeof WEEKLY_RECS!=="undefined")for(const r of WEEKLY_RECS)if(r.weekEnd>maxD)maxD=r.weekEnd;
+  const first=new Date(Date.UTC(y,mo-1,1));let start=new Date(first);start.setUTCDate(1-((first.getUTCDay()+6)%7));
+  let h=`<div class="cal-grid"><div class="ch">월</div><div class="ch">화</div><div class="ch">수</div><div class="ch">목</div><div class="ch">금</div><div class="ch wk">이번 주 (주간)</div>`;
+  const st={L:[0,0],S:[0,0]},one=ids.length===1;
+  for(let w=0;w<6;w++){const mon=new Date(start);mon.setUTCDate(start.getUTCDate()+w*7);const ms=mon.toISOString().slice(0,10);if(w>0&&mon.getUTCMonth()!==mo-1&&mon>first)break;if(maxD&&w>0&&ms>maxD)break;
+    const rep=calReport(ms);
     for(let d=0;d<5;d++){const t=new Date(mon);t.setUTCDate(mon.getUTCDate()+d);const ds=t.toISOString().slice(0,10),inM=t.getUTCMonth()===mo-1;
-      const recs=ids.map(id=>[id,CAL.d[id]&&CAL.d[id][ds]]);const any=recs.some(r=>r[1]);
+      const recs=ids.map(id=>[id,A[id]&&A[id][ds]]);const any=recs.some(r=>r[1]);const future=ds>last;const useRep=rep&&ds>=String(rep.week||"").slice(0,10)&&ds<=rep.weekEnd;
       if(inM)for(const[,x]of recs){const hh=calHit(x);if(hh!=null){const s=st[x.pos==="LONG"?"L":"S"];s[0]++;if(hh)s[1]++}}
-      const hol=!any&&HOLIDAYS&&HOLIDAYS.kr&&HOLIDAYS.kr.has(ds);
-      h+=`<button type="button" class="cc${inM?"":" out"}${ds===last?" last":""}${c.sel==="d:"+ds?" sel":""}" ${any?`data-day="${ds}"`:"disabled"}><span class="dn">${t.getUTCDate()}${hol?' <i>휴장</i>':""}</span>`+
-        (any?recs.map(([id,x])=>`<span class="cr">${ids.length>1?`<em>${CAL_SHORT[id]}</em>`:""}${calChip(x,ids.length===1)}</span>`).join("")+(ids.length===1&&recs[0][1]?`<span class="cp">${recs[0][1].pU}/${recs[0][1].pS}/${recs[0][1].pD}</span>`:""):"")+`</button>`}
-    const wk=mon.toISOString().slice(0,10),wr=ids.map(id=>[id,CAL.w[id]&&CAL.w[id][wk]]),wany=wr.some(r=>r[1]);
-    h+=`<button type="button" class="cc wk${c.sel==="w:"+wk?" sel":""}" ${wany?`data-wk="${wk}"`:"disabled"}>`+(wany?wr.map(([id,x])=>`<span class="cr">${ids.length>1?`<em>${CAL_SHORT[id]}</em>`:""}${calChip(x)}${WEEKLY_OK[id]?"":'<small class="ref">참고</small>'}</span>`).join(""):'<span class="dn">–</span>')+`</button>`}
+      const hol=(HOLIDAYS.kr.has(ds)?"한국 휴장":"")+(HOLIDAYS.us.has(ds)?(HOLIDAYS.kr.has(ds)?"·":"")+"미국 휴장":"");
+      const clickable=any||useRep;
+      h+=`<button type="button" class="cc${inM?"":" out"}${ds===last?" last":""}${future?" fut":""}${c.sel==="d:"+ds?" sel":""}" ${clickable?`data-day="${ds}"`:"disabled"}><span class="dn">${t.getUTCDate()}${hol?` <i>${hol}</i>`:""}${ds===last?' <i class="now">최근</i>':""}</span>`+
+        (clickable?ids.map(id=>{if(CAL_OF[id]&&!isTradingDay(ds,CAL_OF[id]))return`<span class="kb b-no">${!one?`<em>${CAL_SHORT[id]}</em>`:""}<span class="t">휴장</span></span>`;const rx=useRep&&rep.engine[id]?rep.engine[id].full:null;const x=rx||(A[id]&&A[id][ds]);return calBar(x,id,{name:!one,star:!!rx})}).join("")+(one&&recs[0][1]&&!useRep?`<span class="cp">${recs[0][1].pU}/${recs[0][1].pS}/${recs[0][1].pD}</span>`:""):"")+`</button>`}
+    const wr=ids.map(id=>[id,WA[id]&&WA[id][ms]]),wany=wr.some(r=>r[1])||rep;
+    h+=`<button type="button" class="cc wk${c.sel==="w:"+ms?" sel":""}" ${wany?`data-wk="${ms}"`:"disabled"}>`+
+      (rep?`<span class="wkx"><span class="wk-bar mini"><i class="l" style="width:${rep.exposure.long}%"></i><i class="c" style="width:${rep.exposure.cash}%"></i></span><b>매수 ${rep.exposure.long}%</b> <small>경보 ${esc(rep.alert.ko)}</small></span>`:"")+
+      (wr.some(r=>r[1])?wr.map(([id,x])=>calBar(x,id,{name:!one})).join(""):(rep?"":'<span class="dn">–</span>'))+`</button>`}
   h+=`</div>`;
   const pct=s=>s[0]?`${s[0]}건 중 ${s[1]}건 (${Math.round(s[1]/s[0]*100)}%)`:"없음";
-  h=`<p class="cal-sum">이 달 ${ids.length>1?"대표 3개 시장":CAL_SHORT[ids[0]]} 결과 · 매수 적중 ${pct(st.L)} · 매도 적중 ${pct(st.S)} <span class="muted">(5거래일 뒤 종가로 채점)</span></p>`+h;
-  return h+(ids.length>1?`<p class="cal-leg">칸 안 위→아래: ${ids.map(id=>CAL_SHORT[id]).join(" · ")}</p>`:"")+calDetail()}
+  const leg=`<div class="cal-key"><span class="kb b-l"><span class="t">매수</span></span><span class="kb b-wl"><span class="t">매수대기</span></span><span class="kb b-cu"><span class="t">관망↗ 상승 국면</span></span><span class="kb b-cn"><span class="t">관망 횡보</span></span><span class="kb b-cx"><span class="t">관망⤵ 고점 분산</span></span><span class="kb b-cd"><span class="t">관망↘ 하락 국면</span></span><span class="kb b-ws"><span class="t">매도대기</span></span><span class="kb b-s"><span class="t">매도</span></span><span class="kb b-cn star"><span class="t">★ 주간 리포트 판단</span></span></div>`;
+  h=leg+`<p class="cal-sum">이 달 ${one?CAL_SHORT[ids[0]]:"대표 3개 시장"} 결과 · 매수 적중 ${pct(st.L)} · 매도 적중 ${pct(st.S)} <span class="muted">(5거래일 뒤 종가로 채점)</span></p>`+h;
+  return h+(!one?`<p class="cal-leg">칸 안 위→아래: ${ids.map(id=>CAL_SHORT[id]).join(" · ")}</p>`:"")+calDetail()}
 function calDetail(){const c=calSt();if(!c.sel)return`<p class="note">날짜나 주간 칸을 누르면 그날 10개 시장 판단이 아래에 나옵니다.</p>`;
-  const[kind,key]=c.sel.split(":"),src=kind==="d"?CAL.d:CAL.w,rows=calMarkets().map(m=>{const o=src[m.id]||{};if(o[key])return[m.id,o[key]];if(kind!=="d")return[m.id,null];const lim=new Date(new Date(key+"T12:00:00Z").getTime()-6*864e5).toISOString().slice(0,10);const ks=Object.keys(o).filter(k=>k<key&&k>=lim);return[m.id,ks.length?{...o[ks[ks.length-1]],alt:ks[ks.length-1]}:null]}).filter(r=>r[1]);
-  if(!rows.length)return`<div id="calDet"></div>`;
+  const[kind,key]=c.sel.split(":"),src=kind==="d"?(CAL.a||CAL.d):(CAL.wa||CAL.w),rows=calMarkets().map(m=>{const o=src[m.id]||{};if(o[key])return[m.id,o[key]];if(kind!=="d")return[m.id,null];const lim=new Date(new Date(key+"T12:00:00Z").getTime()-6*864e5).toISOString().slice(0,10);const ks=Object.keys(o).filter(k=>k<key&&k>=lim);return[m.id,ks.length?{...o[ks[ks.length-1]],alt:ks[ks.length-1]}:null]}).filter(r=>r[1]);
+  if(!rows.length&&!calReport(key))return`<div id="calDet"></div>`;
   const pr=v=>v==null?'<span class="muted">대기</span>':`<span class="${v>0?"up":v<0?"dn":""}">${fmtP(v,2)}</span>`;
-  let h=`<div id="calDet" data-open="1" class="cal-det"><div class="panel-h"><h3>${kind==="d"?key+" 종가 기준 판단 (다음 거래일용)":"주간 판단 · "+key+" 주 (20주선, 그 주 마지막 종가 기준)"}</h3><button type="button" class="mini" id="calX">닫기</button></div>
-   <div class="tbl-wrap"><table class="cal-t"><thead><tr><th>시장</th><th>판단</th><th class="c">오를/횡보/내릴</th><th>국면</th><th class="c">${kind==="d"?"다음날":"다음 주"}</th><th class="c">${kind==="d"?"5일 뒤":"5주 뒤"}</th><th class="c">결과</th></tr></thead><tbody>`;
+  let h=`<div id="calDet" data-open="1" class="cal-det"><div class="panel-h"><h3>${kind==="d"?key+" 에 쓰는 판단 (전 거래일 종가 기준 · 가격만)":key+" 주에 쓰는 주간 판단 (20주선 · 전 주 마지막 종가 기준)"}</h3><button type="button" class="mini" id="calX">닫기</button></div>
+   <div class="tbl-wrap"><table class="cal-t"><thead><tr><th>시장</th><th>판단</th><th class="c">오를/횡보/내릴</th><th>국면</th><th class="c">${kind==="d"?"그날":"그 주"}</th><th class="c">${kind==="d"?"5일 뒤":"5주 뒤"}</th><th class="c">결과</th></tr></thead><tbody>`;
   for(const[id,x]of rows){const hh=calHit(x),gate=kind==="w"&&!WEEKLY_OK[id];
     h+=`<tr><td><b>${CAL_SHORT[id]}</b>${gate?' <small class="ref">참고</small>':""}${x.alt?` <small class="muted">(${x.alt.slice(5).replace("-","/")} 종가)</small>`:""}</td><td>${calChip(x,true)}</td><td class="c">${x.pU}/${x.pS}/${x.pD}</td><td>${REG_KO[x.reg]||x.reg}</td><td class="c">${pr(x.o1)}</td><td class="c">${pr(x.o5)}</td><td class="c">${hh===true?'<b class="ok">적중</b>':hh===false?'<b class="ng">빗나감</b>':x.pos==="CASH"?'<span class="muted">관망</span>':'<span class="muted">대기</span>'}</td></tr>`}
-  const wr=kind==="w"&&typeof WEEKLY_RECS!=="undefined"?WEEKLY_RECS.find(x=>calWeekKey(x.base)===key):null;
+  const wr=calReport(key);
   if(wr)h+=`<div class="wk-res"><b>이 주 종가로 낸 주간 리포트 (${esc(wr.week)})</b> 매수 ${wr.exposure.long}% · 경보 ${esc(wr.alert.ko)} · 1.5: ${Object.entries(wr.engine).filter(([,v])=>wkSide(v.full.j)!==0).map(([id,v])=>`${WK_NAME[id]} ${WK_KO[v.full.j]}`).join(", ")||"전부 관망"}${wr.result?` · 채점: ${Object.entries(wr.result.systems).map(([k,v])=>`${k} ${v.hit}/${v.n}`).join(" · ")}`:" · 채점 대기"} <a href="#weekly">리포트 보기</a></div>`;
   h+=`</tbody></table></div>${kind==="w"?`<p class="note">주간 신호 검증 통과: 코스피 매도 · 코스닥 매수·매도 · 금 매수. ‘참고’ 시장의 주간 매수·매도는 과거 시험에서 평소보다 낫지 않았습니다.</p>`:""}</div>`;
   setTimeout(()=>{const x=$("#calX");if(x)x.onclick=()=>{calSt().sel=null;save();renderCalBody()}},0);return h}
 function calWeeklyView(){const ids=calMarkets().map(m=>m.id).filter(id=>calSt().mk==="top3"||id===calSt().mk);
-  const keys=[...new Set(ids.flatMap(id=>Object.keys(CAL.w[id]||{})))].sort().slice(-16).reverse();
-  let h=`<div class="tbl-wrap"><table class="cal-t wkt"><thead><tr><th>주 (월요일)</th>${ids.map(id=>`<th class="c">${CAL_SHORT[id]}${WEEKLY_OK[id]?`<br><small class="okb">${WEEKLY_OK[id].map(s=>s==="L"?"매수":"매도").join("·")} 검증</small>`:'<br><small class="ref">참고</small>'}</th>`).join("")}</tr></thead><tbody>`;
+  const WA=CAL.wa||CAL.w;const keys=[...new Set(ids.flatMap(id=>Object.keys(WA[id]||{})))].sort().slice(-16).reverse();
+  let h=`<div class="tbl-wrap"><table class="cal-t wkt"><thead><tr><th>쓰는 주</th>${ids.map(id=>`<th class="c">${CAL_SHORT[id]}${WEEKLY_OK[id]?`<br><small class="okb">${WEEKLY_OK[id].map(s=>s==="L"?"매수":"매도").join("·")} 검증</small>`:'<br><small class="ref">참고</small>'}</th>`).join("")}</tr></thead><tbody>`;
   const st={};
-  for(const k of keys){h+=`<tr class="${calSt().sel==="w:"+k?"sel":""}"><td><button type="button" class="mini" data-wk="${k}">${k.slice(5).replace("-","/")}</button></td>`;
-    for(const id of ids){const x=CAL.w[id]&&CAL.w[id][k];const hh=calHit(x);if(hh!=null){const s=st[id]=st[id]||[0,0];s[0]++;if(hh)s[1]++}h+=`<td class="c">${calChip(x)}</td>`}h+=`</tr>`}
+  for(const k of keys){const rp=calReport(k);h+=`<tr class="${calSt().sel==="w:"+k?"sel":""}"><td><button type="button" class="mini" data-wk="${k}">${k.slice(5).replace("-","/")}</button>${rp?`<br><small class="okb">★ 매수 ${rp.exposure.long}%</small>`:""}</td>`;
+    for(const id of ids){const x=WA[id]&&WA[id][k];const hh=calHit(x);if(hh!=null){const s=st[id]=st[id]||[0,0];s[0]++;if(hh)s[1]++}h+=`<td class="hm">${calBar(x,id)}</td>`}h+=`</tr>`}
   h+=`</tbody><tfoot><tr><td>16주 매수·매도 적중</td>${ids.map(id=>{const s=st[id];return`<td class="c">${s?`${s[1]}/${s[0]}`:"–"}</td>`}).join("")}</tr></tfoot></table></div>
-  <p class="note">한 주 = 그 주 마지막 종가로 낸 20주선 판단. ✓·✗는 5주 뒤 종가로 채점. ‘대표 3개’를 고르면 10개 시장 전부 보입니다.</p>`;
+  <p class="note">칸 = 그 주에 쓰는 20주선 판단(전 주 마지막 종가 기준, 가격만). 색: 빨강 매수·파랑 매도, 회색 계열 관망(↗ 상승 국면 · ↘ 하락 국면). ✓·✗는 5주 뒤 종가로 채점. ★ = 주간 리포트가 있는 주.</p>`;
   return h+calDetail()}
 function calMonthlyView(){const ids=calMarkets().map(m=>m.id);
   const ms=new Set();for(const id of ids){const M=CAL.m&&CAL.m[id];if(M)M.mon.slice(-12).forEach(x=>ms.add(x.m))}const mons=[...ms].sort().slice(-12);
