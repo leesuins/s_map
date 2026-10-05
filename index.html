@@ -926,7 +926,10 @@ function trCell(t,pos){
   return`<span class="num" style="color:${col};font-weight:600" title="${sh?"매도":"매수"} 판단 적중 ${(acc*100).toFixed(0)}% · 평소 ${sh?"하락":"상승"} 비율 ${(base*100).toFixed(0)}% · ${lab}">${(acc*100).toFixed(0)}%</span>`;
 }
 // Claude가 채팅에서 찾아 넣은 시세 (공유 기록 'quotes'): 등락률 또는 값 → 이 화면의 마지막 종가로 환산
+// 텔레그램·Claude가 확인한 잠정 시세 (data/quotes_live.json → build_web.py가 넣어 줌). 웹 화면에서도 판단에 반영
+const QUOTES_LIVE={};/*QUOTES_LIVE*/
 let dbQuotes={},dbInputs={};
+try{for(const k in QUOTES_LIVE){const q=QUOTES_LIVE[k];if(q&&q.t)dbQuotes[k]={...q,market:k,src:q.src||"텔레그램 캡처"}}}catch(e){}
 // 허브(키움) 재료: 상승 종목 비율 → 시장 내부 체력, 외국인+기관 순매수 → 수급. 사용자가 비워 둔 항목만 채움, 18시간 유효
 const FLOW_STEP={kospi:[1000,5000],kosdaq:[400,2000]};   // 억원: ±1단계, ±2단계 기준
 function hubInpScores(id){if(typeof HUB==="undefined"||!HUB.q)return null;const q=HUB.q[id];if(!q||q.source!=="kiwoom"||!q.asof)return null;
