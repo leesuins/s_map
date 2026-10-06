@@ -1990,9 +1990,9 @@ function wkWait(id,f,isNow){
   const j=lr?(lr.wait||lr.final):f.j;if(!/^WAIT/.test(j||""))return "";
   if(!lr)return f.waitFor?ko(f.waitFor):"";
   const m=lr.m,up=j==="WAIT LONG",cons=(lr.inp&&lr.inp.consensus)||0,P=[];
-  if(up){if(m.dist>8)P.push(`${fmtN(m.ma60*1.08)} 아래로 (60일선+8%, 지금 ${fmtP(m.dist,1)})`);if(m.rsi>72)P.push(`RSI ${m.rsi.toFixed(0)}→72 이하`);if(cons>=2&&m.ret5>3)P.push(`5일 ${fmtP(m.ret5,1)}→+3% 이하`)}
-  else{if(m.dist<-8)P.push(`${fmtN(m.ma60*0.92)} 위로 (60일선−8%, 지금 ${fmtP(m.dist,1)})`);if(m.rsi<28)P.push(`RSI ${m.rsi.toFixed(0)}→28 이상`);if(cons<=-2&&m.ret5<-3)P.push(`5일 ${fmtP(m.ret5,1)}→−3% 이상`)}
-  return P.length?(up?"풀리면 매수: ":"풀리면 매도: ")+P.join(" · "):""}
+  if(up){if(m.dist>8)P.push(`${fmtN(m.ma60*1.08)} 이하로 내려옴 (지금 60일선 대비 ${fmtP(m.dist,1)})`);if(m.rsi>72)P.push(`RSI 72 이하로 식음 (지금 ${m.rsi.toFixed(0)})`);if(cons>=2&&m.ret5>3)P.push(`5일 상승 3% 이하 (지금 ${fmtP(m.ret5,1)})`)}
+  else{if(m.dist<-8)P.push(`${fmtN(m.ma60*0.92)} 이상으로 반등 (지금 60일선 대비 ${fmtP(m.dist,1)})`);if(m.rsi<28)P.push(`RSI 28 이상 (지금 ${m.rsi.toFixed(0)})`);if(cons<=-2&&m.ret5<-3)P.push(`5일 하락 3% 이내 (지금 ${fmtP(m.ret5,1)})`)}
+  return P.length?(WK_RATE[id]?(up?"금리↑ 판단 조건: ":"금리↓ 판단 조건: "):(up?"매수 조건: ":"매도 조건: "))+P.join(" 그리고 "):""}
 function renderWeekly(){const el=$("#wkBody");if(!el)return;if(!WEEKLY_RECS.length){$("#weekly").hidden=true;return}
   const st=state.wk=state.wk||{};const recs=[...WEEKLY_RECS].sort((a,b)=>a.base<b.base?1:-1);let i=Math.min(st.i||0,recs.length-1);const r=recs[i];
   const sel=$("#wkSel");if(sel&&sel.options.length!==recs.length){sel.innerHTML=recs.map((x,k)=>`<option value="${k}">${esc(x.week)}${x.result?" · 채점됨":""}</option>`).join("");}
@@ -2020,10 +2020,10 @@ function renderWeekly(){const el=$("#wkBody");if(!el)return;if(!WEEKLY_RECS.leng
   h+=`</tbody></table></div>`;
   h+=`<details class="wk-terms"><summary>판단 용어 (눌림·우세·반등이 뭔가요?)</summary><ul>
    <li><b>매수 (LONG)</b> — 방향도 위, 지금 값에 들어가도 됨</li>
-   <li><b>매수 (눌림에서) = LONG(눌림)</b> — 방향은 위지만 최근 많이 올라 지금 사면 비쌈. <b>추격 말고</b> 과열이 풀릴 때 매수 — 엔진 기준: 60일선보다 8% 넘게 위 · RSI 72 넘음 · (쏠림 + 5일 3% 넘게 급등) 중 걸린 것이 모두 풀리면. 보라색 ⤷ 줄이 지금 걸린 조건과 풀리는 값. 비중 계산에선 80%</li>
+   <li><b>매수 (눌림에서) = LONG(눌림)</b> — 방향은 위지만 최근 많이 올라 지금 사면 비쌈. <b>추격 말고</b> 과열이 풀릴 때 매수 — 엔진 기준: 60일선보다 8% 넘게 위 · RSI 72 넘음 · (쏠림 + 5일 3% 넘게 급등) 중 걸린 것을 모두 벗어나면 매수로 바뀜. 보라색 ⤷ "매수 조건" 줄이 지금 남은 조건(모두 충족해야 함). 비중 계산에선 80%</li>
    <li><b>매수 우세 (확인 후) = LONG 우세</b> — 오를 쪽이 우세하지만 확인 조건(60일선 위 유지 등)이 아직 부족. 비중 65%</li>
    <li><b>관망 (CASH)</b> — 방향이 뚜렷하지 않음. 비중 50%</li>
-   <li><b>매도 (반등에서) = SHORT(반등)</b> — 방향은 아래지만 많이 빠져서(60일선보다 8% 넘게 아래 · RSI 28 아래 등) 반등으로 과매도가 풀릴 때 매도</li>
+   <li><b>매도 (반등에서) = SHORT(반등)</b> — 방향은 아래지만 많이 빠져서(60일선보다 8% 넘게 아래 · RSI 28 아래 등) 반등해서 과매도에서 벗어날 때 매도</li>
    <li><b>금리↑ / 금리↑ 대기</b> — 금리(미 10년물·1년물)가 오를 쪽 판단. 대기는 같은 이유로 지금은 기다림</li></ul></details>`;
   if(res&&res.systems)h+=`<div class="wk-res"><b>채점 (${esc(r.base)} → ${esc(r.weekEnd)})</b> 주식 4개 평균 ${fmtP(res.eqRet,2)} · ${Object.entries(res.systems).map(([k,v])=>`${k} ${v.hit}/${v.n}`).join(" · ")}${res.pnl?" · 비중대로: "+Object.entries(res.pnl).map(([k,v])=>`${k} ${fmtP(v,2)}`).join(", "):""}</div>`;
   else h+=`<p class="note">${esc(r.weekEnd)} 종가가 들어오면 우리(가격만·1.5)와 GPT 판단을 같은 기준으로 채점합니다. 매수·매수 대기 = 오르면 적중, 매도·매도 대기 = 내리면 적중, 관망 = 채점 안 함.</p>`;
