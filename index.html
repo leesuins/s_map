@@ -1990,8 +1990,8 @@ function wkWait(id,f,isNow){
   const j=lr?(lr.wait||lr.final):f.j;if(!/^WAIT/.test(j||""))return "";
   if(!lr)return f.waitFor?ko(f.waitFor):"";
   const m=lr.m,up=j==="WAIT LONG",cons=(lr.inp&&lr.inp.consensus)||0,P=[];
-  if(up){if(m.dist>8)P.push(`${fmtN(m.ma60*1.08)} 이하로 내려옴 (지금 60일선 대비 ${fmtP(m.dist,1)})`);if(m.rsi>72)P.push(`RSI 72 이하로 식음 (지금 ${m.rsi.toFixed(0)})`);if(cons>=2&&m.ret5>3)P.push(`5일 상승 3% 이하 (지금 ${fmtP(m.ret5,1)})`)}
-  else{if(m.dist<-8)P.push(`${fmtN(m.ma60*0.92)} 이상으로 반등 (지금 60일선 대비 ${fmtP(m.dist,1)})`);if(m.rsi<28)P.push(`RSI 28 이상 (지금 ${m.rsi.toFixed(0)})`);if(cons<=-2&&m.ret5<-3)P.push(`5일 하락 3% 이내 (지금 ${fmtP(m.ret5,1)})`)}
+  if(up){if(m.dist>8)P.push(`${fmtN(m.ma60*1.08)} 이하 (현재 60일선 대비 ${fmtP(m.dist,1)})`);if(m.rsi>72)P.push(`RSI 72 이하 (현재 ${m.rsi.toFixed(0)}, 과열 해소)`);if(cons>=2&&m.ret5>3)P.push(`5일 상승률 3% 이하 (현재 ${fmtP(m.ret5,1)})`)}
+  else{if(m.dist<-8)P.push(`${fmtN(m.ma60*0.92)} 이상 (현재 60일선 대비 ${fmtP(m.dist,1)})`);if(m.rsi<28)P.push(`RSI 28 이상 (현재 ${m.rsi.toFixed(0)}, 과매도 해소)`);if(cons<=-2&&m.ret5<-3)P.push(`5일 하락률 3% 이내 (현재 ${fmtP(m.ret5,1)})`)}
   return P.length?(WK_RATE[id]?(up?"금리↑ 판단 조건: ":"금리↓ 판단 조건: "):(up?"매수 조건: ":"매도 조건: "))+P.join(" 그리고 "):""}
 function renderWeekly(){const el=$("#wkBody");if(!el)return;if(!WEEKLY_RECS.length){$("#weekly").hidden=true;return}
   const st=state.wk=state.wk||{};const recs=[...WEEKLY_RECS].sort((a,b)=>a.base<b.base?1:-1);let i=Math.min(st.i||0,recs.length-1);const r=recs[i];
