@@ -924,7 +924,11 @@ function t5paint() {
   if (!d) return;
   t5band(d);
   if (!d.ok) { $("t5tb").innerHTML = `<tr><td colspan="17" class="l mut">${esc(d.why || "자료 없음")}</td></tr>`; $("t5det").innerHTML = ""; $("t5cnt").textContent = ""; return; }
-  $("t5sub").textContent = `${d.day.slice(4, 6)}/${d.day.slice(6)} 예측 기록 ${d.n_all}종목 중 · 👑 ${d.crown_day ? d.crown_day.slice(4, 6) + "/" + d.crown_day.slice(6) + " 마감" : "기록 없음"} · ${String(d.at).slice(11, 16)} 계산`;
+  const ct = d.cut || {}, cr = ct.rows || [];                // v468 15분 600선 아래 뺀 것
+  $("t5sub").textContent = `${d.day.slice(4, 6)}/${d.day.slice(6)} 예측 기록 ${d.n_all}종목 중 · 👑 ${d.crown_day ? d.crown_day.slice(4, 6) + "/" + d.crown_day.slice(6) + " 마감" : "기록 없음"} · ${String(d.at).slice(11, 16)} 계산`
+    + (ct.on ? ` · ✂ 15분 600선 아래 ${cr.length}개 뺌` : "");
+  $("t5sub").title = ct.on ? `✂ ${ct.rule || ""}\n${cr.map(x => `${x.name}(빼기 전 ${x.rank0}위)`).join(" · ") || "뺀 종목 없음"}`
+    + (ct.kept_stale_below ? `\n옛 값이라 안 뺀 600선 아래 ${ct.kept_stale_below}개(칸이 흐린 종목)` : "") : "";
   const rs = t5rows();
   if (!rs.some(r => r.code === T5.sel)) T5.sel = rs.length ? rs[0].code : null;
   $("t5cnt").textContent = `전체 ${d.rows.length} 중 ${rs.length}`;
