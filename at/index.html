@@ -554,6 +554,8 @@ function select(code, name) {
   if (!same) { buildPanes(); $("judge").innerHTML = '<div class="empty">불러오는 중…</div>'; $("why").innerHTML = '<div class="empty">불러오는 중…</div>'; }
   loadCharts(); loadStock(); loadRadar();
 }
+/* v458 — 열어 둔 한화면에서 주소의 #code=만 바꿔도 그 종목으로 바뀐다(예전엔 처음 열 때만 읽어 새로고침해야 했음) · 보기만 */
+window.addEventListener("hashchange", () => { const h = location.hash.match(/code=([0-9A-Z]{6})/); if (h && h[1] !== S.code) select(h[1], ""); });
 
 /* ── v440 🛰 목록 ● → v443 글자색 — 순서 숫자·종목 이름 글자색 = 지수 경계 칸과 같음(🟡 WATCH · 🟠 WARNING · 🔴 TREND BREAK · ⚫ 완전 이탈) ──
    형 10/12 "숫자 앞 도트 표시한 걸 텍스트 폰트 색상으로 (검은색은 약간 진한 회색)" — ⚫(검정) = 진한 회색 · 정상 = 카드와 같은 초록 · 5분봉 없으면 원래 색(모름)
