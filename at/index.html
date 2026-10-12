@@ -1156,23 +1156,25 @@ function eaWarnRule(d) {
     <div class="mut">${rule}</div></div>`;
 }
 function eaFocusB() {
+  // v462 형이 보낸 외부 검토(10/12) — "TO-BE 이긴 날(전 기간 합)"이 1일·3일·5일 세 기간의 같은 날짜들을 따로따로
+  // 또 세서 더한 값이었다(같은 날이 최대 3번 들어감 — "서로 다른 평가 기간의 승리를 독립 거래일 승리처럼 합산하지
+  // 않는다"). 판정 배지는 겹침이 없는 **1일 기준 하나만** 쓰고, 기간별 숫자는 합치지 않고 나란히만 보여준다.
   const d = EA.d, hit = (d.hit || {})[EA.cr] || {}, H = d.horizons.filter(h => hit[h]);
-  let won = 0, of = 0;
-  H.forEach(h => { const x = hit[h]._days; if (x) { won += x.won; of += x.of; } });
   const h1 = hit["1일"] || {};
   const pc = s => s ? `${Math.round(s.hit * 100)}%` : "—";
-  const days1 = h1._days ? h1._days.of : 0;
+  const d1 = h1._days || { won: 0, of: 0 };
+  const days1 = d1.of;
   const st = days1 < EA_NEED.short ? `<span class="east wait">판단하기 이름 — 비교한 날 ${days1}일</span>`
-    : (of && won / of >= 0.7) ? '<span class="east good">TO-BE(TOP50)가 앞섬</span>' : (of && won / of <= 0.3) ? '<span class="east bad">AS-IS(지금 순서)가 앞섬</span>' : '<span class="east mid">비슷함</span>';
+    : (days1 && d1.won / days1 >= 0.7) ? '<span class="east good">TO-BE(TOP50)가 앞섬</span>' : (days1 && d1.won / days1 <= 0.3) ? '<span class="east bad">AS-IS(지금 순서)가 앞섬</span>' : '<span class="east mid">비슷함</span>';
   const t50 = h1.tobe50, asis = h1.asis, all = h1.all;
   const w = h1.warn, nw = h1.nowarn, loss = EA.cr === "d5";      // v442 손실 기준이면 낮은 쪽이 좋음(색 뒤집음)
   $("eafB").innerHTML = `<div class="ft">📌 지금 볼 것 ${st}</div>
-    ${eaProg("AS-IS ↔ TO-BE 비교한 날", days1, EA_NEED.short)}
-    <div class="eakpi"><div><span>TO-BE 위 10 이긴 날(전 기간 합)</span><b>${of ? `${won} / ${of}` : "—"}</b><span>${H.map(h => hit[h]._days ? `${h} ${hit[h]._days.won}/${hit[h]._days.of}` : "").filter(Boolean).join(" · ")}</span></div>
+    ${eaProg("AS-IS ↔ TO-BE 비교한 날(1일 기준)", days1, EA_NEED.short)}
+    <div class="eakpi"><div><span>TO-BE 위 10 이긴 날(1일 기준 · 판정에 씀)</span><b>${days1 ? `${d1.won} / ${days1}` : "—"}</b><span>기간별(참고·합산 안 함): ${H.map(h => hit[h]._days ? `${h} ${hit[h]._days.won}/${hit[h]._days.of}` : "").filter(Boolean).join(" · ")}</span></div>
      <div><span>1일 ${loss ? "손실 비율(−5%↓ · 낮을수록 좋음)" : "적중률"} TOP50 전체</span><b class="${t50 && asis && (loss ? t50.hit < asis.hit : t50.hit > asis.hit) ? "up" : ""}">${pc(t50)}</b><span>AS-IS TOP10 ${pc(asis)} · 전체 ${pc(all)}</span></div>
      <div><span>⚠ 있는 종목(1일${loss ? " 손실" : ""})</span><b class="${w && nw && (loss ? w.hit > nw.hit : w.hit < nw.hit) ? "dn" : ""}">${pc(w)}</b><span>⚠ 없는 종목 ${pc(nw)}</span></div></div>
     ${eaWarnRule(d)}
-    <div class="eaq"><div><b class="n">1</b><span><b>"TO-BE 이긴 날"이 핵심</b> — 10거래일 넘게 비교해서 <b>7할 이상</b> 이기면 TOP50 순서가 낫다는 근거.</span></div>
+    <div class="eaq"><div><b class="n">1</b><span><b>"TO-BE 이긴 날"이 핵심</b> — 10거래일 넘게 비교해서 <b>7할 이상</b> 이기면 TOP50 순서가 낫다는 근거(1일 기준만 — 1일·3일·5일을 더하면 같은 날이 여러 번 들어가 부풀려짐).</span></div>
     <div><b class="n">2</b><span>TOP50 <b>전체(50종목)</b>와 <b>위 10개</b>를 따로 봐요 — 전체만 낫고 위 10개가 비슷하면 '순위 맨 위'보다 '50개 묶음'이 나은 것.</span></div>
     <div><b class="n">3</b><span><b>⚠ 감점</b>은 위 '⚠ 감점 판정' 칸 — +3% 적중과 −5% 손실을 <b>같이</b> 봄(4년 일봉 검증: ⚠는 둘 다 높음 = 양쪽으로 크게 움직임).</span></div></div>
     <div class="eanote">표 읽는 법 — 같은 기간 칸에서 AS-IS 줄 ↔ TO-BE 줄을 위아래로 · 둘 다 '기록된 전 종목(기준선)'보다 높아야 의미 · 적중 기준은 기본(종가 +3%↑)만 · ${eaSkipNote(d)}</div>`;
