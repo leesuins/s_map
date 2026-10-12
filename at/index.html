@@ -4,7 +4,7 @@
 .t5t td.t5ml{white-space:nowrap}
 .t5t td.t5ml .t5d{margin-right:1px}
 .t5t td.t5mlold{opacity:.4}
-</style><meta name="robots" content="noindex,nofollow">
+.pltag{ position:absolute; inset:0; pointer-events:none; z-index:5; overflow:hidden; }.pltag span{ position:absolute; left:4px; font-size:11px; line-height:15px; padding:0 4px; border-radius:2px; color:#fff; white-space:nowrap; opacity:.88; pointer-events:auto; cursor:default; }.ov60{ position:absolute; inset:0 0 26px 0; z-index:6; pointer-events:none; display:flex; align-items:center; justify-content:center; background:rgba(73,80,87,.34); }.ov60 b{ background:rgba(33,37,41,.86); color:#fff; border:0; border-radius:6px; padding:5px 12px; font-size:13px; line-height:1.35; text-align:center; margin-top:0; box-shadow:0 1px 4px rgba(0,0,0,.15); }.ov60 small{ display:block; font-weight:400; font-size:11px; opacity:.9; }</style><meta name="robots" content="noindex,nofollow">
 <style>
 #atv-lock{position:fixed;inset:0;z-index:99999;background:#EEF1F5;display:flex;align-items:center;justify-content:center;padding:16px}
 #atv-f{background:#fff;border:1px solid #DDE2EA;border-radius:12px;padding:24px 20px;display:grid;gap:10px;justify-items:center;
@@ -306,6 +306,44 @@ function mkChart(el) {
 const candles = (ch, up = "#E8590C", dn = "#5C7CFA") => ch.addCandlestickSeries({ upColor: up, downColor: dn, borderVisible: false, wickUpColor: up, wickDownColor: dn, priceLineVisible: false });
 const lineS = (ch, c, w, st) => ch.addLineSeries({ color: c, lineWidth: w, lineStyle: st || 0, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
 
+/* ── v472 형 "차트에서 겹침 이런 표현들이 진행중이 봉을 가리고 있어" — 가격선 이름표(★저항 3번 · ★겹침 전고점 …)를
+   라이브러리는 차트 오른쪽 끝(가격 축 바로 왼쪽) 안쪽에 그려서 지금 봉을 덮었다. → 이름표 글은 차트 **왼쪽 끝**(옛 봉 쪽)에 따로 띄움.
+   가격 축의 값·색 칸은 그대로 오른쪽 · 선·값 그대로 · 이름표끼리 겹치면 아래로 비킴 · 좁은 칸은 줄임말(올리면 전체 이름) · 화면만(서버·주문 무관) ── */
+const SHORT_LV = [["피보 ", "F"], ["직전 저점", "직저"], ["직전 고점", "직고"], ["전고점", "전고"], ["전저점", "전저"], ["%", ""]];
+const tagShort = t => (t.conf ? "★겹 " : "★") + (t.hl ? t.side[0] + t.touches : SHORT_LV.reduce((a, [x, y]) => a.split(x).join(y), t.name));
+function placeTags(p) {
+  if (!p || p.st.gone || !p.tagEl) return;
+  const h = p.tagEl.clientHeight - 26;                         // 아래 시간 축 높이만큼 뺌
+  const rows = (p.tags || []).map(t => ({ ...t, y: p.cs.priceToCoordinate(t.v) }))
+    .filter(t => t.y !== null && t.y >= 0 && t.y <= h).sort((a, b) => a.y - b.y);
+  const draw = short => {
+    let last = -99;
+    p.tagEl.innerHTML = rows.map(t => {
+      const y = Math.max(t.y - 8, last + 16);
+      last = y;
+      const full = (t.conf ? "★겹침 " : "★ ") + t.name;
+      return `<span style="top:${Math.round(y)}px;background:${t.col}" title="${esc(full)}">${esc(short ? tagShort(t) : full)}</span>`;
+    }).join("");
+  };
+  draw(false);
+  let pw = p.tagEl.clientWidth;
+  try { pw -= p.ch.priceScale("right").width(); } catch (e) { /* 지운 차트 */ }
+  const wid = Math.max(0, ...[...p.tagEl.children].map(e => e.offsetWidth));
+  if (wid > pw * 0.5) draw(true);                              // 좁은 칸(1366 4칸 등) — 줄임말(★저3 · ★겹 F61.8) · 마우스 올리면 전체 이름
+}
+const tagLater = p => requestAnimationFrame(() => placeTags(p));
+/* ── v473 형 "각 차트에서 분차트 상으로 현재주가가 60선 이탈 종목은 전체영역을 회색으로 레이어 씌워서 60일선 이탈중 이라고 레이어 띄워줄래?"
+   → 시안 A(진한 회색 · 가운데 표시) 형 선택("가운데 진한회색"). 기준 = 그 칸 분봉의 60선(굵은 청록 · 지수이평 60봉) — 마지막 봉 종가 < 60선(서버 above60 = false).
+   표시만 · 차트 끌기·확대는 그대로(마우스 통과) · 서버·주문 무관 ── */
+function ov60(p, tf, d) {
+  const cv = p.el.querySelector(".cv");
+  let ov = cv.querySelector(".ov60");
+  if (!(d.ok && d.above60 === false)) { if (ov) ov.remove(); return; }
+  if (!ov) { ov = document.createElement("div"); ov.className = "ov60"; cv.appendChild(ov); }
+  const g = d.ma60 ? (d.close / d.ma60 - 1) * 100 : null;
+  ov.innerHTML = `<b>${tf}분 60선 이탈 중<small>지금 ${fmt(d.close)} · 60선 ${fmt(d.ma60)}${g === null ? "" : ` (${g.toFixed(1)}%)`}</small></b>`;
+}
+
 /* ── 종목 차트(4칸 · 1칸) ─────────────────────────────────── */
 function buildPanes() {
   Object.values(S.panes).forEach(dropChart);
@@ -324,7 +362,16 @@ function buildPanes() {
     const cs = candles(ch);
     const ma = { ma20: lineS(ch, "#F59F00", 2), ma60: lineS(ch, "#15AABF", 3), sma20: lineS(ch, "#1C3FD8", 1, LS.Dotted), sma60: lineS(ch, "#D6249F", 1, LS.Dotted) };
     const st = { user: false };
-    S.panes[tf] = { el, ch, cs, ma, pls: [], trends: [], first: true, code: S.code, st, fit: autoFit(ch, el.querySelector(".cv"), st) };
+    const cv = el.querySelector(".cv");
+    cv.style.position = "relative";
+    const tagEl = document.createElement("div");                // v472 가격선 이름표(왼쪽 끝)
+    tagEl.className = "pltag";
+    cv.appendChild(tagEl);
+    const pane = { el, ch, cs, ma, pls: [], trends: [], tags: [], tagEl, first: true, code: S.code, st, fit: autoFit(ch, cv, st) };
+    S.panes[tf] = pane;
+    ch.timeScale().subscribeVisibleLogicalRangeChange(() => tagLater(pane));
+    ["wheel", "mouseup", "touchend", "dblclick"].forEach(ev => cv.addEventListener(ev, () => tagLater(pane), { passive: true }));
+    try { new ResizeObserver(() => tagLater(pane)).observe(cv); } catch (e) { /* 옛 브라우저 */ }
   });
 }
 function paintPane(tf, d) {
@@ -338,20 +385,27 @@ function paintPane(tf, d) {
     + `<span style="color:#2B8A3E">${s("sup")}</span><span style="color:#C2255C">${s("res")}</span>`;
   p.cs.setData(d.bars);
   for (const k in p.ma) p.ma[k].setData(d.ma[k] || []);
-  p.pls.forEach(x => p.cs.removePriceLine(x)); p.pls = [];
+  p.pls.forEach(x => p.cs.removePriceLine(x)); p.pls = []; p.tags = [];
   p.trends.forEach(x => p.ch.removeSeries(x)); p.trends = [];
-  (d.hlines || []).forEach(x => p.pls.push(p.cs.createPriceLine({
-    price: x.v, color: x.key ? "#1864AB" : "#8DB4E2", lineWidth: x.key ? 2 : 1, lineStyle: LS.Dashed, axisLabelVisible: x.key,
-    title: (x.key ? (x.conf ? "★겹침 " : "★ ") : "") + `${x.side} ${x.touches}번` })));
-  (d.levels || []).forEach(x => p.pls.push(p.cs.createPriceLine({
-    price: x.v, color: x.side === "지지" ? (x.key ? "#2B8A3E" : "#8CC79A") : (x.key ? "#C2255C" : "#E59BB8"),
-    lineWidth: x.key ? 2 : 1, lineStyle: LS.Dotted, axisLabelVisible: x.key, title: (x.key ? (x.conf ? "★겹침 " : "★ ") : "") + x.label })));
+  const tagOf = (x, name, col, hl) => { if (x.key) p.tags.push({ v: x.v, col, name, conf: !!x.conf, hl, side: x.side || "", touches: x.touches }); };
+  (d.hlines || []).forEach(x => {
+    const col = x.key ? "#1864AB" : "#8DB4E2";
+    p.pls.push(p.cs.createPriceLine({ price: x.v, color: col, lineWidth: x.key ? 2 : 1, lineStyle: LS.Dashed, axisLabelVisible: x.key, title: "" }));
+    tagOf(x, `${x.side} ${x.touches}번`, col, true);
+  });
+  (d.levels || []).forEach(x => {
+    const col = x.side === "지지" ? (x.key ? "#2B8A3E" : "#8CC79A") : (x.key ? "#C2255C" : "#E59BB8");
+    p.pls.push(p.cs.createPriceLine({ price: x.v, color: col, lineWidth: x.key ? 2 : 1, lineStyle: LS.Dotted, axisLabelVisible: x.key, title: "" }));
+    tagOf(x, x.label, col);
+  });
   (d.trends || []).forEach(x => { if (x.points[0].time < x.points[1].time) { const s2 = lineS(p.ch, x.key ? "#1864AB" : "#8DB4E2", x.key ? 2 : 1, LS.Dashed); s2.setData(x.points); p.trends.push(s2); } });
   const mk = (d.pins || []).map(x => ({ time: x.time, position: x.kind === "buy" ? "belowBar" : "aboveBar",
     color: x.kind === "met" ? "#D42B2B" : x.kind === "buy" ? "#7048E8" : "#868E96", shape: x.kind === "buy" ? "arrowUp" : "circle", text: "" }))
     .sort((a, b) => a.time - b.time);
   p.cs.setMarkers(mk);
+  ov60(p, tf, d);
   if (p.first) { p.first = false; requestAnimationFrame(p.fit); }
+  tagLater(p);
   if (tf === (S.mode === "4" ? 5 : +S.mode)) $("cinfo").textContent = `마지막 봉 ${String(d.last_ts).slice(5, 16).replace("T", " ")} · 저장 ${hm(d.saved_at)}`;
 }
 async function loadCharts() {
