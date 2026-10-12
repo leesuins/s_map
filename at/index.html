@@ -365,11 +365,15 @@ const DOT = { LONG: "#22A35A", CASH: "#F0A020", SHORT: "#E03131" };
 const agBadge = a => a ? `<span class="ag ag${a.n}" title="${esc(a.tip || "")}">${a.n}/${a.of}</span>` : '<span class="mut">—</span>';
 const MARK = { true: ["✔", "ok"], false: ["✕", "no"], null: ["?", "warn"] };
 const chipOf = p => `<span class="cpx ${(MARK[p.ok] || MARK[null])[1]}">${esc(p.label)} ${esc(p.text)}</span>`;
+// v461 형이 보낸 외부 검토(10/12) — "합의 n/3"의 📊 LONG 칸이 과거 통계 특성상(최고 사례 33% < 기준 60%)
+// 사실상 항상 '아님'이라 3개 모두 통과가 구조적으로 안 나온다. 판단·매수 규칙은 그대로 두고 그 사실만 적는다.
+const AG_JUDGE_NOTE = "📊 LONG은 과거 통계 기준(60%) 특성상 거의 안 뜸(최근 최고 사례 33%) — 합의 3/3은 지금 구조에서 사실상 안 나옴";
 function agBanner(a) {
   if (!a) return "";
+  const jNote = a.parts[0] && a.parts[0].ok === false ? `<div class="mut" style="font-size:10.5px;white-space:normal">${esc(AG_JUDGE_NOTE)}</div>` : "";
   return `<div class="agbar"><div class="r1"><span class="ag ag${a.n}" style="font-size:12px">합의 ${a.n}/${a.of}</span><span class="sp"></span>`
     + `<button type="button" class="btn dbtn" data-open="1">ⓘ 상세정보</button></div>${a.parts.map(chipOf).join("")}`
-    + `<div class="mut" style="font-size:10.5px;white-space:normal">종목 더블클릭 = 상세정보 · 시스템 출력이며 추천이 아님</div></div>`;
+    + `<div class="mut" style="font-size:10.5px;white-space:normal">종목 더블클릭 = 상세정보 · 시스템 출력이며 추천이 아님</div>${jNote}</div>`;
 }
 /* ── v414 A-29 공통점 칩 — 고(52주 고점 근처) · 급(지난 주 급등) · 변(변동성 큼) · 표시만(점수·순서·매수 그대로) ──
    1601px↑ = 이름 옆 글자 칩 · 1600px↓(1366) = 번호 왼쪽 세로 막대 3칸(자리 고정) — 둘 다 그리고 CSS가 하나만 보인다 */
@@ -478,7 +482,7 @@ function paintDetail() {
     + `<tr><td style="text-align:left">겹침(참고)</td><td style="text-align:left">${ov ? `${ov.n}/4 — ${esc(ov.where)}` : '<span class="mut">겹치는 종목 목록에 없음(2곳 미만)</span>'}</td><td><span class="mut">—</span></td></tr></tbody></table>`
     + (chips ? `<div style="margin-top:6px">${chips}</div>` : "")
     + (cr && (cr.lines || []).length ? `<div class="dlines">${esc(cr.lines.join("\n"))}</div>` : "")
-    + `<div class="why">합의 = 📊 LONG · 트랙 통과 · 👑 자격 중 몇 개. 판정끼리 서로 다를 때 한눈에 보이게 하는 표시이고, 점수·순서·매수 대상은 안 바뀝니다.</div></div>`
+    + `<div class="why">합의 = 📊 LONG · 트랙 통과 · 👑 자격 중 몇 개. 판정끼리 서로 다를 때 한눈에 보이게 하는 표시이고, 점수·순서·매수 대상은 안 바뀝니다. ${esc(AG_JUDGE_NOTE)}</div></div>`
     + confSection(d.judge) + traitSection(d.traits) + chartSection(d.chart_state) + sectorSection(d.sector) + manualSection(d.manual);
 }
 async function openDetail() {
