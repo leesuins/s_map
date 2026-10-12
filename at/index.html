@@ -4,7 +4,7 @@
 .t5t td.t5ml{white-space:nowrap}
 .t5t td.t5ml .t5d{margin-right:1px}
 .t5t td.t5mlold{opacity:.4}
-.pltag{ position:absolute; inset:0; pointer-events:none; z-index:5; overflow:hidden; }.pltag span{ position:absolute; left:4px; font-size:11px; line-height:15px; padding:0 4px; border-radius:2px; color:#fff; white-space:nowrap; opacity:.88; pointer-events:auto; cursor:default; }.ov60{ position:absolute; inset:0 0 26px 0; z-index:6; pointer-events:none; display:flex; align-items:center; justify-content:center; background:rgba(73,80,87,.34); }.ov60 b{ background:rgba(33,37,41,.86); color:#fff; border:0; border-radius:6px; padding:5px 12px; font-size:13px; line-height:1.35; text-align:center; margin-top:0; box-shadow:0 1px 4px rgba(0,0,0,.15); }.ov60 small{ display:block; font-weight:400; font-size:11px; opacity:.9; }tbody tr.x60 td:nth-child(2){ text-decoration:line-through; text-decoration-thickness:2px; text-decoration-color:#343A40; }</style><meta name="robots" content="noindex,nofollow">
+.pltag{ position:absolute; inset:0; pointer-events:none; z-index:5; overflow:hidden; }.pltag span{ position:absolute; left:4px; font-size:11px; line-height:15px; padding:0 4px; border-radius:2px; color:#fff; white-space:nowrap; opacity:.88; pointer-events:auto; cursor:default; }.ov60{ position:absolute; inset:0 0 26px 0; z-index:6; pointer-events:none; display:flex; align-items:center; justify-content:center; background:rgba(73,80,87,.34); }.ov60 b{ background:rgba(33,37,41,.86); color:#fff; border:0; border-radius:6px; padding:5px 12px; font-size:13px; line-height:1.35; text-align:center; margin-top:0; box-shadow:0 1px 4px rgba(0,0,0,.15); }.ov60 small{ display:block; font-weight:400; font-size:11px; opacity:.9; }tbody tr.x60 td:nth-child(2){ text-decoration:line-through; text-decoration-thickness:2px; text-decoration-color:#343A40; }.t5chk{ display:inline-flex; align-items:center; gap:4px; border:1px solid #DDE2EA; border-radius:999px; padding:0 10px; font-size:12px; color:#1F2430; cursor:pointer; white-space:nowrap; }.t5chk input{ margin:0; cursor:pointer; } .t5chk:has(input:checked){ border-color:#1E8E5A; background:#E7F6EE; font-weight:700; }</style><meta name="robots" content="noindex,nofollow">
 <style>
 #atv-lock{position:fixed;inset:0;z-index:99999;background:#EEF1F5;display:flex;align-items:center;justify-content:center;padding:16px}
 #atv-f{background:#fff;border:1px solid #DDE2EA;border-radius:12px;padding:24px 20px;display:grid;gap:10px;justify-items:center;
@@ -218,7 +218,7 @@
    <button type="button" class="t5fb on" data-f="all">전체</button><button type="button" class="t5fb" data-f="nohold">보유 제외</button>
    <button type="button" class="t5fb" data-f="crown">👑 자격·조건부</button><button type="button" class="t5fb" data-f="track">트랙 통과</button>
    <button type="button" class="t5fb" data-f="nowarn">⚠ 없는 것</button><button type="button" class="t5fb" data-f="g120x" title="120분봉 Avg20이 Avg60을 최근 6봉 안에 상향돌파(골든) · 지금도 위">120분 골든</button><button type="button" class="t5fb" data-f="g120d" title="120분봉 Avg20이 Avg60 아래로 최근 6봉 안에 하향이탈(데드) · 지금도 아래">120분 데드</button>
-   <button type="button" class="t5all" id="t5all" aria-pressed="false" title="조건검색 조건식 · 선발 단계까지 칸으로">☰ 조건 전부 보기</button><button type="button" class="t5hfx" id="t5hfx" hidden title="열 제목에서 건 필터를 모두 풀기">열 필터 해제</button><span class="sp"></span><span id="t5cnt" class="mut"></span>
+   <button type="button" class="t5all" id="t5all" aria-pressed="false" title="조건검색 조건식 · 선발 단계까지 칸으로">☰ 조건 전부 보기</button><label class="t5chk" title="🛰 종목 레이더가 🟢 NORMAL(정상)·🟡 WATCH(관찰)인 종목만 — 이름 글자색과 같은 값 · 5분봉 없는 종목(모름)은 빠짐 · 다른 거르기와 같이 걸림"><input type="checkbox" id="t5nw"> 🛰 정상·관찰만</label><button type="button" class="t5hfx" id="t5hfx" hidden title="열 제목에서 건 필터를 모두 풀기">열 필터 해제</button><span class="sp"></span><span id="t5cnt" class="mut"></span>
   </div>
   <div class="t5mb">
    <div class="t5tw"><table class="t5t"><thead><tr><th>#</th><th class="l" data-hk="name">종목</th><th class="l" data-hk="score">점수 /10</th>
@@ -653,8 +653,8 @@ let dotTry = 0;
 async function loadDots() {
   let d;
   try { d = await api("/api/one/sradars"); } catch (e) { return; }
-  if (d.n) { S.dots = d.dots || {}; decorateDots(); }
-  if ((d.busy || !d.n) && dotTry++ < 20) setTimeout(loadDots, 3000);   // 처음 켤 때 뒤에서 계산 중 → 3초 뒤 다시
+  if (d.n) { S.dots = d.dots || {}; decorateDots(); if (T5.nw && T5.d && !$("t5").classList.contains("hide")) t5paint(); }   // v479 레이더 단계가 새로 오면 거른 목록도
+  if ((d.busy || !d.n) && dotTry++ < 40) setTimeout(loadDots, 1500);   // 처음 켤 때 뒤에서 계산 중 → 1.5초 뒤 다시(v478 3초 → 1.5초 · ✂는 먼저 옴)
   else if (!d.busy) dotTry = 0;
 }
 
@@ -904,7 +904,8 @@ function t5vals(r, k) {                                  // v450 열 제목 필�
 function t5rows(skip) {                                  // skip = 이 열의 필터는 빼고(그 열 목록의 개수를 셀 때)
   const rs = (T5.d && T5.d.rows) || [];
   const hk = Object.keys(T5.hf).filter(k => k !== skip);
-  return rs.filter(r => (T5.f === "all" ? true : T5.f === "nohold" ? !r.held : T5.f === "crown" ? (r.ck.crown || 0) > 0
+  const nw = T5.nw ? (c => ["NORMAL", "WATCH"].includes(((S.dots || {})[c] || {}).state)) : (() => true);   // v479 🛰 정상·관찰만
+  return rs.filter(r => nw(r.code) && (T5.f === "all" ? true : T5.f === "nohold" ? !r.held : T5.f === "crown" ? (r.ck.crown || 0) > 0
     : T5.f === "track" ? r.ck.track === 1 : T5.f === "g120x" ? (r.g120 || {}).k === "x" : T5.f === "g120d" ? (r.g120 || {}).k === "d"
     : r.warn.length === 0) && hk.every(k => t5vals(r, k).some(v => T5.hf[k].has(v))));
 }
@@ -1028,6 +1029,8 @@ async function openT5() {
 }
 const closeT5 = () => $("t5").classList.add("hide");
 $("b50").addEventListener("click", openT5);
+// v479 형 "TOP 50에서 노멀이랑 와치상태만 보는 체크박스 하나 만들어줘" — 🛰 종목 레이더 단계(목록 이름 글자색과 같은 값)로 화면에서만 거름
+$("t5nw").addEventListener("change", e => { T5.nw = e.target.checked; t5paint(); });
 $("t5all").addEventListener("click", () => { const on = !$("t5all").classList.contains("on"); $("t5all").classList.toggle("on", on); $("t5all").setAttribute("aria-pressed", String(on)); $("t5").classList.toggle("t5wide", on); });
 $("t5x").addEventListener("click", closeT5);
 document.querySelectorAll("#t5 th[data-hk]").forEach(th => { th.tabIndex = 0; th.setAttribute("role", "button"); th.title = (th.title ? th.title + " · " : "") + "누르면 이 열 값으로 거르기"; });
@@ -1075,7 +1078,7 @@ function t5export(kind) {
   const rows = t5rows();
   const now = new Date(), stamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}_${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}`;
   const meta = { title: "algo-trader 매수 TOP50 — 검증 단계 10개 종합", exported_at: now.toISOString(), record_day: d.day, crown_day: d.crown_day,
-    computed_at: d.at, total_recorded: d.n_all, filter: T5.f, count: rows.length,
+    computed_at: d.at, total_recorded: d.n_all, filter: T5.f + (T5.nw ? "+radar_normal_watch" : ""), count: rows.length,
     scoring: "검증 단계 10개 각 1점(👑 조건부 ½) · ⚠는 점수에 안 들어가고 순서에만(점수 → ⚠ 적은 순 → P(LONG))",
     checks: T5COLS.map(k => ({ key: k, label: T5LBL[k], rule: T5DEF[k] })),
     warnings: ["고점 회복 실패(A-22)", "급등·고변동(5일 수익 위 10% + 변동성 위 20%)", "B-16(20일선 아래 + 20일선 하락)"],
@@ -1093,7 +1096,7 @@ function t5export(kind) {
   let body, type, ext;
   if (kind === "json") { body = JSON.stringify({ meta, stocks }, null, 2); type = "application/json"; ext = "json"; }
   else if (kind === "md") {
-    const L = [`# ${meta.title}`, "", `- 기록일 ${d.day} · 👑 ${d.crown_day || "—"} 마감 · 계산 ${d.at} · ${rows.length}종목(거르기: ${T5.f})`, `- ${meta.scoring}`, `- ${meta.note}`, "",
+    const L = [`# ${meta.title}`, "", `- 기록일 ${d.day} · 👑 ${d.crown_day || "—"} 마감 · 계산 ${d.at} · ${rows.length}종목(거르기: ${T5.f}${T5.nw ? " + 🛰 정상·관찰만" : ""})`, `- ${meta.scoring}`, `- ${meta.note}`, "",
       "## 특징 칸 뜻", "", "| 키 | 뜻 |", "|---|---|", ...Object.entries(T5TRAIT).map(([k, v]) => `| ${k} | ${v} |`), "",
       "## 검증 단계 정의", "", "| 키 | 이름 | 기준 |", "|---|---|---|", ...meta.checks.map(c => `| ${c.key} | ${c.label} | ${c.rule} |`), "",
       `⚠: ${meta.warnings.join(" · ")}`, ""];
