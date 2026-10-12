@@ -4,7 +4,7 @@
 .t5t td.t5ml{white-space:nowrap}
 .t5t td.t5ml .t5d{margin-right:1px}
 .t5t td.t5mlold{opacity:.4}
-.pltag{ position:absolute; inset:0; pointer-events:none; z-index:5; overflow:hidden; }.pltag span{ position:absolute; left:4px; font-size:11px; line-height:15px; padding:0 4px; border-radius:2px; color:#fff; white-space:nowrap; opacity:.88; pointer-events:auto; cursor:default; }.ov60{ position:absolute; inset:0 0 26px 0; z-index:6; pointer-events:none; display:flex; align-items:center; justify-content:center; background:rgba(73,80,87,.34); }.ov60 b{ background:rgba(33,37,41,.86); color:#fff; border:0; border-radius:6px; padding:5px 12px; font-size:13px; line-height:1.35; text-align:center; margin-top:0; box-shadow:0 1px 4px rgba(0,0,0,.15); }.ov60 small{ display:block; font-weight:400; font-size:11px; opacity:.9; }</style><meta name="robots" content="noindex,nofollow">
+.pltag{ position:absolute; inset:0; pointer-events:none; z-index:5; overflow:hidden; }.pltag span{ position:absolute; left:4px; font-size:11px; line-height:15px; padding:0 4px; border-radius:2px; color:#fff; white-space:nowrap; opacity:.88; pointer-events:auto; cursor:default; }.ov60{ position:absolute; inset:0 0 26px 0; z-index:6; pointer-events:none; display:flex; align-items:center; justify-content:center; background:rgba(73,80,87,.34); }.ov60 b{ background:rgba(33,37,41,.86); color:#fff; border:0; border-radius:6px; padding:5px 12px; font-size:13px; line-height:1.35; text-align:center; margin-top:0; box-shadow:0 1px 4px rgba(0,0,0,.15); }.ov60 small{ display:block; font-weight:400; font-size:11px; opacity:.9; }tbody tr.x60 td:nth-child(2){ text-decoration:line-through; text-decoration-thickness:2px; text-decoration-color:#343A40; }</style><meta name="robots" content="noindex,nofollow">
 <style>
 #atv-lock{position:fixed;inset:0;z-index:99999;background:#EEF1F5;display:flex;align-items:center;justify-content:center;padding:16px}
 #atv-f{background:#fff;border:1px solid #DDE2EA;border-radius:12px;padding:24px 20px;display:grid;gap:10px;justify-items:center;
@@ -619,6 +619,8 @@ function select(code, name) {
 /* v458 — 열어 둔 한화면에서 주소의 #code=만 바꿔도 그 종목으로 바뀐다(예전엔 처음 열 때만 읽어 새로고침해야 했음) · 보기만 */
 window.addEventListener("hashchange", () => { const h = location.hash.match(/code=([0-9A-Z]{6})/); if (h && h[1] !== S.code) select(h[1], ""); });
 
+/* v475 형 "4칸모두 이탈한종목은 모든 종목 후보군 목록등에서 취소선 그어줄래? 회색으로" → v476 "너무 회색이여서 안보이는데 종목명에만 취소선해주면되" — 서버가 같이 준 x60(src/b60.py · 차트 회색 칸과 같은 계산)
+   으로 아래 decorateDots가 줄에 x60을 붙임 · 매수 TOP10 · 겹침 · 관심 · 허브 · 선발 · 왕관 · 🏅 TOP50 표 전부 · 마우스 = 네 칸 위/아래 */
 /* ── v440 🛰 목록 ● → v443 글자색 — 순서 숫자·종목 이름 글자색 = 지수 경계 칸과 같음(🟡 WATCH · 🟠 WARNING · 🔴 TREND BREAK · ⚫ 완전 이탈) ──
    형 10/12 "숫자 앞 도트 표시한 걸 텍스트 폰트 색상으로 (검은색은 약간 진한 회색)" — ⚫(검정) = 진한 회색 · 정상 = 카드와 같은 초록 · 5분봉 없으면 원래 색(모름)
    · 마우스 = 단계·점수·신호 · 표시만(순서·매수와 무관) · 서버가 뒤에서 60초마다 계산해 둔 것을 읽기만 */
@@ -635,6 +637,7 @@ function decorateDots() {
     if (!tb) return;
     tb.querySelectorAll("tr[data-c]").forEach(tr => {
       const d = S.dots[tr.dataset.c], col = dotColor(d);
+      tr.classList.toggle("x60", !!(d && d.x60));                  // v475 ✂ 분봉 60선 4칸 모두 아래 → v476 종목 이름 칸에만 취소선(글자색 그대로 · 표시만)
       [0, 1].forEach(i => {                                         // 순서 숫자 칸 + 종목 이름 칸의 글자색
         const td = tr.cells[i];
         if (!td) return;
