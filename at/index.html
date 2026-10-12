@@ -381,7 +381,10 @@ function paintPane(tf, d) {
   if (!d.ok) { head.innerHTML = `${tf}분봉 <span>${esc(d.why || "자료 없음")}</span>`; p.cs.setData([]); Object.values(p.ma).forEach(s => s.setData([])); return; }
   const st = d.star || {};
   const s = k => st[k] ? `★${k === "sup" ? "지지" : "저항"} ${fmt(st[k].v)}(${esc(st[k].src)})` : "";
-  head.innerHTML = `${tf}분봉 <span>${d.n}봉 · 60선 ${d.above60 === true ? "위" : d.above60 === false ? "아래" : "—"}</span>`
+  const ix = d.ichi;                                          // v482 형 HTS '정배열초입'(15분 구름 9·26·52 · 표시만)
+  const ixs = ix ? `<span title="형 HTS 정배열초입(9·26·52) — 선행스팬1 ${fmt(ix.a)} · 선행스팬2 ${fmt(ix.b)} · 지금 ${fmt(ix.close)}${ix.line ? `\n초입(선행1이 선행2를 뚫은 봉) ${ix.line_at} 종가 ${fmt(ix.line)}` : ""}\n표시만 · 형 HTS 값과 대조 전" style="display:block;white-space:normal;color:${ix.cloud === "양운" && ix.pos === "위" ? "#2B8A3E" : ix.pos === "아래" ? "#C92A2A" : "#A87C00"}">`
+    + `☁${ix.cloud === "양운" ? "정배열" : "역배열"}·구름 ${ix.pos}${ix.line ? ` · 초입 ${fmt(ix.line)} ${ix.above_line ? "위" : "아래"}` : ""}</span>` : "";
+  head.innerHTML = `${tf}분봉 <span>${d.n}봉 · 60선 ${d.above60 === true ? "위" : d.above60 === false ? "아래" : "—"}</span>${ixs}`
     + `<span style="color:#2B8A3E">${s("sup")}</span><span style="color:#C2255C">${s("res")}</span>`;
   p.cs.setData(d.bars);
   for (const k in p.ma) p.ma[k].setData(d.ma[k] || []);
