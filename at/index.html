@@ -4,7 +4,11 @@
 .t5t td.t5ml{white-space:nowrap}
 .t5t td.t5ml .t5d{margin-right:1px}
 .t5t td.t5mlold{opacity:.4}
-.pltag{ position:absolute; inset:0; pointer-events:none; z-index:5; overflow:hidden; }.pltag span{ position:absolute; left:4px; font-size:11px; line-height:15px; padding:0 4px; border-radius:2px; color:#fff; white-space:nowrap; opacity:.88; pointer-events:auto; cursor:default; }.ov60{ position:absolute; inset:0 0 26px 0; z-index:6; pointer-events:none; display:flex; align-items:center; justify-content:center; background:rgba(73,80,87,.34); }.ov60 b{ background:rgba(33,37,41,.86); color:#fff; border:0; border-radius:6px; padding:5px 12px; font-size:13px; line-height:1.35; text-align:center; margin-top:0; box-shadow:0 1px 4px rgba(0,0,0,.15); }.ov60 small{ display:block; font-weight:400; font-size:11px; opacity:.9; }tbody tr.x60 td:nth-child(2){ text-decoration:line-through; text-decoration-thickness:2px; text-decoration-color:#343A40; }.t5chk{ display:inline-flex; align-items:center; gap:4px; border:1px solid #DDE2EA; border-radius:999px; padding:0 10px; font-size:12px; color:#1F2430; cursor:pointer; white-space:nowrap; }.t5chk input{ margin:0; cursor:pointer; } .t5chk:has(input:checked){ border-color:#1E8E5A; background:#E7F6EE; font-weight:700; }.ixc{ margin-left:2px; font-size:10.5px; font-weight:700; color:#1E8E5A; text-decoration:none; display:inline-block; }</style><meta name="robots" content="noindex,nofollow">
+.pltag{ position:absolute; inset:0; pointer-events:none; z-index:5; overflow:hidden; }.pltag span{ position:absolute; left:4px; font-size:11px; line-height:15px; padding:0 4px; border-radius:2px; color:#fff; white-space:nowrap; opacity:.88; pointer-events:auto; cursor:default; }.ov60{ position:absolute; inset:0 0 26px 0; z-index:6; pointer-events:none; display:flex; align-items:center; justify-content:center; background:rgba(73,80,87,.34); }.ov60 b{ background:rgba(33,37,41,.86); color:#fff; border:0; border-radius:6px; padding:5px 12px; font-size:13px; line-height:1.35; text-align:center; margin-top:0; box-shadow:0 1px 4px rgba(0,0,0,.15); }.ov60 small{ display:block; font-weight:400; font-size:11px; opacity:.9; }tbody tr.x60 td:nth-child(2){ text-decoration:line-through; text-decoration-thickness:2px; text-decoration-color:#343A40; }.t5chk{ display:inline-flex; align-items:center; gap:4px; border:1px solid #DDE2EA; border-radius:999px; padding:0 10px; font-size:12px; color:#1F2430; cursor:pointer; white-space:nowrap; }.t5chk input{ margin:0; cursor:pointer; } .t5chk:has(input:checked){ border-color:#1E8E5A; background:#E7F6EE; font-weight:700; }.ixc{ margin-left:2px; font-size:10.5px; font-weight:700; color:#1E8E5A; text-decoration:none; display:inline-block; }.ph span.pinlg{ white-space:normal; } .pinlg b{ font-weight:700; margin-right:1px; }
+/* v490 15분 ☁ 칩 — 색 바탕(정배열·구름 위 = 초록 · 구름 안 = 노랑 · 구름 아래 = 빨강) · 좁으면 줄바꿈 */
+.ph span.ixchip{ display:inline-block; max-width:100%; white-space:normal; padding:0 6px; border-radius:4px; font-weight:700; }
+.ph span.ixg{ background:#D3F9D8; color:#2B8A3E; } .ph span.ixy{ background:#FFF3BF; color:#8F6A00; } .ph span.ixr{ background:#FFE3E3; color:#C92A2A; }
+</style><meta name="robots" content="noindex,nofollow">
 <style>
 #atv-lock{position:fixed;inset:0;z-index:99999;background:#EEF1F5;display:flex;align-items:center;justify-content:center;padding:16px}
 #atv-f{background:#fff;border:1px solid #DDE2EA;border-radius:12px;padding:24px 20px;display:grid;gap:10px;justify-items:center;
@@ -378,6 +382,14 @@ function buildPanes() {
     try { new ResizeObserver(() => tagLater(pane)).observe(cv); } catch (e) { /* 옛 브라우저 */ }
   });
 }
+// v489 형 10/13 "빨간점 매도 신호엿나" — 차트 점 뜻(이 칸에 있는 종류만 · 개수) · 매도 신호 점은 없음
+function pinLegend(pins) {
+  const n = { met: 0, m60: 0, buy: 0 };
+  (pins || []).forEach(x => { if (x.kind in n) n[x.kind]++; });
+  const it = [["met", "#D42B2B", "●", "매수충족"], ["m60", "#868E96", "●", "60선↓보류"], ["buy", "#7048E8", "▲", "주문"]]
+    .filter(([k]) => n[k]).map(([k, c, g, t]) => `<b style="color:${c}">${g}</b>${t}${n[k]}`);
+  return it.length ? `<span class="pinlg" title="차트 점 = 매수 쪽 기록만(매도 신호 아님)\n● 빨강: 매수 규칙 통과 + 5분 60선 위(그 봉에서 처음)\n● 회색: 규칙은 통과했지만 5분 60선 아래라 보류\n▲ 보라: 실제 매수 주문">${it.join(" ")}</span>` : "";
+}
 function paintPane(tf, d) {
   const p = S.panes[tf];
   if (!p || p.code !== S.code) return;
@@ -386,10 +398,10 @@ function paintPane(tf, d) {
   const st = d.star || {};
   const s = k => st[k] ? `★${k === "sup" ? "지지" : "저항"} ${fmt(st[k].v)}(${esc(st[k].src)})` : "";
   const ix = d.ichi;                                          // v482 형 HTS '정배열초입'(15분 구름 9·26·52 · 표시만)
-  const ixs = ix ? `<span title="형 HTS 정배열초입(9·26·52) — 선행스팬1 ${fmt(ix.a)} · 선행스팬2 ${fmt(ix.b)} · 지금 ${fmt(ix.close)}${ix.line ? `\n초입(선행1이 선행2를 뚫은 봉) ${ix.line_at} 종가 ${fmt(ix.line)}` : ""}\n표시만 · 형 HTS 값과 대조 전" style="display:block;white-space:normal;color:${ix.cloud === "양운" && ix.pos === "위" ? "#2B8A3E" : ix.pos === "아래" ? "#C92A2A" : "#A87C00"}">`
+  const ixs = ix ? `<span title="형 HTS 정배열초입(9·26·52) — 선행스팬1 ${fmt(ix.a)} · 선행스팬2 ${fmt(ix.b)} · 지금 ${fmt(ix.close)}${ix.line ? `\n초입(선행1이 선행2를 뚫은 봉) ${ix.line_at} 종가 ${fmt(ix.line)}` : ""}\n표시만 · 형 HTS 값과 대조 전" class="ixchip ${ix.cloud === "양운" && ix.pos === "위" ? "ixg" : ix.pos === "아래" ? "ixr" : "ixy"}">`
     + `☁${ix.cloud === "양운" ? "정배열" : "역배열"}·구름 ${ix.pos}${ix.line ? ` · 초입 ${fmt(ix.line)} ${ix.above_line ? "위" : "아래"}` : ""}</span>` : "";
   head.innerHTML = `${tf}분봉 <span>${d.n}봉 · 60선 ${d.above60 === true ? "위" : d.above60 === false ? "아래" : "—"}</span>${ixs}`
-    + `<span style="color:#2B8A3E">${s("sup")}</span><span style="color:#C2255C">${s("res")}</span>`;
+    + `<span style="color:#2B8A3E">${s("sup")}</span><span style="color:#C2255C">${s("res")}</span>` + pinLegend(d.pins);
   p.cs.setData(d.bars);
   for (const k in p.ma) p.ma[k].setData(d.ma[k] || []);
   if (p.ixl) p.ixl.setData(d.ichi_line || []);                // v484 정배열초입 검은 계단선
