@@ -313,8 +313,8 @@ const nameOnly = (n, c) => `<b>${esc(n || c)}</b>`;
 // v496 형 "다른 종목 노출할 때도 타점 표기" — 5분봉 역할 전환 리테스트 칩(🎯 받친 자리 · ⏳ 돌파 후 대기)을 목록마다 이름 옆에 · 표시만
 const rtChip = c => { const t = S.rt && S.rt[c]; return t ? (t.status === "retest" ? ` <span class="tgt" title="${esc(t.tip)}">🎯타점</span>` : ` <span class="wait" title="${esc(t.tip)}">⏳</span>`) : ""; };
 // v501 형 HTS 신호검색식(FASTBASE·CountSince==1)을 45·120분봉에 — "뜨면 추세 하락 · 신호 봉 종가보다 위로 마감하면 추세 유지". 빨간 꽉 찬 칩(오늘 뜬 건 깜빡) · 풀리면 초록 · 표시만
-const twTip = (k, s) => s.on ? `📉 ${k}분봉 추세 하락 경고 — ${s.at} 봉에서 신호\n기준가 ${fmt(s.ref)}(그 봉 종가) · 이 위로 마감하면 추세 유지로 풀림\n형 HTS 신호검색식 · 표시만 · HTS 대조 전(검증 대기)`
-  : `↗ ${k}분봉 추세 유지 — ${s.at} 신호 뒤 ${s.rel} 봉이 기준가 ${fmt(s.ref)} 위로 마감\n형 HTS 신호검색식 · 표시만 · HTS 대조 전(검증 대기)`;
+const twTip = (k, s) => s.on ? `📉 ${k}분봉 추세 하락 경고 — ${s.at} 봉에서 신호\n기준가 ${fmt(s.ref)}(그 봉 종가) · 이 위로 마감하면 추세 유지로 풀림\n형 HTS 신호검색식 · 표시만 · HTS 캡처 3건 같은 봉 확인(검증 대기)`
+  : `↗ ${k}분봉 추세 유지 — ${s.at} 신호 뒤 ${s.rel} 봉이 기준가 ${fmt(s.ref)} 위로 마감\n형 HTS 신호검색식 · 표시만 · HTS 캡처 3건 같은 봉 확인(검증 대기)`;
 const twOne = (k, s, mini) => `<span class="tw ${s.on ? "twr" : "twg"}${s.on && s.today ? " twn" : ""}${mini ? " twm" : ""}" title="${esc(twTip(k, s))}">${s.on ? (mini ? "▼" : "📉") : "↗"}${k}</span>`;
 const twChip = (c, mini) => { const t = S.tw && S.tw[c]; return t ? ["45", "120"].filter(k => t[k]).map(k => " " + twOne(k, t[k], mini)).join("") : ""; };
 const nameCell = (n, c) => nameOnly(n, c) + rtChip(c) + twChip(c);
