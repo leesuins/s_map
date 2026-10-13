@@ -8,6 +8,10 @@
 /* v490 15분 ☁ 칩 — 색 바탕(정배열·구름 위 = 초록 · 구름 안 = 노랑 · 구름 아래 = 빨강) · 좁으면 줄바꿈 */
 .ph span.ixchip{ display:inline-block; max-width:100%; white-space:normal; padding:0 6px; border-radius:4px; font-weight:700; }
 .ph span.ixg{ background:#D3F9D8; color:#2B8A3E; } .ph span.ixy{ background:#FFF3BF; color:#8F6A00; } .ph span.ixr{ background:#FFE3E3; color:#C92A2A; }
+/* v491 15분 차트 구름 배지(왼쪽 위 · 차트 끌기 통과 · 좁으면 '구름 안'만) */
+.ixb{ position:absolute; left:4px; top:4px; z-index:5; pointer-events:none; font-size:12px; font-weight:700; padding:2px 8px; border-radius:4px; color:#fff; white-space:nowrap; box-shadow:0 1px 3px rgba(0,0,0,.15); }
+.ixb.ixg{ background:rgba(47,158,68,.92); } .ixb.ixy{ background:rgba(240,140,0,.92); } .ixb.ixr{ background:rgba(224,49,49,.92); }
+.ixb.nar .l{ display:none; }
 </style><meta name="robots" content="noindex,nofollow">
 <style>
 #atv-lock{position:fixed;inset:0;z-index:99999;background:#EEF1F5;display:flex;align-items:center;justify-content:center;padding:16px}
@@ -317,11 +321,13 @@ const SHORT_LV = [["피보 ", "F"], ["직전 저점", "직저"], ["직전 고점
 const tagShort = t => (t.conf ? "★겹 " : "★") + (t.hl ? t.side[0] + t.touches : SHORT_LV.reduce((a, [x, y]) => a.split(x).join(y), t.name));
 function placeTags(p) {
   if (!p || p.st.gone || !p.tagEl) return;
+  const ixb = p.el.querySelector(".ixb");
+  if (ixb) ixb.classList.toggle("nar", p.tagEl.clientWidth < 300);   // v491 좁은 칸은 '구름 안'만
   const h = p.tagEl.clientHeight - 26;                         // 아래 시간 축 높이만큼 뺌
   const rows = (p.tags || []).map(t => ({ ...t, y: p.cs.priceToCoordinate(t.v) }))
     .filter(t => t.y !== null && t.y >= 0 && t.y <= h).sort((a, b) => a.y - b.y);
   const draw = short => {
-    let last = -99;
+    let last = p.ixbOn ? 14 : -99;                              // v491 왼쪽 위 ☁ 배지 아래부터
     p.tagEl.innerHTML = rows.map(t => {
       const y = Math.max(t.y - 8, last + 16);
       last = y;
@@ -336,6 +342,43 @@ function placeTags(p) {
   if (wid > pw * 0.5) draw(true);                              // 좁은 칸(1366 4칸 등) — 줄임말(★저3 · ★겹 F61.8) · 마우스 올리면 전체 이름
 }
 const tagLater = p => requestAnimationFrame(() => placeTags(p));
+/* ── v491 형 "구름을 칠하는게 나을꺼 같은데"(시안 B) — 15분 칸에 일목 구름(선행스팬1·2 사이)을 봉 **뒤**에 칠함.
+   정배열(양운 a ≥ b) 옅은 초록 · 역배열(음운) 옅은 빨강 · 왼쪽 위 배지 = 지금 구름 위/안/아래(좁으면 짧게).
+   라이브러리 '시리즈 프리미티브'(zOrder bottom)라 끌기·확대 따라 같이 움직임 · 세로 범위는 봉 기준 그대로 · 표시만(매수 규칙 무관) ── */
+class CloudPrim {
+  constructor() { this.rows = []; this.pts = []; this.req = null; const me = this;
+    this.view = { zOrder: () => "bottom", renderer: () => ({ draw: tg => tg.useMediaCoordinateSpace(({ context: g }) => me.paint(g)) }) }; }
+  attached(a) { this.ch = a.chart; this.se = a.series; this.req = a.requestUpdate; }
+  detached() { this.ch = null; this.se = null; this.req = null; }
+  set(rows) { this.rows = rows || []; if (this.req) this.req(); }
+  paneViews() { return [this.view]; }
+  updateAllViews() {
+    if (!this.ch || !this.se) { this.pts = []; return; }
+    const ts = this.ch.timeScale(), se = this.se;
+    this.pts = this.rows.map(r => ({ x: ts.timeToCoordinate(r.time), ya: se.priceToCoordinate(r.a), yb: se.priceToCoordinate(r.b), up: r.a >= r.b }))
+      .filter(q => q.x !== null && q.ya !== null && q.yb !== null);
+  }
+  paint(g) {
+    const P = this.pts;
+    for (let i = 1; i < P.length; i++) {
+      const a = P[i - 1], b = P[i];
+      g.fillStyle = b.up ? "rgba(47,158,68,.22)" : "rgba(224,49,49,.20)";
+      g.beginPath(); g.moveTo(a.x, a.ya); g.lineTo(b.x, b.ya); g.lineTo(b.x, b.yb); g.lineTo(a.x, a.yb); g.closePath(); g.fill();
+    }
+  }
+}
+function cloudBadge(p, d) {
+  const cv = p.el.querySelector(".cv");
+  let el = cv.querySelector(".ixb");
+  const ix = d.ok ? d.ichi : null;
+  if (!ix || !(d.ichi_cloud || []).length) { if (el) el.remove(); p.ixbOn = false; return; }
+  if (!el) { el = document.createElement("div"); el.className = "ixb"; cv.appendChild(el); }
+  const st = ix.cloud === "양운" && ix.pos === "위" ? "ixg" : ix.pos === "아래" ? "ixr" : "ixy";
+  el.className = "ixb " + st;
+  el.title = `15분 일목 구름(선행스팬1 ${fmt(ix.a)} · 선행스팬2 ${fmt(ix.b)}) · 지금 ${fmt(ix.close)}\n초록 구름 = 정배열(양운) · 빨강 구름 = 역배열(음운) · 표시만`;
+  el.innerHTML = `<span class="l">☁ ${ix.cloud === "양운" ? "정배열" : "역배열"} · 지금 </span>구름 ${ix.pos}`;
+  p.ixbOn = true;
+}
 /* ── v473 형 "각 차트에서 분차트 상으로 현재주가가 60선 이탈 종목은 전체영역을 회색으로 레이어 씌워서 60일선 이탈중 이라고 레이어 띄워줄래?"
    → 시안 A(진한 회색 · 가운데 표시) 형 선택("가운데 진한회색"). 기준 = 그 칸 분봉의 60선(굵은 청록 · 지수이평 60봉) — 마지막 봉 종가 < 60선(서버 above60 = false).
    표시만 · 차트 끌기·확대는 그대로(마우스 통과) · 서버·주문 무관 ── */
@@ -376,6 +419,7 @@ function buildPanes() {
     cv.appendChild(tagEl);
     const pane = { el, ch, cs, ma, pls: [], trends: [], tags: [], tagEl, first: true, code: S.code, st, fit: autoFit(ch, cv, st) };
     pane.ixl = ixl;
+    if (tf === 15) { pane.cloud = new CloudPrim(); cs.attachPrimitive(pane.cloud); }   // v491 구름 칠하기(봉 뒤)
     S.panes[tf] = pane;
     ch.timeScale().subscribeVisibleLogicalRangeChange(() => tagLater(pane));
     ["wheel", "mouseup", "touchend", "dblclick"].forEach(ev => cv.addEventListener(ev, () => tagLater(pane), { passive: true }));
@@ -394,7 +438,7 @@ function paintPane(tf, d) {
   const p = S.panes[tf];
   if (!p || p.code !== S.code) return;
   const head = p.el.querySelector(".ph");
-  if (!d.ok) { head.innerHTML = `${tf}분봉 <span>${esc(d.why || "자료 없음")}</span>`; p.cs.setData([]); Object.values(p.ma).forEach(s => s.setData([])); return; }
+  if (!d.ok) { if (p.cloud) { p.cloud.set([]); cloudBadge(p, d); } head.innerHTML = `${tf}분봉 <span>${esc(d.why || "자료 없음")}</span>`; p.cs.setData([]); Object.values(p.ma).forEach(s => s.setData([])); return; }
   const st = d.star || {};
   const s = k => st[k] ? `★${k === "sup" ? "지지" : "저항"} ${fmt(st[k].v)}(${esc(st[k].src)})` : "";
   const ix = d.ichi;                                          // v482 형 HTS '정배열초입'(15분 구름 9·26·52 · 표시만)
@@ -404,7 +448,8 @@ function paintPane(tf, d) {
     + `<span style="color:#2B8A3E">${s("sup")}</span><span style="color:#C2255C">${s("res")}</span>` + pinLegend(d.pins);
   p.cs.setData(d.bars);
   for (const k in p.ma) p.ma[k].setData(d.ma[k] || []);
-  if (p.ixl) p.ixl.setData(d.ichi_line || []);                // v484 정배열초입 검은 계단선
+  if (p.ixl) p.ixl.setData(d.ichi_line || []);
+  if (p.cloud) { p.cloud.set(d.ichi_cloud || []); cloudBadge(p, d); }     // v491                // v484 정배열초입 검은 계단선
   p.pls.forEach(x => p.cs.removePriceLine(x)); p.pls = []; p.tags = [];
   p.trends.forEach(x => p.ch.removeSeries(x)); p.trends = [];
   const tagOf = (x, name, col, hl) => { if (x.key) p.tags.push({ v: x.v, col, name, conf: !!x.conf, hl, side: x.side || "", touches: x.touches }); };
