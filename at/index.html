@@ -520,7 +520,9 @@ function paintPane(tf, d) {
   const ixs = ix ? `<span title="형 HTS 정배열초입(9·26·52) — 선행스팬1 ${fmt(ix.a)} · 선행스팬2 ${fmt(ix.b)} · 지금 ${fmt(ix.close)}${ix.line ? `\n초입(선행1이 선행2를 뚫은 봉) ${ix.line_at} 종가 ${fmt(ix.line)}` : ""}${les}\n표시만 · 형 HTS 값과 대조 전" class="ixchip ${ix.cloud === "양운" && ix.pos === "위" ? "ixg" : ix.pos === "아래" ? "ixr" : "ixy"}">`
     + `☁${ix.cloud === "양운" ? "정배열" : "역배열"}·구름 ${ix.pos}${ix.line ? ` · 초입 ${fmt(ix.line)} ${ix.above_line ? "위" : "아래"}` : ""}</span>` : "";
   const tw = tf === 120 || tf === 45 ? (d.twarn || {}) : {}, twk = String(tf);   // v507 45·120분 칸이 각자 자기 분 경고만 그림                // v501 120분 차트: 45·120분 경고(칩 + 기준가 선 + 신호 봉 표시)
-  const tws = [twk].filter(k => tw[k]).map(k => `<span class="tw ${tw[k].on ? "twr" : "twg"}${tw[k].on ? " twn" : tw[k].up ? " twu" : ""}" title="${esc(tw[k].tip)}">${tw[k].on ? "📉" : tw[k].up ? "📈" : "↗"}${k}</span>`).join(" ");
+  const itry = tf === 15 ? d.ichi_try || null : null;           // v512 형 "15분 칸에도" — 지금 봉이 초입가를 막 넘었고 2봉 연속 확인 전이면 깜빡(초록 상승 시도 / 빨강 하락 경고)
+  const itryChip = itry ? `<span class="tw ${itry.kind === "dn" ? "twr twn" : "twg twu"}" title="${esc(`${itry.at} 지금 봉이 초입가 ${fmt(itry.line)} ${itry.kind === "dn" ? "아래로" : "위로"} 마감 중(종가 ${fmt(itry.close)})\n봉이 끝나기 전엔 확정 아님 · 다음 봉도 같은 쪽이면 ${itry.kind === "dn" ? "▼이탈" : "▲안착"} 확정 · 되돌아오면 사라짐\n표시만(검증 대기)`)}">${itry.kind === "dn" ? "📉경고" : "📈시도"}</span>` : "";
+  const tws = itryChip + [twk].filter(k => tw[k]).map(k => `<span class="tw ${tw[k].on ? "twr" : "twg"}${tw[k].on ? " twn" : tw[k].up ? " twu" : ""}" title="${esc(tw[k].tip)}">${tw[k].on ? "📉" : tw[k].up ? "📈" : "↗"}${k}</span>`).join(" ");
   head.innerHTML = `${tf}분봉 <span>${d.n}봉 · 60선 ${d.above60 === true ? "위" : d.above60 === false ? "아래" : "—"}</span>${tws}${ixs}`
     + `<span style="color:#2B8A3E">${s("sup")}</span><span style="color:#C2255C">${s("res")}</span>` + pinLegend(d.pins);
   // v506 형 "B안(세로 띠) + 완성된 봉은 봉색을 다른색으로" — 신호 봉이 지금 봉이면 세로 띠가 깜빡, 끝난 봉이면 옅은 띠 + 봉이 보라색으로 남음
@@ -531,6 +533,7 @@ function paintPane(tf, d) {
     const li = (d.bars || []).length - 1;                         // v510 형 "상승 시도" — 풀리는 봉이 지금 봉이면 그 봉에 초록 띠가 깜빡(신호 봉 띠는 옅게 그대로)
     if (twS.up && li > 0) p.tw.push({ time: d.bars[li].time, prev: d.bars[li - 1].time, live: true, on: false, up: true });
   }
+  if (itry && (d.bars || []).length && itry.time === d.bars[d.bars.length - 1].time) p.tw.push({ time: itry.time, prev: itry.prev, live: true, on: itry.kind === "dn", up: itry.kind === "up" });   // v512
   p.cs.setData(p.tw.length && !p.tw[0].live ? d.bars.map((b, i) => i === twI ? { ...b, color: TW_DONE, wickColor: TW_DONE } : b) : d.bars);
   for (const k in p.ma) p.ma[k].setData(d.ma[k] || []);
   if (p.ixl) p.ixl.setData(d.ichi_line || []);
