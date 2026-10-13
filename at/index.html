@@ -23,7 +23,7 @@
 .t5t th.hnum{ padding-right:15px; } .t5t th.hnum::after{ content:""; } .t5t th .hff{ position:absolute; right:2px; top:50%; transform:translateY(-50%); width:11px; height:15px; line-height:15px; text-align:center; font-style:normal; border-radius:3px; color:#6B7280; font-size:10px; } .t5t th .hff::before{ content:"▾"; } .t5t th .hff:hover{ background:#DCE8F7; color:#1864AB; }
 .t5t th.hs-asc::before{ content:"▲ "; font-size:9px; color:#1864AB; } .t5t th.hs-desc::before{ content:"▼ "; font-size:9px; color:#1864AB; }
 
-/* v501 📉 추세 하락 경고(형 HTS 신호검색식 · 45·120분) — 빨간 꽉 찬 칩 · 오늘 뜬 건 깜빡 · 풀리면 초록 테두리 */
+/* v501 📉 추세 하락 경고(형 HTS 신호검색식 · 45·120분) — 빨간 꽉 찬 칩 · 경고 중이면 깜빡(v504) · 풀리면 초록 테두리 */
 .tw{ display:inline-block; border-radius:4px; padding:0 5px; font-size:10.5px; font-weight:800; line-height:16px; white-space:nowrap; cursor:help; }
 .tw.twr{ background:#D92D20; color:#fff; }
 .tw.twg{ background:#E6F4EC; color:#1F6F43; border:1px solid #8FD0A6; line-height:14px; }
@@ -312,10 +312,10 @@ const emptyRow = (n, t) => `<tr><td colspan="${n}" class="mut" style="text-align
 const nameOnly = (n, c) => `<b>${esc(n || c)}</b>`;
 // v496 형 "다른 종목 노출할 때도 타점 표기" — 5분봉 역할 전환 리테스트 칩(🎯 받친 자리 · ⏳ 돌파 후 대기)을 목록마다 이름 옆에 · 표시만
 const rtChip = c => { const t = S.rt && S.rt[c]; return t ? (t.status === "retest" ? ` <span class="tgt" title="${esc(t.tip)}">🎯타점</span>` : ` <span class="wait" title="${esc(t.tip)}">⏳</span>`) : ""; };
-// v501 형 HTS 신호검색식(FASTBASE·CountSince==1)을 45·120분봉에 — "뜨면 추세 하락 · 신호 봉 종가보다 위로 마감하면 추세 유지". 빨간 꽉 찬 칩(오늘 뜬 건 깜빡) · 풀리면 초록 · 표시만
+// v501 형 HTS 신호검색식(FASTBASE·CountSince==1)을 45·120분봉에 — "뜨면 추세 하락 · 신호 봉 종가보다 위로 마감하면 추세 유지". 빨간 꽉 찬 칩(v504 지금 경고 중이면 깜빡) · 풀리면 초록 · 표시만
 const twTip = (k, s) => s.on ? `📉 ${k}분봉 추세 하락 경고 — ${s.at} 봉에서 신호\n기준가 ${fmt(s.ref)}(그 봉 종가) · 이 위로 마감하면 추세 유지로 풀림\n형 HTS 신호검색식 · 표시만 · HTS 캡처 3건 같은 봉 확인(검증 대기)`
   : `↗ ${k}분봉 추세 유지 — ${s.at} 신호 뒤 ${s.rel} 봉이 기준가 ${fmt(s.ref)} 위로 마감\n형 HTS 신호검색식 · 표시만 · HTS 캡처 3건 같은 봉 확인(검증 대기)`;
-const twOne = (k, s, mini) => `<span class="tw ${s.on ? "twr" : "twg"}${s.on && s.today ? " twn" : ""}${mini ? " twm" : ""}" title="${esc(twTip(k, s))}">${s.on ? (mini ? "▼" : "📉") : "↗"}${k}</span>`;
+const twOne = (k, s, mini) => `<span class="tw ${s.on ? "twr" : "twg"}${s.on ? " twn" : ""}${mini ? " twm" : ""}" title="${esc(twTip(k, s))}">${s.on ? (mini ? "▼" : "📉") : "↗"}${k}</span>`;
 const twChip = (c, mini) => { const t = S.tw && S.tw[c]; return t ? ["45", "120"].filter(k => t[k]).map(k => " " + twOne(k, t[k], mini)).join("") : ""; };
 const nameCell = (n, c) => nameOnly(n, c) + rtChip(c) + twChip(c);
 // v497 TOP50 표는 이름 칸이 150px에서 말줄임이라 글자 칩 대신 이름 앞에 짧은 🎯/⏳만(이름이 길어도 칩은 안 잘림)
@@ -474,7 +474,7 @@ function paintPane(tf, d) {
   const ixs = ix ? `<span title="형 HTS 정배열초입(9·26·52) — 선행스팬1 ${fmt(ix.a)} · 선행스팬2 ${fmt(ix.b)} · 지금 ${fmt(ix.close)}${ix.line ? `\n초입(선행1이 선행2를 뚫은 봉) ${ix.line_at} 종가 ${fmt(ix.line)}` : ""}\n표시만 · 형 HTS 값과 대조 전" class="ixchip ${ix.cloud === "양운" && ix.pos === "위" ? "ixg" : ix.pos === "아래" ? "ixr" : "ixy"}">`
     + `☁${ix.cloud === "양운" ? "정배열" : "역배열"}·구름 ${ix.pos}${ix.line ? ` · 초입 ${fmt(ix.line)} ${ix.above_line ? "위" : "아래"}` : ""}</span>` : "";
   const tw = tf === 120 ? (d.twarn || {}) : {};                // v501 120분 차트: 45·120분 경고(칩 + 기준가 선 + 신호 봉 표시)
-  const tws = ["45", "120"].filter(k => tw[k]).map(k => `<span class="tw ${tw[k].on ? "twr" : "twg"}${tw[k].on && tw[k].today ? " twn" : ""}" title="${esc(tw[k].tip)}">${tw[k].on ? "📉" : "↗"}${k}</span>`).join(" ");
+  const tws = ["45", "120"].filter(k => tw[k]).map(k => `<span class="tw ${tw[k].on ? "twr" : "twg"}${tw[k].on ? " twn" : ""}" title="${esc(tw[k].tip)}">${tw[k].on ? "📉" : "↗"}${k}</span>`).join(" ");
   head.innerHTML = `${tf}분봉 <span>${d.n}봉 · 60선 ${d.above60 === true ? "위" : d.above60 === false ? "아래" : "—"}</span>${tws}${ixs}`
     + `<span style="color:#2B8A3E">${s("sup")}</span><span style="color:#C2255C">${s("res")}</span>` + pinLegend(d.pins);
   p.cs.setData(d.bars);
