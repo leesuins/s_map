@@ -4,7 +4,7 @@
 .t5t td.t5ml{white-space:nowrap}
 .t5t td.t5ml .t5d{margin-right:1px}
 .t5t td.t5mlold{opacity:.4}
-.pltag{ position:absolute; inset:0; pointer-events:none; z-index:5; overflow:hidden; }.pltag span{ position:absolute; left:4px; font-size:11px; line-height:15px; padding:0 4px; border-radius:2px; color:#fff; white-space:nowrap; opacity:.88; pointer-events:auto; cursor:default; }.ov60{ position:absolute; inset:0 0 26px 0; z-index:6; pointer-events:none; display:flex; align-items:center; justify-content:center; background:rgba(73,80,87,.34); }.ov60 b{ background:rgba(33,37,41,.86); color:#fff; border:0; border-radius:6px; padding:5px 12px; font-size:13px; line-height:1.35; text-align:center; margin-top:0; box-shadow:0 1px 4px rgba(0,0,0,.15); }.ov60 small{ display:block; font-weight:400; font-size:11px; opacity:.9; }tbody tr.x60 td:nth-child(2){ text-decoration:line-through; text-decoration-thickness:2px; text-decoration-color:#343A40; }.t5chk{ display:inline-flex; align-items:center; gap:4px; border:1px solid #DDE2EA; border-radius:999px; padding:0 10px; font-size:12px; color:#1F2430; cursor:pointer; white-space:nowrap; }.t5chk input{ margin:0; cursor:pointer; } .t5chk:has(input:checked){ border-color:#1E8E5A; background:#E7F6EE; font-weight:700; }</style><meta name="robots" content="noindex,nofollow">
+.pltag{ position:absolute; inset:0; pointer-events:none; z-index:5; overflow:hidden; }.pltag span{ position:absolute; left:4px; font-size:11px; line-height:15px; padding:0 4px; border-radius:2px; color:#fff; white-space:nowrap; opacity:.88; pointer-events:auto; cursor:default; }.ov60{ position:absolute; inset:0 0 26px 0; z-index:6; pointer-events:none; display:flex; align-items:center; justify-content:center; background:rgba(73,80,87,.34); }.ov60 b{ background:rgba(33,37,41,.86); color:#fff; border:0; border-radius:6px; padding:5px 12px; font-size:13px; line-height:1.35; text-align:center; margin-top:0; box-shadow:0 1px 4px rgba(0,0,0,.15); }.ov60 small{ display:block; font-weight:400; font-size:11px; opacity:.9; }tbody tr.x60 td:nth-child(2){ text-decoration:line-through; text-decoration-thickness:2px; text-decoration-color:#343A40; }.t5chk{ display:inline-flex; align-items:center; gap:4px; border:1px solid #DDE2EA; border-radius:999px; padding:0 10px; font-size:12px; color:#1F2430; cursor:pointer; white-space:nowrap; }.t5chk input{ margin:0; cursor:pointer; } .t5chk:has(input:checked){ border-color:#1E8E5A; background:#E7F6EE; font-weight:700; }.ixc{ margin-left:2px; font-size:10.5px; font-weight:700; color:#1E8E5A; text-decoration:none; display:inline-block; }</style><meta name="robots" content="noindex,nofollow">
 <style>
 #atv-lock{position:fixed;inset:0;z-index:99999;background:#EEF1F5;display:flex;align-items:center;justify-content:center;padding:16px}
 #atv-f{background:#fff;border:1px solid #DDE2EA;border-radius:12px;padding:24px 20px;display:grid;gap:10px;justify-items:center;
@@ -361,6 +361,9 @@ function buildPanes() {
     const ch = mkChart(el.querySelector(".cv"));
     const cs = candles(ch);
     const ma = { ma20: lineS(ch, "#F59F00", 2), ma60: lineS(ch, "#15AABF", 3), sma20: lineS(ch, "#1C3FD8", 1, LS.Dotted), sma60: lineS(ch, "#D6249F", 1, LS.Dotted) };
+    // v484 15분 칸 — 형 HTS '정배열초입' 검은 계단선(초입가) · 화면 세로 범위는 봉 기준 그대로(선이 멀면 안 보임 · 값은 제목줄 ☁)
+    const ixl = tf === 15 ? ch.addLineSeries({ color: "#111111", lineWidth: 3, lineType: 1, priceLineVisible: false, lastValueVisible: false,
+      crosshairMarkerVisible: false, autoscaleInfoProvider: () => null, title: "" }) : null;
     const st = { user: false };
     const cv = el.querySelector(".cv");
     cv.style.position = "relative";
@@ -368,6 +371,7 @@ function buildPanes() {
     tagEl.className = "pltag";
     cv.appendChild(tagEl);
     const pane = { el, ch, cs, ma, pls: [], trends: [], tags: [], tagEl, first: true, code: S.code, st, fit: autoFit(ch, cv, st) };
+    pane.ixl = ixl;
     S.panes[tf] = pane;
     ch.timeScale().subscribeVisibleLogicalRangeChange(() => tagLater(pane));
     ["wheel", "mouseup", "touchend", "dblclick"].forEach(ev => cv.addEventListener(ev, () => tagLater(pane), { passive: true }));
@@ -388,6 +392,7 @@ function paintPane(tf, d) {
     + `<span style="color:#2B8A3E">${s("sup")}</span><span style="color:#C2255C">${s("res")}</span>`;
   p.cs.setData(d.bars);
   for (const k in p.ma) p.ma[k].setData(d.ma[k] || []);
+  if (p.ixl) p.ixl.setData(d.ichi_line || []);                // v484 정배열초입 검은 계단선
   p.pls.forEach(x => p.cs.removePriceLine(x)); p.pls = []; p.tags = [];
   p.trends.forEach(x => p.ch.removeSeries(x)); p.trends = [];
   const tagOf = (x, name, col, hl) => { if (x.key) p.tags.push({ v: x.v, col, name, conf: !!x.conf, hl, side: x.side || "", touches: x.touches }); };
@@ -640,7 +645,14 @@ function decorateDots() {
     if (!tb) return;
     tb.querySelectorAll("tr[data-c]").forEach(tr => {
       const d = S.dots[tr.dataset.c], col = dotColor(d);
-      tr.classList.toggle("x60", !!(d && d.x60));                  // v475 ✂ 분봉 60선 4칸 모두 아래 → v476 종목 이름 칸에만 취소선(글자색 그대로 · 표시만)
+      tr.classList.toggle("x60", !!(d && d.x60));
+      // v485 형 "종목 옆에 구름위에 종목만 예) 동양고속(구름)" — 15분 정배열초입 구름 위인 종목 이름 뒤에 (구름)
+      const nm = tr.cells[1];
+      if (nm) {
+        const old = nm.querySelector(".ixc");
+        if (old) old.remove();
+        if (d && d.cloud) { const sp = document.createElement("span"); sp.className = "ixc"; sp.textContent = "(구름)"; sp.title = "15분 구름 위(형 HTS 정배열초입 9·26·52) — 마우스 = 선행1·2·초입가"; nm.appendChild(sp); }
+      }                  // v475 ✂ 분봉 60선 4칸 모두 아래 → v476 종목 이름 칸에만 취소선(글자색 그대로 · 표시만)
       [0, 1].forEach(i => {                                         // 순서 숫자 칸 + 종목 이름 칸의 글자색
         const td = tr.cells[i];
         if (!td) return;
