@@ -274,7 +274,7 @@ const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${Stri
 const hm = iso => iso ? String(iso).slice(11, 16) : "—";
 const ageS = s => (typeof s === "number") ? (s < 90 ? `${Math.round(s)}초 전` : s < 5400 ? `${Math.round(s / 60)}분 전` : `${(s / 3600).toFixed(1)}시간 전`) : "없음";
 
-const S = { code: null, name: "", mode: "4", panes: {}, ix: {}, t: {} };
+const S = { code: null, name: "", mode: "4", panes: {}, ix: {}, t: {}, rt: {} };
 try { const h = location.hash.match(/code=([0-9A-Z]{6})/); S.code = h ? h[1] : (localStorage.getItem("one.code") || null); } catch (e) { S.code = null; }
 try { S.mode = localStorage.getItem("one.mode") || "4"; } catch (e) { /* 기본 4칸 */ }
 
@@ -290,7 +290,10 @@ function errBox(id, e) {
   el.innerHTML = el.tagName === "TBODY" ? `<tr><td colspan="12" style="text-align:left">${m}</td></tr>` : el.tagName === "UL" ? `<li>${m}</li>` : m;
 }
 const emptyRow = (n, t) => `<tr><td colspan="${n}" class="mut" style="text-align:left">${esc(t)}</td></tr>`;
-const nameCell = (n, c) => `<b>${esc(n || c)}</b>`;
+const nameOnly = (n, c) => `<b>${esc(n || c)}</b>`;
+// v496 형 "다른 종목 노출할 때도 타점 표기" — 5분봉 역할 전환 리테스트 칩(🎯 받친 자리 · ⏳ 돌파 후 대기)을 목록마다 이름 옆에 · 표시만
+const rtChip = c => { const t = S.rt && S.rt[c]; return t ? (t.status === "retest" ? ` <span class="tgt" title="${esc(t.tip)}">🎯타점</span>` : ` <span class="wait" title="${esc(t.tip)}">⏳</span>`) : ""; };
+const nameCell = (n, c) => nameOnly(n, c) + rtChip(c);
 const trOf = (code, name, cells, cls = "") => `<tr data-c="${esc(code)}" data-n="${esc(name)}" class="${cls}${code === S.code ? " sel" : ""}">${cells.map(c => `<td>${c}</td>`).join("")}</tr>`;
 
 /* ── 차트 공통 ─────────────────────────────────────────────── */
@@ -733,6 +736,7 @@ async function loadDots() {
 /* ── 왼쪽 목록 ─────────────────────────────────────────────── */
 let crownSub = "main", crownData = null;
 function paintLists(d) {
+  S.rt = d.retest || {};
   const t = d.top10 || {};
   $("top10").innerHTML = (t.rows || []).map(r => trOf(r.ticker, r.name, [r.rank, nameCell(r.name, r.ticker), esc(r.text)],
     r.kind === "buy" ? "buy" : (r.kind === "bought" || r.kind === "pending") ? "bought" : r.muted ? "mutedrow" : "")).join("")
@@ -748,14 +752,14 @@ function paintLists(d) {
   $("wtinfo").textContent = `${w.length}종목 · 노랑 = 형 규칙 통과`;
   // 한 줄에 들어가게 칸을 줄임(자리잡음·조건식 수·추세 단계는 종목 이름에 마우스) — 화면에 늘 꺼내 놓는 칸이라 줄 높이를 아낌
   $("watch").innerHTML = w.map((r, i) => trOf(r.ticker, r.name, [i + 1,
-    `<b title="자리잡음 ${r.ichi_held ? "예" : "—"} · 조건식 ${r.n_conditions}개 · ${esc(r.stage_ko)}">${esc(r.name || r.ticker)}</b>`,
+    `<b title="자리잡음 ${r.ichi_held ? "예" : "—"} · 조건식 ${r.n_conditions}개 · ${esc(r.stage_ko)}">${esc(r.name || r.ticker)}</b>` + rtChip(r.ticker),
     f1(r.score, 0), f1(r.ichi, 0), f1(r.rsi, 0), esc(r.day), `<span class="rule">${esc(r.rule)}</span>`], r.rule_ok ? "ruleok" : "")).join("")
     || emptyRow(7, "조건을 통과한 종목이 없습니다");
   const hb = d.hub || {};
   $("hub").innerHTML = (hb.rows || []).map((r, i) => {
     const fl = [1, 2, 3].map(k => r.chips && r.chips[k] ? `<span class="fl f${k}" title="Flow-${k}">${esc(r.chips[k])}</span>` : '<span class="fl off">·</span>').join("");
     const tg = r.retest ? (r.retest.status === "retest" ? `<span class="tgt" title="${esc(r.retest.tip)}">🎯타점</span>` : `<span class="wait" title="${esc(r.retest.tip)}">⏳</span>`) : "";
-    return trOf(r.code, r.name, [i + 1, nameCell(r.name, r.code) + (r.status && r.status !== "후보" ? ` <span class="mut">${esc(r.status)}</span>` : ""), tg, fl,
+    return trOf(r.code, r.name, [i + 1, nameOnly(r.name, r.code) + (r.status && r.status !== "후보" ? ` <span class="mut">${esc(r.status)}</span>` : ""), tg, fl,
       f1(r.total, 0), r.gap == null ? "—" : pctS(r.gap * 100, 1), fmt(r.price), r.vs_open == null ? "—" : pctS(r.vs_open * 100)]);
   }).join("") || emptyRow(8, hb.err || "허브 기록 없음");
   const run = hb.run || {};
