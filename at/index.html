@@ -294,6 +294,8 @@ const nameOnly = (n, c) => `<b>${esc(n || c)}</b>`;
 // v496 형 "다른 종목 노출할 때도 타점 표기" — 5분봉 역할 전환 리테스트 칩(🎯 받친 자리 · ⏳ 돌파 후 대기)을 목록마다 이름 옆에 · 표시만
 const rtChip = c => { const t = S.rt && S.rt[c]; return t ? (t.status === "retest" ? ` <span class="tgt" title="${esc(t.tip)}">🎯타점</span>` : ` <span class="wait" title="${esc(t.tip)}">⏳</span>`) : ""; };
 const nameCell = (n, c) => nameOnly(n, c) + rtChip(c);
+// v497 TOP50 표는 이름 칸이 150px에서 말줄임이라 글자 칩 대신 이름 앞에 짧은 🎯/⏳만(이름이 길어도 칩은 안 잘림)
+const rtMini = c => { const t = S.rt && S.rt[c]; return t ? `<span class="${t.status === "retest" ? "tgt" : "wait"}" title="${esc(t.tip)}">${t.status === "retest" ? "🎯" : "⏳"}</span> ` : ""; };
 const trOf = (code, name, cells, cls = "") => `<tr data-c="${esc(code)}" data-n="${esc(name)}" class="${cls}${code === S.code ? " sel" : ""}">${cells.map(c => `<td>${c}</td>`).join("")}</tr>`;
 
 /* ── 차트 공통 ─────────────────────────────────────────────── */
@@ -1068,7 +1070,7 @@ function t5paint() {
   $("t5cnt").textContent = `전체 ${d.rows.length} 중 ${rs.length}`;
   t5hfMark();
   $("t5tb").innerHTML = rs.map(r => `<tr tabindex="0" data-c="${esc(r.code)}" data-n="${esc(r.name)}" class="${r.code === T5.sel ? "t5sel" : ""}">
-    <td>${r.rank}</td><td class="l nm" title="${esc(r.name)}">${esc(r.name)}${r.held ? '<span class="t5held">보유</span>' : ""}</td>
+    <td>${r.rank}</td><td class="l nm" title="${esc(r.name)}">${rtMini(r.code)}${esc(r.name)}${r.held ? '<span class="t5held">보유</span>' : ""}</td>
     <td class="l"><div class="t5sc"><b>${r.score}</b><i style="width:${r.score * 7}px"></i></div></td>
     ${T5COLS.map(k => `<td>${t5dot(r.ck[k])}</td>`).join("")}<td class="mut">${r.top10 || "—"}</td>
     <td class="t5g t5g${esc((r.g120 || {}).k || "n")}" title="${esc(T5G[(r.g120 || {}).k] || T5G.n)}">${esc((r.g120 || {}).t || "—")}</td>
