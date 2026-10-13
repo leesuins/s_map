@@ -310,7 +310,9 @@ try { const h = location.hash.match(/code=([0-9A-Z]{6})/); S.code = h ? h[1] : (
 try { S.mode = localStorage.getItem("one.mode") || "4"; } catch (e) { /* 기본 4칸 */ }
 
 async function api(path) {
-  const r = await fetch(path, { cache: "no-store" });
+  let r;
+  try { r = await fetch(path, { cache: "no-store" }); }
+  catch (e) { await new Promise(x => setTimeout(x, 700)); r = await fetch(path, { cache: "no-store" }); }   // v509 형 "5분차트 한번에 불러오지 못하는 경우" — 연결이 잠깐 끊기면(Failed to fetch) 한 번 더(읽기만)
   const j = await r.json();
   if (!r.ok || j.error) throw new Error(j.error || `HTTP ${r.status}`);
   return j;
@@ -504,7 +506,8 @@ function paintPane(tf, d) {
   const st = d.star || {};
   const s = k => st[k] ? `★${k === "sup" ? "지지" : "저항"} ${fmt(st[k].v)}(${esc(st[k].src)})` : "";
   const ix = d.ichi;                                          // v482 형 HTS '정배열초입'(15분 구름 9·26·52 · 표시만)
-  const ixs = ix ? `<span title="형 HTS 정배열초입(9·26·52) — 선행스팬1 ${fmt(ix.a)} · 선행스팬2 ${fmt(ix.b)} · 지금 ${fmt(ix.close)}${ix.line ? `\n초입(선행1이 선행2를 뚫은 봉) ${ix.line_at} 종가 ${fmt(ix.line)}` : ""}\n표시만 · 형 HTS 값과 대조 전" class="ixchip ${ix.cloud === "양운" && ix.pos === "위" ? "ixg" : ix.pos === "아래" ? "ixr" : "ixy"}">`
+  const le = (d.ichi_ev || []).slice(-1)[0], les = le ? `\n최근 ${le.at} 초입가 ${le.kind === "up" ? "위로 돌파" : "아래로 이탈"}(종가 ${fmt(le.close)} · 초입가 ${fmt(le.line)}) — 차트의 ▲돌파·▼이탈 표시` : "";   // v508
+  const ixs = ix ? `<span title="형 HTS 정배열초입(9·26·52) — 선행스팬1 ${fmt(ix.a)} · 선행스팬2 ${fmt(ix.b)} · 지금 ${fmt(ix.close)}${ix.line ? `\n초입(선행1이 선행2를 뚫은 봉) ${ix.line_at} 종가 ${fmt(ix.line)}` : ""}${les}\n표시만 · 형 HTS 값과 대조 전" class="ixchip ${ix.cloud === "양운" && ix.pos === "위" ? "ixg" : ix.pos === "아래" ? "ixr" : "ixy"}">`
     + `☁${ix.cloud === "양운" ? "정배열" : "역배열"}·구름 ${ix.pos}${ix.line ? ` · 초입 ${fmt(ix.line)} ${ix.above_line ? "위" : "아래"}` : ""}</span>` : "";
   const tw = tf === 120 || tf === 45 ? (d.twarn || {}) : {}, twk = String(tf);   // v507 45·120분 칸이 각자 자기 분 경고만 그림                // v501 120분 차트: 45·120분 경고(칩 + 기준가 선 + 신호 봉 표시)
   const tws = [twk].filter(k => tw[k]).map(k => `<span class="tw ${tw[k].on ? "twr" : "twg"}${tw[k].on ? " twn" : ""}" title="${esc(tw[k].tip)}">${tw[k].on ? "📉" : "↗"}${k}</span>`).join(" ");
@@ -536,6 +539,9 @@ function paintPane(tf, d) {
   const mk = (d.pins || []).map(x => ({ time: x.time, position: x.kind === "buy" ? "belowBar" : "aboveBar",
     color: x.kind === "met" ? "#D42B2B" : x.kind === "buy" ? "#7048E8" : "#868E96", shape: x.kind === "buy" ? "arrowUp" : "circle", text: "" }))
     .sort((a, b) => a.time - b.time);
+  const iev = d.ichi_ev || [];                                  // v508 15분 칸 ▲돌파(초록)·▼이탈(빨강) — 가장 최근 것만 글자
+  iev.forEach((e, i) => mk.push({ time: e.time, position: e.kind === "up" ? "belowBar" : "aboveBar", color: e.kind === "up" ? "#2B8A3E" : "#D92D20",
+    shape: e.kind === "up" ? "arrowUp" : "arrowDown", text: i === iev.length - 1 ? (e.kind === "up" ? "돌파" : "이탈") : "" }));
   mk.sort((a, b) => a.time - b.time);
   p.cs.setMarkers(mk);
   ov60(p, tf, d);
