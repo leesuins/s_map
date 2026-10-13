@@ -12,6 +12,12 @@
 .ixb{ position:absolute; left:4px; top:4px; z-index:5; pointer-events:none; font-size:12px; font-weight:700; padding:2px 8px; border-radius:4px; color:#fff; white-space:nowrap; box-shadow:0 1px 3px rgba(0,0,0,.15); }
 .ixb.ixg{ background:rgba(47,158,68,.92); } .ixb.ixy{ background:rgba(240,140,0,.92); } .ixb.ixr{ background:rgba(224,49,49,.92); }
 .ixb.nar .l{ display:none; }
+
+/* v498 숫자 열 정렬·범위 */
+.hfsort{ display:flex; gap:6px; padding:4px 8px 2px; } .hfsort button{ flex:1; border:1px solid #DDE2EA; background:#fff; border-radius:5px; padding:3px 6px; font-size:12px; cursor:pointer; white-space:nowrap; } .hfsort button.on{ background:#1F5FBF; color:#fff; border-color:#1F5FBF; }
+.hfrng{ display:flex; align-items:center; gap:6px; padding:4px 8px 8px; } .hfrng input{ width:84px; min-width:0; border:1px solid #DDE2EA; border-radius:5px; padding:3px 6px; font-size:12px; } .hfrng span{ color:#6B7280; }
+.hft thead th.hs-asc::after{ content:" ▲"; font-size:9px; color:#1F5FBF; } .hft thead th.hs-desc::after{ content:" ▼"; font-size:9px; color:#1F5FBF; }
+.hft thead th.hnum{ cursor:pointer; } .hft thead th.hnum{ position:sticky; top:0; padding-right:13px; } .hft thead th .hff{ position:absolute; right:1px; top:50%; transform:translateY(-50%); width:11px; height:15px; line-height:15px; text-align:center; font-style:normal; border-radius:3px; color:#6B7280; font-size:10px; } .hft thead th .hff::before{ content:"▾"; } .hft thead th .hff:hover{ background:#E8F0FE; color:#1F5FBF; } .hft thead th.hf-on .hff{ color:#1F5FBF; }
 </style><meta name="robots" content="noindex,nofollow">
 <style>
 #atv-lock{position:fixed;inset:0;z-index:99999;background:#EEF1F5;display:flex;align-items:center;justify-content:center;padding:16px}
@@ -1383,12 +1389,30 @@ const HGSKIP = ["#", "위", "TOP"];
 const HG = new Map();                                     // 표 → {열 번호: {set} | {q}}
 const hgTable = id => { const b = document.getElementById(id); return b ? b.closest("table") : null; };
 const hgCells = tr => (tr.cells.length > 1 ? [...tr.cells].map(c => c.textContent.replace(/\s+/g, " ").trim()) : null);
+// v498 형 "고점(점수 높은) 항목 정렬은 어떻게 해?" — 숫자 열(점수·갭·지금·시가 대비·RSI…)은 글자 포함 대신 큰 순/작은 순 정렬 + 이상·이하 범위 · 화면에서만(서버·주문 무관)
+const HS = new Map();                                     // 표 → {col, dir:"asc"|"desc"}
+const HNUM = /^[+\-−]?[\d,]+(\.\d+)?%?$/;
+const hgNum = v => { const t = String(v ?? "").trim(); return HNUM.test(t) ? parseFloat(t.replace(/[,%]/g, "").replace("−", "-")) : NaN; };
+const hgIsNum = (table, col) => { const v = [...table.tBodies[0].rows].map(hgCells).filter(Boolean).map(c => String(c[col] ?? "").trim()).filter(x => x && x !== "—"); return v.length >= 2 && v.filter(x => HNUM.test(x)).length >= v.length * 0.7; };
 function hgPass(cells, st, skip) {
   return Object.keys(st).every(c => {
     if (+c === skip) return true;
     const f = st[c], v = cells[+c] ?? "";
+    if (f.min !== undefined || f.max !== undefined) { const x = hgNum(v); return !isNaN(x) && (f.min === undefined || x >= f.min) && (f.max === undefined || x <= f.max); }
     return f.set ? f.set.has(v) : v.toLowerCase().includes(f.q.toLowerCase());
   });
+}
+function hgOrder(table) {                                 // 정렬 상태대로 줄 순서를 맞춤 — 이미 같은 순서면 DOM을 안 건드림(관찰자 되울림 방지)
+  const tb = table.tBodies[0], rows = [...tb.rows].filter(r => r.cells.length > 1);
+  rows.forEach((r, i) => { if (r.dataset.o === undefined) r.dataset.o = String(i); });
+  const hs = HS.get(table);
+  const want = hs ? rows.slice().sort((a, b) => {
+    const x = hgNum(a.cells[hs.col] && a.cells[hs.col].textContent), y = hgNum(b.cells[hs.col] && b.cells[hs.col].textContent);
+    if (isNaN(x) && isNaN(y)) return +a.dataset.o - +b.dataset.o;
+    if (isNaN(x)) return 1; if (isNaN(y)) return -1;
+    return (hs.dir === "asc" ? x - y : y - x) || +a.dataset.o - +b.dataset.o;
+  }) : rows.slice().sort((a, b) => +a.dataset.o - +b.dataset.o);
+  if (want.some((r, i) => r !== rows[i])) want.forEach(r => tb.appendChild(r));
 }
 function hgApply(table) {
   const st = HG.get(table) || {}, rows = [...table.tBodies[0].rows];
@@ -1409,7 +1433,17 @@ function hgApply(table) {
     bar.innerHTML = `<span>열 필터 ${keys.length}개 · 전체 ${all} 중 ${n}</span><button type="button">해제</button>`;
   }
   const ths = table.tHead && table.tHead.rows[0] ? [...table.tHead.rows[0].cells] : [];
-  ths.forEach((th, i) => { th.classList.toggle("hfno", HGSKIP.includes(th.textContent.trim())); th.classList.toggle("hf-on", !!st[i]); });
+  hgOrder(table);
+  const hs = HS.get(table);
+  ths.forEach((th, i) => { const skip = HGSKIP.includes(th.textContent.trim()); th.classList.toggle("hfno", skip); th.classList.toggle("hf-on", !!st[i]);
+    th.classList.toggle("hs-asc", !!hs && hs.col === i && hs.dir === "asc"); th.classList.toggle("hs-desc", !!hs && hs.col === i && hs.dir === "desc");
+    // v498 숫자 열 = 제목 누르면 바로 큰 순→작은 순→해제 · 필터는 제목 옆 ▾
+    const num = !skip && rows.some(r => r.cells.length > 1) && hgIsNum(table, i);
+    th.classList.toggle("hnum", num);
+    const has = th.querySelector(":scope > .hff");
+    if (num && !has) { const b = document.createElement("i"); b.className = "hff"; b.title = "필터 (이상·이하)"; th.appendChild(b); }
+    else if (!num && has) has.remove();
+    if (num) th.title = "누르면 큰 순 → 작은 순 → 해제 · ▾ = 필터(이상·이하)"; else if (th.title && th.title.startsWith("누르면 큰 순")) th.removeAttribute("title"); });
 }
 function hgWatch(id) {
   const t = hgTable(id); if (!t) return;
@@ -1433,7 +1467,25 @@ function hgShow(th) {
   const p = document.createElement("div");
   p.id = "hfpop"; p.className = "hfpop"; p.setAttribute("role", "dialog"); p.setAttribute("aria-label", "열 필터");
   const done = () => { hgApply(table); };
-  if (all.length > 12) {                                   // 값이 너무 다양하면(종목명·가격 등) 글자 포함으로 거름
+  if (hgIsNum(table, col)) {                               // v498 숫자 열 — 큰 순/작은 순 + 이상·이하
+    const hs = HS.get(table), on = d => (hs && hs.col === col && hs.dir === d ? " on" : "");
+    const sh = x => (x === undefined ? "" : String(x));
+    p.innerHTML = `<div class="hfbar"><button type="button" data-a="none">해제</button><span class="mut">${esc(th.textContent.trim())}</span></div>`
+      + `<div class="hfsort"><button type="button" data-s="desc" class="${on("desc").trim()}">▼ 큰 순</button><button type="button" data-s="asc" class="${on("asc").trim()}">▲ 작은 순</button></div>`
+      + `<div class="hfrng"><input type="text" inputmode="decimal" id="hfmin" placeholder="이상" value="${esc(sh(cur && cur.min))}" autocomplete="off"><span>~</span><input type="text" inputmode="decimal" id="hfmax" placeholder="이하" value="${esc(sh(cur && cur.max))}" autocomplete="off"></div>`;
+    document.body.appendChild(p);
+    const lo = p.querySelector("#hfmin"), hi = p.querySelector("#hfmax");
+    const rng = () => { const a = hgNum(lo.value), b = hgNum(hi.value); const f = {}; if (!isNaN(a)) f.min = a; if (!isNaN(b)) f.max = b; if (Object.keys(f).length) st[col] = f; else delete st[col]; done(); };
+    lo.addEventListener("input", rng); hi.addEventListener("input", rng);
+    p.querySelector(".hfsort").addEventListener("click", e => {
+      const d = e.target.dataset && e.target.dataset.s; if (!d) return;
+      const cu = HS.get(table);
+      if (cu && cu.col === col && cu.dir === d) HS.delete(table); else HS.set(table, { col, dir: d });
+      p.querySelectorAll(".hfsort button").forEach(b => b.classList.toggle("on", !!HS.get(table) && HS.get(table).dir === b.dataset.s)); done();
+    });
+    p.querySelector(".hfbar").addEventListener("click", e => { if (e.target.dataset.a) { lo.value = ""; hi.value = ""; delete st[col]; const cu = HS.get(table); if (cu && cu.col === col) HS.delete(table); p.querySelectorAll(".hfsort button").forEach(b => b.classList.remove("on")); done(); } });
+    lo.focus();
+  } else if (all.length > 12) {                            // 값이 너무 다양하면(종목명 등) 글자 포함으로 거름
     p.innerHTML = `<div class="hfbar"><button type="button" data-a="none">해제</button><span class="mut">${esc(th.textContent.trim())}</span></div>`
       + `<input type="text" id="hfq" placeholder="포함하는 글자" value="${esc(cur && cur.q ? cur.q : "")}" autocomplete="off">`;
     document.body.appendChild(p);
@@ -1465,9 +1517,17 @@ function hgShow(th) {
 }
 document.addEventListener("click", e => {
   const th = e.target.closest(".hft thead th");
-  if (th && !th.classList.contains("hfno")) { const tag = `g:${th.closest("table").tBodies[0].id}:${th.cellIndex}`; if (hfOpen === tag) hfClose(); else hgShow(th); return; }
+  if (th && !th.classList.contains("hfno")) {
+    const table = th.closest("table"), col = th.cellIndex, tag = `g:${table.tBodies[0].id}:${col}`;
+    if (th.classList.contains("hnum") && !e.target.closest(".hff")) {   // v498 숫자 열 제목 = 바로 정렬 돌리기
+      hfClose(); const cu = HS.get(table);
+      if (!cu || cu.col !== col) HS.set(table, { col, dir: "desc" }); else if (cu.dir === "desc") HS.set(table, { col, dir: "asc" }); else HS.delete(table);
+      hgApply(table); return;
+    }
+    if (hfOpen === tag) hfClose(); else hgShow(th); return;
+  }
   const bx = e.target.closest(".hfbadge button");
-  if (bx) { const t = bx.closest(".body").querySelector("table"); HG.delete(t); hfClose(); hgApply(t); }
+  if (bx) { const t = bx.closest(".body").querySelector("table"); HG.delete(t); HS.delete(t); hfClose(); hgApply(t); }
 });
 document.querySelectorAll(".hft thead th").forEach(th => { th.tabIndex = 0; th.setAttribute("role", "button"); });
 document.addEventListener("keydown", e => { const th = e.target.closest && e.target.closest(".hft thead th"); if (th && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); th.click(); } });
