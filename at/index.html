@@ -22,6 +22,15 @@
 /* v500 TOP50 팝업 숫자 열 정렬 */
 .t5t th.hnum{ padding-right:15px; } .t5t th.hnum::after{ content:""; } .t5t th .hff{ position:absolute; right:2px; top:50%; transform:translateY(-50%); width:11px; height:15px; line-height:15px; text-align:center; font-style:normal; border-radius:3px; color:#6B7280; font-size:10px; } .t5t th .hff::before{ content:"▾"; } .t5t th .hff:hover{ background:#DCE8F7; color:#1864AB; }
 .t5t th.hs-asc::before{ content:"▲ "; font-size:9px; color:#1864AB; } .t5t th.hs-desc::before{ content:"▼ "; font-size:9px; color:#1864AB; }
+
+/* v501 📉 추세 하락 경고(형 HTS 신호검색식 · 45·120분) — 빨간 꽉 찬 칩 · 오늘 뜬 건 깜빡 · 풀리면 초록 테두리 */
+.tw{ display:inline-block; border-radius:4px; padding:0 5px; font-size:10.5px; font-weight:800; line-height:16px; white-space:nowrap; cursor:help; }
+.tw.twr{ background:#D92D20; color:#fff; }
+.tw.twg{ background:#E6F4EC; color:#1F6F43; border:1px solid #8FD0A6; line-height:14px; }
+.tw.twm{ padding:0 3px; font-size:9.5px; }
+.tw.twn{ animation:twblink 1.1s ease-in-out infinite; }
+@keyframes twblink{ 0%,100%{ box-shadow:0 0 0 0 rgba(217,45,32,.55); } 50%{ box-shadow:0 0 0 4px rgba(217,45,32,0); background:#B42318; } }
+@media (prefers-reduced-motion: reduce){ .tw.twn{ animation:none; box-shadow:0 0 0 2px rgba(217,45,32,.45); } }
 </style><meta name="robots" content="noindex,nofollow">
 <style>
 #atv-lock{position:fixed;inset:0;z-index:99999;background:#EEF1F5;display:flex;align-items:center;justify-content:center;padding:16px}
@@ -284,7 +293,7 @@ const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${Stri
 const hm = iso => iso ? String(iso).slice(11, 16) : "—";
 const ageS = s => (typeof s === "number") ? (s < 90 ? `${Math.round(s)}초 전` : s < 5400 ? `${Math.round(s / 60)}분 전` : `${(s / 3600).toFixed(1)}시간 전`) : "없음";
 
-const S = { code: null, name: "", mode: "4", panes: {}, ix: {}, t: {}, rt: {} };
+const S = { code: null, name: "", mode: "4", panes: {}, ix: {}, t: {}, rt: {}, tw: {} };
 try { const h = location.hash.match(/code=([0-9A-Z]{6})/); S.code = h ? h[1] : (localStorage.getItem("one.code") || null); } catch (e) { S.code = null; }
 try { S.mode = localStorage.getItem("one.mode") || "4"; } catch (e) { /* 기본 4칸 */ }
 
@@ -303,7 +312,12 @@ const emptyRow = (n, t) => `<tr><td colspan="${n}" class="mut" style="text-align
 const nameOnly = (n, c) => `<b>${esc(n || c)}</b>`;
 // v496 형 "다른 종목 노출할 때도 타점 표기" — 5분봉 역할 전환 리테스트 칩(🎯 받친 자리 · ⏳ 돌파 후 대기)을 목록마다 이름 옆에 · 표시만
 const rtChip = c => { const t = S.rt && S.rt[c]; return t ? (t.status === "retest" ? ` <span class="tgt" title="${esc(t.tip)}">🎯타점</span>` : ` <span class="wait" title="${esc(t.tip)}">⏳</span>`) : ""; };
-const nameCell = (n, c) => nameOnly(n, c) + rtChip(c);
+// v501 형 HTS 신호검색식(FASTBASE·CountSince==1)을 45·120분봉에 — "뜨면 추세 하락 · 신호 봉 종가보다 위로 마감하면 추세 유지". 빨간 꽉 찬 칩(오늘 뜬 건 깜빡) · 풀리면 초록 · 표시만
+const twTip = (k, s) => s.on ? `📉 ${k}분봉 추세 하락 경고 — ${s.at} 봉에서 신호\n기준가 ${fmt(s.ref)}(그 봉 종가) · 이 위로 마감하면 추세 유지로 풀림\n형 HTS 신호검색식 · 표시만 · HTS 대조 전(검증 대기)`
+  : `↗ ${k}분봉 추세 유지 — ${s.at} 신호 뒤 ${s.rel} 봉이 기준가 ${fmt(s.ref)} 위로 마감\n형 HTS 신호검색식 · 표시만 · HTS 대조 전(검증 대기)`;
+const twOne = (k, s, mini) => `<span class="tw ${s.on ? "twr" : "twg"}${s.on && s.today ? " twn" : ""}${mini ? " twm" : ""}" title="${esc(twTip(k, s))}">${s.on ? (mini ? "▼" : "📉") : "↗"}${k}</span>`;
+const twChip = (c, mini) => { const t = S.tw && S.tw[c]; return t ? ["45", "120"].filter(k => t[k]).map(k => " " + twOne(k, t[k], mini)).join("") : ""; };
+const nameCell = (n, c) => nameOnly(n, c) + rtChip(c) + twChip(c);
 // v497 TOP50 표는 이름 칸이 150px에서 말줄임이라 글자 칩 대신 이름 앞에 짧은 🎯/⏳만(이름이 길어도 칩은 안 잘림)
 const rtMini = c => { const t = S.rt && S.rt[c]; return t ? `<span class="${t.status === "retest" ? "tgt" : "wait"}" title="${esc(t.tip)}">${t.status === "retest" ? "🎯" : "⏳"}</span> ` : ""; };
 const trOf = (code, name, cells, cls = "") => `<tr data-c="${esc(code)}" data-n="${esc(name)}" class="${cls}${code === S.code ? " sel" : ""}">${cells.map(c => `<td>${c}</td>`).join("")}</tr>`;
@@ -346,8 +360,8 @@ function placeTags(p) {
     p.tagEl.innerHTML = rows.map(t => {
       const y = Math.max(t.y - 8, last + 16);
       last = y;
-      const full = (t.conf ? "★겹침 " : "★ ") + t.name;
-      return `<span style="top:${Math.round(y)}px;background:${t.col}" title="${esc(full)}">${esc(short ? tagShort(t) : full)}</span>`;
+      const full = t.raw ? t.name : (t.conf ? "★겹침 " : "★ ") + t.name;
+      return `<span style="top:${Math.round(y)}px;background:${t.col}" title="${esc(full)}">${esc(short ? (t.raw ? t.short : tagShort(t)) : full)}</span>`;
     }).join("");
   };
   draw(false);
@@ -459,7 +473,9 @@ function paintPane(tf, d) {
   const ix = d.ichi;                                          // v482 형 HTS '정배열초입'(15분 구름 9·26·52 · 표시만)
   const ixs = ix ? `<span title="형 HTS 정배열초입(9·26·52) — 선행스팬1 ${fmt(ix.a)} · 선행스팬2 ${fmt(ix.b)} · 지금 ${fmt(ix.close)}${ix.line ? `\n초입(선행1이 선행2를 뚫은 봉) ${ix.line_at} 종가 ${fmt(ix.line)}` : ""}\n표시만 · 형 HTS 값과 대조 전" class="ixchip ${ix.cloud === "양운" && ix.pos === "위" ? "ixg" : ix.pos === "아래" ? "ixr" : "ixy"}">`
     + `☁${ix.cloud === "양운" ? "정배열" : "역배열"}·구름 ${ix.pos}${ix.line ? ` · 초입 ${fmt(ix.line)} ${ix.above_line ? "위" : "아래"}` : ""}</span>` : "";
-  head.innerHTML = `${tf}분봉 <span>${d.n}봉 · 60선 ${d.above60 === true ? "위" : d.above60 === false ? "아래" : "—"}</span>${ixs}`
+  const tw = tf === 120 ? (d.twarn || {}) : {};                // v501 120분 차트: 45·120분 경고(칩 + 기준가 선 + 신호 봉 표시)
+  const tws = ["45", "120"].filter(k => tw[k]).map(k => `<span class="tw ${tw[k].on ? "twr" : "twg"}${tw[k].on && tw[k].today ? " twn" : ""}" title="${esc(tw[k].tip)}">${tw[k].on ? "📉" : "↗"}${k}</span>`).join(" ");
+  head.innerHTML = `${tf}분봉 <span>${d.n}봉 · 60선 ${d.above60 === true ? "위" : d.above60 === false ? "아래" : "—"}</span>${tws}${ixs}`
     + `<span style="color:#2B8A3E">${s("sup")}</span><span style="color:#C2255C">${s("res")}</span>` + pinLegend(d.pins);
   p.cs.setData(d.bars);
   for (const k in p.ma) p.ma[k].setData(d.ma[k] || []);
@@ -478,10 +494,14 @@ function paintPane(tf, d) {
     p.pls.push(p.cs.createPriceLine({ price: x.v, color: col, lineWidth: x.key ? 2 : 1, lineStyle: LS.Dotted, axisLabelVisible: x.key, title: "" }));
     tagOf(x, x.label, col);
   });
+  if (tw["120"]) p.pls.push(p.cs.createPriceLine({ price: tw["120"].ref, color: tw["120"].on ? "#D92D20" : "#2B8A3E", lineWidth: 2, lineStyle: LS.Dashed, axisLabelVisible: true, title: "" }));
+  if (tw["120"]) p.tags.push({ v: tw["120"].ref, col: tw["120"].on ? "#D92D20" : "#2B8A3E", raw: true, name: tw["120"].on ? "📉 하락 경고 기준가(신호 봉 종가)" : "↗ 추세 유지(기준가 위로 마감)", short: tw["120"].on ? "📉기준" : "↗기준" });
   (d.trends || []).forEach(x => { if (x.points[0].time < x.points[1].time) { const s2 = lineS(p.ch, x.key ? "#1864AB" : "#8DB4E2", x.key ? 2 : 1, LS.Dashed); s2.setData(x.points); p.trends.push(s2); } });
   const mk = (d.pins || []).map(x => ({ time: x.time, position: x.kind === "buy" ? "belowBar" : "aboveBar",
     color: x.kind === "met" ? "#D42B2B" : x.kind === "buy" ? "#7048E8" : "#868E96", shape: x.kind === "buy" ? "arrowUp" : "circle", text: "" }))
     .sort((a, b) => a.time - b.time);
+  if (tw["120"] && (d.bars || []).some(b => b.time === tw["120"].time)) mk.push({ time: tw["120"].time, position: "aboveBar", color: tw["120"].on ? "#D92D20" : "#2B8A3E", shape: "arrowDown", text: "📉" });
+  mk.sort((a, b) => a.time - b.time);
   p.cs.setMarkers(mk);
   ov60(p, tf, d);
   if (p.first) { p.first = false; requestAnimationFrame(p.fit); }
@@ -749,6 +769,7 @@ async function loadDots() {
 let crownSub = "main", crownData = null;
 function paintLists(d) {
   S.rt = d.retest || {};
+  S.tw = d.twarn || {};
   const t = d.top10 || {};
   $("top10").innerHTML = (t.rows || []).map(r => trOf(r.ticker, r.name, [r.rank, nameCell(r.name, r.ticker), esc(r.text)],
     r.kind === "buy" ? "buy" : (r.kind === "bought" || r.kind === "pending") ? "bought" : r.muted ? "mutedrow" : "")).join("")
@@ -764,14 +785,14 @@ function paintLists(d) {
   $("wtinfo").textContent = `${w.length}종목 · 노랑 = 형 규칙 통과`;
   // 한 줄에 들어가게 칸을 줄임(자리잡음·조건식 수·추세 단계는 종목 이름에 마우스) — 화면에 늘 꺼내 놓는 칸이라 줄 높이를 아낌
   $("watch").innerHTML = w.map((r, i) => trOf(r.ticker, r.name, [i + 1,
-    `<b title="자리잡음 ${r.ichi_held ? "예" : "—"} · 조건식 ${r.n_conditions}개 · ${esc(r.stage_ko)}">${esc(r.name || r.ticker)}</b>` + rtChip(r.ticker),
+    `<b title="자리잡음 ${r.ichi_held ? "예" : "—"} · 조건식 ${r.n_conditions}개 · ${esc(r.stage_ko)}">${esc(r.name || r.ticker)}</b>` + rtChip(r.ticker) + twChip(r.ticker),
     f1(r.score, 0), f1(r.ichi, 0), f1(r.rsi, 0), esc(r.day), `<span class="rule">${esc(r.rule)}</span>`], r.rule_ok ? "ruleok" : "")).join("")
     || emptyRow(7, "조건을 통과한 종목이 없습니다");
   const hb = d.hub || {};
   $("hub").innerHTML = (hb.rows || []).map((r, i) => {
     const fl = [1, 2, 3].map(k => r.chips && r.chips[k] ? `<span class="fl f${k}" title="Flow-${k}">${esc(r.chips[k])}</span>` : '<span class="fl off">·</span>').join("");
     const tg = r.retest ? (r.retest.status === "retest" ? `<span class="tgt" title="${esc(r.retest.tip)}">🎯타점</span>` : `<span class="wait" title="${esc(r.retest.tip)}">⏳</span>`) : "";
-    return trOf(r.code, r.name, [i + 1, nameOnly(r.name, r.code) + (r.status && r.status !== "후보" ? ` <span class="mut">${esc(r.status)}</span>` : ""), tg, fl,
+    return trOf(r.code, r.name, [i + 1, nameOnly(r.name, r.code) + (r.status && r.status !== "후보" ? ` <span class="mut">${esc(r.status)}</span>` : "") + twChip(r.code), tg, fl,
       f1(r.total, 0), r.gap == null ? "—" : pctS(r.gap * 100, 1), fmt(r.price), r.vs_open == null ? "—" : pctS(r.vs_open * 100)]);
   }).join("") || emptyRow(8, hb.err || "허브 기록 없음");
   const run = hb.run || {};
@@ -1094,7 +1115,7 @@ function t5paint() {
   $("t5cnt").textContent = `전체 ${d.rows.length} 중 ${rs.length}`;
   t5hfMark();
   $("t5tb").innerHTML = rs.map(r => `<tr tabindex="0" data-c="${esc(r.code)}" data-n="${esc(r.name)}" class="${r.code === T5.sel ? "t5sel" : ""}">
-    <td>${r.rank}</td><td class="l nm" title="${esc(r.name)}">${rtMini(r.code)}${esc(r.name)}${r.held ? '<span class="t5held">보유</span>' : ""}</td>
+    <td>${r.rank}</td><td class="l nm" title="${esc(r.name)}">${rtMini(r.code)}${twChip(r.code, true)}${twChip(r.code, true) ? " " : ""}${esc(r.name)}${r.held ? '<span class="t5held">보유</span>' : ""}</td>
     <td class="l"><div class="t5sc"><b>${r.score}</b><i style="width:${r.score * 7}px"></i></div></td>
     ${T5COLS.map(k => `<td>${t5dot(r.ck[k])}</td>`).join("")}<td class="mut">${r.top10 || "—"}</td>
     <td class="t5g t5g${esc((r.g120 || {}).k || "n")}" title="${esc(T5G[(r.g120 || {}).k] || T5G.n)}">${esc((r.g120 || {}).t || "—")}</td>
