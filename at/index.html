@@ -157,6 +157,39 @@ td.hcw:focus-visible{ outline:2px solid #1864AB; outline-offset:-2px; }
 .d7 .why{ font-size:12.5px; }
 .dmbox.d7 .dmft{ font-size:12px; }
 .d7 [style*="font-size:11px"]{ font-size:12px!important; }
+
+/* v519 왼쪽 '종목 판단' 칸(250~300px) — 7번 질문 카드를 세로 한 줄로 */
+.d7p{ font-size:13px; }
+.d7p .d7band{ grid-template-columns:1fr; gap:10px; padding:12px; }
+.d7p .d7vd{ font-size:34px; } .d7p .d7trio b{ font-size:18px; } .d7p .d7trio div{ padding:6px 8px; }
+.d7p .d7gates{ grid-template-columns:1fr; gap:6px; }
+.d7p .d7qgrid{ grid-template-columns:1fr; gap:10px; }
+.d7p .d7qc{ padding:10px 12px; } .d7p .d7big{ font-size:15.5px; }
+.d7p .d7rk{ grid-template-columns:24px minmax(0,1fr); } .d7p .d7rk .d7tri{ grid-column:2; justify-self:start; }
+.d7p .d7mt{ grid-template-columns:minmax(0,1fr); gap:4px; } .d7p .d7mt .rt{ text-align:left; } .d7p .d7mt .rt b{ display:inline; margin-right:6px; }
+.d7p .d7chk{ grid-template-columns:22px minmax(0,1fr); gap:4px 8px; } .d7p .d7chk .nv{ grid-column:2; text-align:left; white-space:normal; }
+.d7p .d7stat .row3{ grid-template-columns:1fr; }
+.d7p .d7rel .n{ font-size:24px; }
+.d7p .d7gt tr{ display:block; padding:5px 0; border-bottom:1px solid #E1E6EE; } .d7p .d7gt td{ display:inline-block; width:auto; border:0; padding:1px 6px 1px 0; } .d7p .d7gt td:last-child{ display:block; padding-top:3px; }
+.d7p .d7btns .d7cap{ margin-left:0!important; flex-basis:100%; }
+#judge .d7p, #judge > .d7{ padding:0 0 8px; }
+
+.d7qc.d7wide{ grid-column:1/-1; }
+.d7chips{ display:flex; flex-wrap:wrap; gap:5px; margin:4px 0 6px; } .d7chips .cnd{ background:#E6ECF8; color:#1D3A8A; border-radius:6px; padding:1px 8px; font-size:12px; font-weight:700; }
+.d7bd{ margin:8px 0 0; } .d7bd .h{ display:flex; justify-content:space-between; font-size:13.5px; font-weight:700; } .d7bd .d7prog{ margin:4px 0 2px; }
+.d7p .d7wide .d7big{ font-size:15.5px; } .d7wide .d7big small{ font-size:13px; font-weight:700; color:#5F6B7C; letter-spacing:0; }
+.d7p .d7lines, .d7 .lines{ font-size:12px; }
+.d7p .d7cap{ overflow-wrap:anywhere; }
+
+/* v519 항목별 펼치기 */
+.d7qgrid{ align-items:start; }
+.d7acc{ padding:0!important; } .d7acc > summary{ list-style:none; cursor:pointer; padding:10px 12px; display:block; border-radius:12px; }
+.d7acc > summary::-webkit-details-marker{ display:none; } .d7acc > summary:focus-visible{ outline:2px solid #1D3A8A; outline-offset:-2px; }
+.d7acc > summary .d7qh{ margin:0 0 4px; } .d7acc > summary .d7qh::after{ content:"▸"; margin-left:auto; color:#5F6B7C; } .d7acc[open] > summary .d7qh::after{ content:"▾"; }
+.d7acc > summary .d7big{ margin:0; } .d7acc[open] > summary{ padding-bottom:6px; }
+.d7acc > .in{ padding:0 14px 12px; }
+.d7p .d7acc > summary{ padding:9px 11px; } .d7p .d7acc > .in{ padding:0 11px 10px; }
+.d7btns{ margin:0 0 8px; }
 </style><meta name="robots" content="noindex,nofollow">
 <style>
 #atv-lock{position:fixed;inset:0;z-index:99999;background:#EEF1F5;display:flex;align-items:center;justify-content:center;padding:16px}
@@ -314,7 +347,7 @@ td.hcw:focus-visible{ outline:2px solid #1864AB; outline-offset:-2px; }
   </div>
   <div class="rest">
    <div class="card a-judge">
-    <div class="tabs" data-g="R"><span class="tab on" data-t="judge">📊 종목 판단</span><span class="tab" data-t="why">🏆 왜 뽑혔나</span></div>
+    <div class="tabs" data-g="R"><span class="tab on" data-t="judge">📊 종목 판단 · 왜 뽑혔나</span></div>
     <div class="body" data-p="judge" id="judge"><div class="empty">종목을 누르면 나와요</div></div>
     <div class="body hide" data-p="why" id="why"><div class="empty">종목을 누르면 나와요</div></div>
    </div>
@@ -873,7 +906,109 @@ function d7Pred(j) {
   if (/아직 채점된 것 없음/.test(pl)) n = "0"; else { const m = /\((\d+)건\)/.exec(pl); if (m) n = m[1]; }
   return { n, line: pl };
 }
-function d7Html(d) {
+function d7Acc(q, open) {                                // v519 형 "겁나 기네 — 항목별 펼치기" — 카드마다 제목 + 한 줄 답만 보이고 눌러서 펼침
+  const m = /^<div class="d7qc([^"]*)"><div class="d7qh">([\s\S]*?)<\/div>(<p class="d7big">[\s\S]*?<\/p>)?([\s\S]*)<\/div>$/.exec(q);
+  if (!m) return q;
+  return `<details class="d7qc d7acc${m[1]}"${open ? " open" : ""}><summary><div class="d7qh">${m[2]}</div>${m[3] || ""}</summary><div class="in">${m[4]}</div></details>`;
+}
+function d7Html(d, panel) {
+  const a = d.agree, dt = (a && a.detail) || {}, j = d.judge || {}, cr = dt.crown, jok = !!j.ok;
+  if (!a || !a.parts || a.parts.length < 3) return "";
+  const pos = jok ? j.position : null, col = D7_COL[pos] || "#6B7280";
+  const pc = v => typeof v === "number" ? Math.round(v * 100) : null;
+  const probs = jok ? [["LONG", j.p_long], ["CASH", j.p_cash], ["SHORT", j.p_short]] : [];
+  const prRows = probs.map(([k, v]) => `<div class="d7pr"><span style="color:${D7_COL[k]}">${k}</span><div class="t"><i style="width:${pc(v) ?? 0}%;background:${D7_COL[k]}"></i>${k === "LONG" ? '<u style="left:60%" title="LONG 기준 60%"></u>' : ""}</div><b>${pc(v) ?? "—"}%</b></div>`).join("");
+  const sum = probs.reduce((x, [, v]) => x + (pc(v) || 0), 0);
+  const prNote = jok ? `<div class="d7cap">${probs.map(([, v]) => pc(v)).join(" + ")} = ${sum}%${sum !== 100 ? " — 반올림 차이일 수 있어요" : ""} · 검은 눈금 = LONG 기준 60%${j.long_rel != null ? ` · 우리 기준 ${Math.round(j.long_rel * 100)}%` : ""}</div>` : "";
+  const ins = j.conf_inputs || [], okIn = ins.filter(x => x.state === "ok").length, pr = jok ? d7Pred(j) : { n: "—", line: "" };
+  const trio = jok ? `<div class="d7trio"><div><span>신뢰도</span><b>${esc(j.conf)}</b><small> /100</small></div><div><span>자료 완전성</span><b>${okIn}</b><small> /${ins.length}</small></div><div><span>채점된 예측</span><b>${esc(pr.n)}</b><small> 건</small></div></div>` : "";
+  const band = `<div class="d7band"><div><div class="d7eb">지금 결론</div><div class="d7vd" style="--vc:${col}">${esc(pos || "판단 못 함")}<small>${esc(pos ? (D7_POS[pos] + (j.priority ? " · " + j.priority : "")) : (j.why || "종합 판정을 계산하지 못했어요"))} · 합의 ${a.n}/${a.of}</small></div></div>`
+    + `<div>${prRows}${prNote}</div>${trio}</div>`;
+  const [pj, pt, pc3] = a.parts;
+  const jt = jok ? `${esc(pj.text)} — LONG ${pc(j.p_long)} / CASH ${pc(j.p_cash)} / SHORT ${pc(j.p_short)}${pos !== "LONG" && j.fails && j.fails.length ? ` · LONG ${j.fails.length}개 조건 못 채움` : ""}` : esc(pj.text);
+  const tt = pt.ok ? esc(pt.text) : `${esc(pt.text)}${dt.track_miss ? ` · ${esc(dt.track_miss.replace(/^미달:\s*/, ""))}` : ""}`;
+  const ct = cr ? `${esc(cr.qual_ko)}${cr.overall_rank ? ` · ${cr.overall_rank}위` : ""}${cr.gates ? ` · ${gates(cr.gates)}` : ""}${d7Tri(pc3) === "hold" ? " — 자격을 가릴 자료가 없어 판정을 못 함(미통과 처리 아님)" : ""}` : esc(pc3.text);
+  const gts = [[pj, jt, "📊 판단"], [pt, tt, "트랙"], [pc3, ct, "👑 왕관"]].map(([p, t, nm], i) => { const k = d7Tri(p);
+    return `<div class="d7gate ${k}"><b>${d7Pill(k)}<span>${nm}</span></b><div class="v">${t}</div></div>`; }).join("");
+  const nT = a.parts.map(d7Tri), cnt = k => nT.filter(x => x === k).length;
+  /* 1 왜 */
+  const ag = (jok ? j.against : dt.against) || [];
+  const plus = [];
+  if (cr && cr.g) cr.g.rows.filter(r => r.st === "pass").forEach(r => plus.push(`${r.name} 통과(${r.g})`));
+  ((d.chart_state && d.chart_state.rows) || []).filter(r => r.verdict === "g").forEach(r => plus.push(r.label));
+  const q1 = `<div class="d7qc"><div class="d7qh"><em>1</em>왜 ${esc(pos || "이 판정")}인가?</div>`
+    + `<p class="d7big">${ag.length ? `반대 근거 <b class="bad">${ag.length}개</b>가 앞서요.` : "눈에 띄는 반대 근거는 없어요."}</p>`
+    + ag.map((t, i) => `<div class="d7rk"><span class="n">${i + 1}</span><div><b>${esc(t)}</b><small>${esc(d7Sub(t, j))}</small></div><span class="d7tri no">반대</span></div>`).join("")
+    + (radarChips() ? `<div style="margin:6px 0 2px">${radarChips()}</div>` : "")
+    + (plus.length ? `<div class="d7cap" style="margin-top:6px"><b class="okc">긍정</b> · ${plus.map(esc).join(" · ")}</div>` : "")
+    + `</div>`;
+  /* 2 얼마나 */
+  const ms = d7Meters(dt, cr), nbad = ms.filter(m => !m.ok).length;
+  const q2 = `<div class="d7qc"><div class="d7qh"><em>2</em>얼마나 모자란가?</div>`
+    + (ms.length ? `<p class="d7big">${nbad ? `기준에 못 미친 값 <b class="bad">${nbad}개</b>.` : "기준에 못 미친 값은 없어요."}</p>${ms.map(d7MeterHtml).join("")}<div class="d7cap">막대 = 지금 값 · 검은 눈금 = 기준 · 항목마다 범위가 달라 서로 크기를 비교하는 용도가 아니에요.</div>`
+      : `<p class="d7big">값 대 기준으로 그릴 칸이 없어요.</p><div class="d7cap">왕관 관문·트랙 점화 값이 없는 종목이에요. 아래 원문 G0~G6을 보세요.</div>`) + `</div>`;
+  /* 3 바뀌려면 */
+  let q3 = `<div class="d7qc"><div class="d7qh"><em>3</em>뭐가 바뀌면 달라지나?</div>`;
+  if (jok) {
+    const rows = d7LongRows(j), ok = rows.filter(r => r.ok).length;
+    const ps = pc(j.p_short), thr = parseInt(((j.invalid || []).join(" ").match(/하락 비율 (\d+)%/) || [])[1] || "60", 10);
+    q3 += `<p class="d7big">${pos === "LONG" ? "LONG 조건 7개를 모두 채웠어요." : `LONG은 7개 중 <b class="bad">${ok}개</b>만 충족이에요.`}</p>`
+      + `<div class="d7cond"><b>LONG 조건 7개 — 모두 충족해야 해요 <span class="d7tri ${ok === 7 ? "ok" : "no"}">충족 ${ok}/7</span></b>`
+      + rows.map(r => `<div class="d7chk"><span class="bx ${r.ok ? "ok" : ""}">${r.ok ? "✓" : "✕"}</span><span>${esc(r.n)}</span><span class="nv"><b class="${r.ok ? "okc" : "badc"}">${r.v}</b> → ${esc(r.need)}</span></div>`).join("") + `</div>`
+      + (pos === "CASH" && ps != null ? `<div class="d7cond" style="margin-top:8px"><b>SHORT가 되려면</b><div class="d7chk" style="border:0;grid-template-columns:1fr auto"><span>같은 상태 하락 비율</span><span class="nv"><b>${ps}%</b> → ${thr}% 이상</span></div><div class="d7prog"><i style="width:${ps}%"></i><u style="left:${thr}%"></u></div><div class="d7cap">막대 = 지금 · 검은 눈금 = 기준 ${thr}% · 하락 비율 하나만으로 SHORT 신호로 읽지 않아요.</div></div>`
+        : (j.invalid || []).length ? `<div class="d7cond" style="margin-top:8px"><b>무효화(틀렸다고 볼 조건)</b>${j.invalid.map(t => `<div class="d7chk" style="border:0;grid-template-columns:1fr">${esc(t)}</div>`).join("")}</div>` : "")
+      + (pr.line ? `<div class="d7note" style="margin-top:8px"><b>이 예측</b> · ${esc(pr.line)}</div>` : "");
+  } else q3 += `<p class="d7big">판단을 계산하지 못했어요.</p><div class="d7cap">${esc(j.why || "")}</div>`;
+  q3 += `</div>`;
+  /* 4 믿어도 */
+  let q4 = `<div class="d7qc"><div class="d7qh"><em>4</em>믿어도 되나?</div>`;
+  if (jok) {
+    const cut = typeof j.conf_raw === "number" && j.conf_raw !== j.conf;
+    const miss = ins.filter(x => x.state !== "ok");
+    q4 += `<p class="d7big">자료는 ${okIn === ins.length ? "충분" : `<b class="bad">${ins.length}개 중 ${okIn}개</b> 확인`}, 채점은 <b class="${pr.n === "0" ? "bad" : ""}">${esc(pr.n)}건</b>.</p><div class="d7rel">`
+      + `<div class="rc"><h5>① 신뢰도 점수</h5><div class="n">${esc(j.conf)}<small>/100 · ${esc(j.conf_level)}</small></div><p>${(j.conf_why || []).map(esc).join(" · ")}${cut ? ` · 계산상 ${esc(j.conf_raw)} → 수급 미확인 상한` : ""}<br><b>맞힐 확률이 아니라 "자료가 충분한가"</b>예요.</p></div>`
+      + `<div class="rc"><h5>② 자료 완전성</h5><div class="n">${okIn}<small>/${ins.length} 확인</small></div><div class="dots">${ins.map(x => `<i class="${x.state === "ok" ? "" : "h"}"></i>`).join("")}</div><p>${miss.length ? miss.map(x => `${esc(x.label)} <b>${x.state === "off" ? "연결 안 됨" : esc((INP[x.state] || INP.unknown)[0])}</b>${x.note ? ` <span class="mut">(${esc(x.note)})</span>` : ""}`).join("<br>") : "모든 입력이 확인됐어요."}<br><span class="mut">판정·확률은 그대로, 점수에만 반영돼요.</span></p></div>`
+      + `<div class="rc"><h5>③ 과거 검증(채점)</h5><div class="n">${esc(pr.n)}<small>건 · 이 확률 구간</small></div><p>${esc(pr.line || "오늘 기록 전 — 10분 자동 사이클 끝에 종목마다 하루 한 번 기록")}</p></div></div>`;
+  } else q4 += `<p class="d7big">계산된 신뢰도가 없어요.</p>`;
+  q4 += `</div>`;
+  /* v519 🏆 왜 뽑혔나 — 탭을 없애고 5번째 카드로 */
+  const w5 = d.why || {}, f5 = w5.final || {};
+  const q5 = `<div class="d7qc d7wide"><div class="d7qh"><em>5</em>왜 뽑혔나?</div>` + (!w5.ok ? `<div class="d7cap">${esc(w5.why || "선발 기록 없음")}</div>`
+    : `<p class="d7big">총점 <b>${f1(f5.final_score, 0)}</b><small> / 600 · 순위 #${esc(f5.final_rank)}</small></p>`
+      + `<div class="d7cap">${esc(f5.status || "")}${w5.lane_label ? " · " + esc(w5.lane_label) : ""} · 트랙 ${esc(f5.track || "—")}</div>`
+      + `<div class="d7chips">${(w5.conditions || []).map(c => `<span class="cnd">${esc(c)}</span>`).join("") || '<span class="d7cap">조건식: 목록 밖(보유·이전 후보)</span>'}</div>`
+      + (w5.bundles || []).map(b => { const v = typeof b.score === "number" ? b.score : null;
+          return `<div class="d7bd"><div class="h"><span>${esc(b.name)}</span><b>${v === null ? "?" : Math.round(v)}</b></div><div class="d7prog"><i style="width:${v ?? 0}%;background:${v >= 80 ? "#2E9E5B" : v >= 60 ? "#D99A1E" : "#C2372D"}"></i></div><div class="d7cap">${esc(b.detail)}</div></div>`; }).join("")
+      + `<div class="d7cond" style="margin-top:8px"><b>2차 관문</b><div class="d7chips">${(w5.gate2 || []).map(g => `<span class="d7tri ${g.ok === true ? "ok" : g.ok === null || g.ok === undefined ? "hold" : "no"}">${g.ok === true ? "✓" : g.ok === null || g.ok === undefined ? "?" : "✕"} ${esc(g.name)} ${g.min}↑</span>`).join("")}</div></div>`
+      + ((w5.filters || []).length ? `<div class="d7cond" style="margin-top:8px"><b>거름</b>${w5.filters.map(r => `<div class="d7cap">${esc(r.result)} ${esc(r.filter_name)} — ${esc(r.reason)}</div>`).join("")}</div>` : "")
+      + ((w5.issues || []).length ? `<div class="d7cond" style="margin-top:8px"><b>주요 이슈</b>${w5.issues.map(r => `<div class="d7cap">${esc(r.kind)} ${esc(r.title)}</div>`).join("")}</div>` : "")) + `</div>`;
+  /* v519 왼쪽 '종목 판단' 칸에 있던 것 중 7번에 없던 것 — 🎯 타점 · ⚠ 업종 빈칸 · 판단 설명 원문 줄 */
+  const rt = d.retest;
+  const extra = `<div class="d7note" style="margin:0 0 12px"><b>🎯 타점</b> · ${rt ? `<span class="${rt.status === "retest" ? "tgt" : "wait"}">${rt.status === "retest" ? "🎯 리테스트" : "⏳ 대기"}</span> ${esc(rt.tip)}` : "없음(후보 종목만 회차마다 판정)"}</div>`
+    + (d.sector && d.sector.state === "blank" ? `<div class="d7note" style="margin:0 0 12px"><b class="bad">⚠ 업종 ${esc(d.sector.text)}</b> ${esc(d.sector.note)}</div>` : "");
+  const jl = jok && (j.lines || []).length ? `<details><summary>판단 설명 원문 (줄글 전부)</summary><div class="in"><div class="lines">${esc(j.lines.join("\n"))}</div></div></details>` : "";
+  /* 더 보기 */
+  const stat = jok ? `<div class="d7stat"><h4 style="margin:0 0 4px">과거 유사 상태 통계 <span class="d7sam">사례 ${(j.n || 0).toLocaleString()}건</span></h4><div class="d7cap">같은 상태: ${esc((j.cond || []).join(" · "))} · ${esc(j.horizon)}거래일 뒤 ±${Math.round((j.band || 0) * 100)}% 기준 · 맞힐 확률이 아니라 과거에 어땠는지만 보여줘요.</div>`
+    + `<div class="row3"><div><span>${esc(j.horizon)}일 뒤 −${Math.round((j.band || 0) * 100)}% 이하</span><b class="${pos === "SHORT" ? "" : ""}">${pc(j.p_short)}%</b></div><div><span>평균 이익 / 평균 손실</span><b>+${d7n(j.avg_win * 100, 1)}% / −${d7n(Math.abs(j.avg_loss) * 100, 1)}%</b></div><div><span>손익비 · EV(비용 뺌)</span><b>${typeof j.rr === "number" && isFinite(j.rr) ? j.rr.toFixed(2) : "—"} · ${typeof j.ev === "number" ? (j.ev >= 0 ? "+" : "") + (j.ev * 100).toFixed(2) + "%" : "—"}</b></div></div>`
+    + `<div class="d7cap" style="margin-top:6px">표 ${esc(String(j.built_at || "").slice(0, 16).replace("T", " "))} · 마지막 사례 ${esc(j.data_last_day || "—")}(그 뒤 ${esc(j.horizon)}거래일이 결과) · 표본이 커도 예측력이 입증된 건 아니고, 과거 비율은 미래 보장이 아니에요.</div></div>` : "";
+  const gtab = cr && cr.g && cr.g.rows.length ? `<table class="d7gt"><tbody>${cr.g.rows.map(r => { const k = { pass: ["ok", "✓ 통과"], cond: ["hold", "▲ 조건부"], fail: ["no", "✕ 탈락"], na: ["hold", "? 자료없음"], none: ["hold", "·"] }[r.st] || ["hold", "·"];
+    return `<tr><td class="g">${esc(r.g)}</td><td class="s"><span class="d7tri ${k[0]}">${k[1]}</span></td><td class="n">${esc(r.name)}</td><td>${esc(r.text)}</td></tr>`; }).join("")}</tbody></table>`
+    + `<div class="d7cap">${(cr.lines || []).filter(t => /^사유:|^⚠/.test(t)).map(esc).join("<br>")}</div>`
+    : (cr && (cr.lines || []).length ? `<div class="dlines">${esc(cr.lines.join("\n"))}</div>` : '<div class="mut">왕관 기록이 없어요.</div>');
+  const ov = (S.ov || []).find(r => r.ticker === S.code);
+  const more = `<div class="d7more">`
+    + (stat ? `<details><summary>과거 유사 상태 통계 <span class="d7sam">사례 ${(j.n || 0).toLocaleString()}건</span></summary><div class="in">${stat}</div></details>` : "")
+    + jl
+    + `<details><summary>G0~G6 원문 (왕관 관문)</summary><div class="in">${gtab}</div></details>`
+    + (d.traits ? `<details><summary>공통점 특징</summary><div class="in">${traitSection(d.traits)}</div></details>` : "")
+    + (d.chart_state && (d.chart_state.rows || []).length ? `<details><summary>차트 상태 · 일봉</summary><div class="in">${chartSection(d.chart_state)}</div></details>` : "")
+    + (jok ? `<details><summary>입력 확인 · 신뢰도 설명</summary><div class="in">${confSection(j)}</div></details>` : "")
+    + (d.sector ? `<details><summary>업종</summary><div class="in">${sectorSection(d.sector)}</div></details>` : "")
+    + `<details><summary>수동 매수 기록</summary><div class="in">${manualSection(d.manual)}</div></details>`
+    + `<div class="d7cap" style="margin-top:8px">${esc(AG_JUDGE_NOTE)}</div></div>`;
+  return `<div class="d7${panel ? " d7p" : ""}">${band}<div class="d7gates">${gts}</div><div class="d7btns"><button type="button" data-d7="open">모두 펼치기</button><button type="button" data-d7="close">모두 접기</button><span class="d7cap" style="margin-left:6px">겹침(참고): ${ov ? `${esc(ov.n)}/4 — ${esc(ov.where)}` : "겹치는 종목 목록에 없음(2곳 미만)"} · 합의 = 📊 LONG · 트랙 통과 · 👑 자격 중 몇 개</span></div><div class="d7qgrid">${[q1, q2, q3, q4, q5].map(q => d7Acc(q, !panel)).join("")}</div>${extra}${more}</div>`;
+}
+function d7HtmlModal(d) {   // v519: 더블클릭 상세정보 창은 v517 그대로(형 '그냥 둬')
   const a = d.agree, dt = (a && a.detail) || {}, j = d.judge || {}, cr = dt.crown, jok = !!j.ok;
   if (!a || !a.parts || a.parts.length < 3) return "";
   const pos = jok ? j.position : null, col = D7_COL[pos] || "#6B7280";
@@ -953,15 +1088,15 @@ function d7Html(d) {
     + `<div class="d7cap" style="margin-top:8px">${esc(AG_JUDGE_NOTE)}</div></div>`;
   return `<div class="d7">${band}<div class="d7gates">${gts}</div><div class="d7qgrid">${q1}${q2}${q3}${q4}</div>${more}</div>`;
 }
-function d7Bind() {
-  const r = $("dmbody");
-  r.querySelectorAll("[data-d7]").forEach(b => b.addEventListener("click", () => r.querySelectorAll(".d7more details").forEach(x => x.open = b.dataset.d7 === "open")));
+function d7Bind(root) {
+  const r = root || $("dmbody");
+  r.querySelectorAll("[data-d7]").forEach(b => b.addEventListener("click", () => r.querySelectorAll(".d7 details").forEach(x => x.open = b.dataset.d7 === "open")));
 }
 function paintDetail() {
   const d = S.stock, box = $("dm").querySelector(".dmbox");
   if (d && d.code === S.code && d.agree) {
     try {
-      const h = d7Html(d);
+      const h = d7HtmlModal(d);
       if (h) {
         $("dmname").textContent = d.name || S.name || S.code || ""; $("dmcode").textContent = S.code || "";
         box.classList.add("d7"); $("dmbody").innerHTML = h; d7Bind(); return;
@@ -1011,7 +1146,20 @@ function paintJudge(d) {
   if (sc && sc.state === "blank") h += `<div class="sec"><h4>업종</h4><span class="bad">⚠ ${esc(sc.text)}</span> <span class="mut">${esc(sc.note)}</span></div>`;
   h += `<div class="sec"><h4>🎯 타점</h4>${d.retest ? `<span class="${d.retest.status === "retest" ? "tgt" : "wait"}">${d.retest.status === "retest" ? "🎯 리테스트" : "⏳ 대기"}</span> <span class="mut">${esc(d.retest.tip)}</span>` : '<span class="mut">없음(후보 종목만 회차마다 판정)</span>'}</div>`;
   if (j.ok && (j.lines || []).length) h += `<div class="lines">${esc(j.lines.join("\n"))}</div>`;
-  $("judge").innerHTML = h;
+  const jb = $("judge");
+  try {                                                             // v519 형 "7번으로 아예 대체" — 재료가 있으면 질문 카드 세로 화면, 없거나 실패하면 위 예전 칸 그대로
+    if (d.agree && d.agree.parts && d.agree.parts.length >= 3) {
+      const h7 = d7Html(d, true);
+      if (h7) {
+        const keep = jb.dataset.pc === d.code;                          // 같은 종목 다시 그릴 때만 펼침·스크롤 유지(다른 종목이면 처음부터)
+        const op = keep ? [...jb.querySelectorAll(".d7 details")].map(x => x.open) : [];
+        const top = keep ? jb.scrollTop : 0;
+        h = h7; jb.innerHTML = h;
+        jb.querySelectorAll(".d7 details").forEach((x, i) => { if (op[i]) x.open = true; });
+        jb.scrollTop = top; jb.dataset.pc = d.code; d7Bind(jb);
+      } else jb.innerHTML = h;
+    } else jb.innerHTML = h;
+  } catch (e) { console.error("종목 판단 칸 새 화면 실패 → 예전 칸", e); jb.innerHTML = h; }
   const w = d.why || {};
   if (!w.ok) { $("why").innerHTML = `<div class="empty">${esc(w.why || "선발 기록 없음")}</div>`; return; }
   const f = w.final || {};
