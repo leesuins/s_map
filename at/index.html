@@ -18,6 +18,10 @@
 .hfrng{ display:flex; align-items:center; gap:6px; padding:4px 8px 8px; } .hfrng input{ width:84px; min-width:0; border:1px solid #DDE2EA; border-radius:5px; padding:3px 6px; font-size:12px; } .hfrng span{ color:#6B7280; }
 .hft thead th.hs-asc::after{ content:" ▲"; font-size:9px; color:#1F5FBF; } .hft thead th.hs-desc::after{ content:" ▼"; font-size:9px; color:#1F5FBF; }
 .hft thead th.hnum{ cursor:pointer; } .hft thead th.hnum{ position:sticky; top:0; padding-right:13px; } .hft thead th .hff{ position:absolute; right:1px; top:50%; transform:translateY(-50%); width:11px; height:15px; line-height:15px; text-align:center; font-style:normal; border-radius:3px; color:#6B7280; font-size:10px; } .hft thead th .hff::before{ content:"▾"; } .hft thead th .hff:hover{ background:#E8F0FE; color:#1F5FBF; } .hft thead th.hf-on .hff{ color:#1F5FBF; }
+
+/* v500 TOP50 팝업 숫자 열 정렬 */
+.t5t th.hnum{ padding-right:15px; } .t5t th.hnum::after{ content:""; } .t5t th .hff{ position:absolute; right:2px; top:50%; transform:translateY(-50%); width:11px; height:15px; line-height:15px; text-align:center; font-style:normal; border-radius:3px; color:#6B7280; font-size:10px; } .t5t th .hff::before{ content:"▾"; } .t5t th .hff:hover{ background:#DCE8F7; color:#1864AB; }
+.t5t th.hs-asc::before{ content:"▲ "; font-size:9px; color:#1864AB; } .t5t th.hs-desc::before{ content:"▼ "; font-size:9px; color:#1864AB; }
 </style><meta name="robots" content="noindex,nofollow">
 <style>
 #atv-lock{position:fixed;inset:0;z-index:99999;background:#EEF1F5;display:flex;align-items:center;justify-content:center;padding:16px}
@@ -941,7 +945,7 @@ document.addEventListener("visibilitychange", () => {
 setInterval(() => { if (visible()) clock(); }, 1000);
 
 // ── v431 🏅 매수 TOP50 팝업(검증 단계 10개 종합 · 보기만 · 계산은 서버 src/top50.py) ──
-const T5 = { d: null, f: "all", sel: null, hf: {} };   // v450 hf = 열 제목 필터 {열: 남길 값 집합} (화면에서만 거름)
+const T5 = { sort: null, d: null, f: "all", sel: null, hf: {} };   // v450 hf = 열 제목 필터 {열: 남길 값 집합} (화면에서만 거름)
 const T5COLS = ["judge", "track", "crown", "evid", "flow", "chart", "hi", "rs", "ma20", "m60"];
 const T5STAGE = [["hs100", "형 점수 100"], ["junk_ok", "잡주 거름 통과"], ["bo_ok", "점화 상승률 통과"], ["entry", "진입 신호"], ["watch", "관심 후보(형 규칙)"]];
 const T5LBL = { judge: "📊 판단 상위 10%", track: "트랙", crown: "👑 왕관", evid: "증거 3개↑", flow: "수급 5일", chart: "📈 차트 상태",
@@ -993,8 +997,22 @@ function t5rows(skip) {                                  // skip = 이 열의 �
     : T5.f === "track" ? r.ck.track === 1 : T5.f === "g120x" ? (r.g120 || {}).k === "x" : T5.f === "g120d" ? (r.g120 || {}).k === "d"
     : r.warn.length === 0) && hk.every(k => t5vals(r, k).some(v => T5.hf[k].has(v))));
 }
+// v500 형 "TOP 50에는 적용안 했네?" — 점수·매수순·조건식 수 열 제목 = 바로 정렬(점수·조건식은 큰 순부터 · 매수순은 1위부터) · 필터는 제목 옆 ▾ · 화면에서만
+const T5NUM = { score: { v: r => r.score, first: "desc" }, conds: { v: r => (r.conds || []).length, first: "desc" }, top10: { v: r => (r.top10 ? +r.top10 : null), first: "asc" } };
+function t5sorted(rs) {
+  const so = T5.sort, f = so && T5NUM[so.k]; if (!f) return rs;
+  const ix = new Map(rs.map((r, i) => [r.code, i]));
+  return rs.slice().sort((a, b) => {
+    const x = f.v(a), y = f.v(b);
+    if (x == null && y == null) return ix.get(a.code) - ix.get(b.code);
+    if (x == null) return 1; if (y == null) return -1;
+    return (so.dir === "asc" ? x - y : y - x) || ix.get(a.code) - ix.get(b.code);
+  });
+}
 function t5hfMark() {                                    // 걸린 열 제목에 표시 · 해제 버튼
-  document.querySelectorAll("#t5 th[data-hk]").forEach(th => th.classList.toggle("hf-on", !!T5.hf[th.dataset.hk]));
+  document.querySelectorAll("#t5 th[data-hk]").forEach(th => { const k = th.dataset.hk;
+    th.classList.toggle("hf-on", !!T5.hf[k]);
+    th.classList.toggle("hs-asc", !!T5.sort && T5.sort.k === k && T5.sort.dir === "asc"); th.classList.toggle("hs-desc", !!T5.sort && T5.sort.k === k && T5.sort.dir === "desc"); });
   $("t5hfx").hidden = !Object.keys(T5.hf).length;
 }
 let hfOpen = null;
@@ -1071,7 +1089,7 @@ function t5paint() {
     + (ct.on ? ` · ✂ 15분 600선 아래 ${cr.length}개 뺌` : "");
   $("t5sub").title = ct.on ? `✂ ${ct.rule || ""}\n${cr.map(x => `${x.name}(빼기 전 ${x.rank0}위)`).join(" · ") || "뺀 종목 없음"}`
     + (ct.kept_stale_below ? `\n옛 값이라 안 뺀 600선 아래 ${ct.kept_stale_below}개(칸이 흐린 종목)` : "") : "";
-  const rs = t5rows();
+  const rs = t5sorted(t5rows());
   if (!rs.some(r => r.code === T5.sel)) T5.sel = rs.length ? rs[0].code : null;
   $("t5cnt").textContent = `전체 ${d.rows.length} 중 ${rs.length}`;
   t5hfMark();
@@ -1117,14 +1135,28 @@ $("b50").addEventListener("click", openT5);
 $("t5nw").addEventListener("change", e => { T5.nw = e.target.checked; t5paint(); });
 $("t5all").addEventListener("click", () => { const on = !$("t5all").classList.contains("on"); $("t5all").classList.toggle("on", on); $("t5all").setAttribute("aria-pressed", String(on)); $("t5").classList.toggle("t5wide", on); });
 $("t5x").addEventListener("click", closeT5);
-document.querySelectorAll("#t5 th[data-hk]").forEach(th => { th.tabIndex = 0; th.setAttribute("role", "button"); th.title = (th.title ? th.title + " · " : "") + "누르면 이 열 값으로 거르기"; });
+document.querySelectorAll("#t5 th[data-hk]").forEach(th => {
+  th.tabIndex = 0; th.setAttribute("role", "button");
+  if (T5NUM[th.dataset.hk]) {                            // v500 숫자 열 — 제목 = 정렬 · ▾ = 필터
+    th.classList.add("hnum"); const b = document.createElement("i"); b.className = "hff"; b.title = "필터(값 고르기)"; th.appendChild(b);
+    th.title = (th.title ? th.title + " · " : "") + "누르면 " + (T5NUM[th.dataset.hk].first === "asc" ? "1위부터 → 큰 수부터" : "큰 순 → 작은 순") + " → 해제 · ▾ = 값으로 거르기";
+  } else th.title = (th.title ? th.title + " · " : "") + "누르면 이 열 값으로 거르기";
+});
 $("t5").addEventListener("keydown", e => { const th = e.target.closest && e.target.closest("th[data-hk]"); if (th && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); th.click(); } });
 $("t5").addEventListener("click", e => {
   if (e.target === $("t5")) { closeT5(); return; }
   const hx = e.target.closest("#t5hfx");
   if (hx) { T5.hf = {}; hfClose(); t5paint(); return; }
   const hth = e.target.closest("#t5 th[data-hk]");
-  if (hth) { if (hfOpen === hth.dataset.hk) hfClose(); else hfShow(hth); return; }
+  if (hth) {
+    const k = hth.dataset.hk;
+    if (hth.classList.contains("hnum") && !e.target.closest(".hff")) {   // v500 숫자 열 제목 = 바로 정렬 돌리기
+      hfClose(); const f = T5NUM[k], cu = T5.sort, other = f.first === "asc" ? "desc" : "asc";
+      if (!cu || cu.k !== k) T5.sort = { k, dir: f.first }; else if (cu.dir === f.first) T5.sort = { k, dir: other }; else T5.sort = null;
+      t5paint(); return;
+    }
+    if (hfOpen === k) hfClose(); else hfShow(hth); return;
+  }
   const fb = e.target.closest(".t5fb");
   if (fb) { T5.f = fb.dataset.f; document.querySelectorAll(".t5fb").forEach(x => x.classList.toggle("on", x === fb)); t5paint(); return; }
   const tr = e.target.closest("#t5tb tr[data-c]");
