@@ -53,6 +53,29 @@
 .tw.twh{ background:#EEF0F3; color:#4B5563; border:1px solid #C4CAD3; line-height:14px; }
 .twb.twbh{ --c:107,114,128; background:rgba(var(--c),.14); border-left:1px dashed rgba(var(--c),.55); border-right:1px dashed rgba(var(--c),.55); }
 .twb.twbh i{ background:#fff; color:rgb(var(--c)); border:1px solid rgba(var(--c),.6); padding:0 4px; font-size:11px; line-height:14px; }
+
+/* v516 종목 이름 마우스 카드(시안 F · 세로 게이지) — 서버 d.card 숫자 · 표시만 */
+#hcard{ position:fixed; z-index:60; width:380px; max-width:calc(100vw - 16px); background:#fff; color:#1B2430; border:1px solid #E1E6EE; border-radius:12px; padding:12px 14px 10px; box-shadow:0 10px 30px rgba(20,32,60,.18),0 2px 6px rgba(20,32,60,.10); font-size:13.5px; line-height:1.4; pointer-events:none; opacity:0; visibility:hidden; transition:opacity .08s; }
+#hcard.on{ opacity:1; visibility:visible; }
+#hcard .fh{ display:flex; align-items:baseline; gap:8px; }
+#hcard .nm{ font-size:17px; font-weight:800; letter-spacing:-.02em; }
+#hcard .cd{ font-size:12.5px; color:#5F6B7C; }
+#hcard .fbody{ display:grid; grid-template-columns:104px 1fr; gap:6px; margin-top:8px; align-items:start; }
+#hcard .big{ font-size:46px; font-weight:800; line-height:1; letter-spacing:-.04em; margin-bottom:6px; }
+#hcard .big small{ font-size:13px; font-weight:600; color:#5F6B7C; letter-spacing:0; margin-left:2px; }
+#hcard .hpill{ display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:3px 10px; font-weight:800; font-size:12.5px; white-space:nowrap; margin-bottom:10px; }
+#hcard .hpill i{ width:8px; height:8px; border-radius:50%; background:currentColor; display:inline-block; }
+#hcard .tfv{ display:flex; flex-direction:column; gap:4px; }
+#hcard .tfv div{ display:flex; justify-content:space-between; align-items:center; border-radius:6px; padding:4px 8px; color:#fff; font-size:12.5px; font-weight:700; }
+#hcard .tfv .ok{ background:#2E9E5B; } #hcard .tfv .no{ background:#D6453A; } #hcard .tfv .na{ background:#9AA3B2; }
+#hcard .tfv span{ font-weight:600; opacity:.92; }
+#hcard .fr svg{ display:block; width:100%; height:auto; overflow:visible; }
+#hcard .fr svg text{ font-family:inherit; font-variant-numeric:tabular-nums; }
+#hcard .fnone{ font-size:13px; color:#5F6B7C; padding:8px 2px; }
+#hcard .fsay{ margin-top:6px; font-size:14px; font-weight:700; }
+#hcard .fsay span{ font-weight:500; font-size:13px; color:#5F6B7C; }
+#hcard .fft{ margin-top:10px; padding-top:8px; border-top:1px solid #E1E6EE; font-size:12px; color:#5F6B7C; }
+td.hcw:focus-visible{ outline:2px solid #1864AB; outline-offset:-2px; }
 </style><meta name="robots" content="noindex,nofollow">
 <style>
 #atv-lock{position:fixed;inset:0;z-index:99999;background:#EEF1F5;display:flex;align-items:center;justify-content:center;padding:16px}
@@ -795,8 +818,85 @@ function dotColor(d) {
   if (!d || !d.state) return "";                                    // 5분봉 없음(모름) = 원래 글자색 그대로
   return d.full_break ? DOT_BLK : d.fg;                            // 나머지는 지수 경계 칸·차트 카드와 같은 색(🟢 정상도 초록)
 }
+/* ── v516 형 "종목 마우스 호버 정보 시인성 향상" → 시안 F(세로 게이지) — 종목 이름 칸에 마우스 = 카드(점수·상태·60선 4칸·15분 구름·초입가)
+   서버가 sradars에 같이 준 d.card 숫자를 그대로 그림(새 판단 없음 · 표시만). 마우스 0.15초 뒤 · 화면 가장자리면 반대쪽 · 키보드 포커스도 */
+const HC_FS = n => (n == null || isNaN(n)) ? "—" : Math.round(n).toLocaleString("ko-KR");
+const HC_PC = n => (n == null || isNaN(n)) ? "" : (n >= 0 ? "+" : "") + n.toFixed(2) + "%";
+const HC_GAP = (a, b) => (a != null && b) ? (a / b - 1) * 100 : null;
+const HC_SAY = { NORMAL: "정상 — 지금은 눈에 띄는 약화 없음", WATCH: "주의 — 단기 약화가 보이기 시작", WARNING: "경고 — 단기 약화가 겹침", TREND_BREAK: "추세 이탈", MAJOR_TREND_BREAK: "주요 추세 이탈" };
+function hcSvg(c, up) {
+  const cl = c.cl, px = c.px;
+  if (!cl || px == null || cl.line == null) return "";
+  const top = Math.max(cl.a, cl.b), bot = Math.min(cl.a, cl.b);
+  const vals = [px, top, bot, cl.line], lo = Math.min(...vals), hi = Math.max(...vals), pad = (hi - lo) * 0.12 || 1;
+  const H = 214, T = 14, Y = v => T + (1 - (v - (lo - pad)) / ((hi + pad) - (lo - pad))) * (H - 2 * T);
+  const cc = cl.kind === "양운" ? "#2E9E5B" : "#D6453A", pc = up ? "#D92D20" : "#1F5FD9";
+  const items = [
+    { y: Y(px), a: `현재 ${HC_FS(px)}`, b: `${c.chg != null ? HC_PC(c.chg) + " · " : ""}초입가 ${px >= cl.line ? "위" : "아래"} ${HC_PC(Math.abs(HC_GAP(px, cl.line)))}`, c: pc, w: 800 },
+    { y: (Y(top) + Y(bot)) / 2, a: `구름 ${HC_FS(bot)}~${HC_FS(top)}`, b: `${cl.kind} · 현재가 ${HC_PC(HC_GAP(top, px))} ~ ${HC_PC(HC_GAP(bot, px))}`, c: cc, w: 700 },
+    { y: Y(cl.line), a: `초입 ${HC_FS(cl.line)}`, b: `${(cl.at || "").replace("-", "/")} · 현재가 ${HC_PC(HC_GAP(cl.line, px))}`, c: "#111", w: 700 }
+  ].sort((x, y) => x.y - y.y);
+  const GAP = 34;
+  items.forEach((it, i) => { it.ly = i === 0 ? Math.max(it.y, 22) : Math.max(it.y, items[i - 1].ly + GAP); });
+  const over = items[items.length - 1].ly - (H - 12);
+  if (over > 0) items.forEach(it => { it.ly -= over; });
+  const bY = Math.min(Y(top), Y(bot)), bH = Math.max(8, Math.abs(Y(top) - Y(bot)));
+  return `<svg viewBox="0 0 250 ${H}" role="img" aria-label="현재가와 구름·초입가의 위치(세로)">
+    <rect x="14" y="${T}" width="10" height="${H - 2 * T}" rx="5" fill="#EDF0F6"/>
+    <rect x="10" y="${bY}" width="18" height="${bH}" rx="4" fill="${cc}" opacity=".3" stroke="${cc}" stroke-width="1.2"/>
+    <line x1="6" y1="${Y(cl.line)}" x2="32" y2="${Y(cl.line)}" stroke="#111" stroke-width="2.6"/>
+    <path d="M33 ${Y(px)} l-10 -7 v14 z" fill="${pc}"/>
+    ${items.map(it => `<line x1="36" y1="${it.y}" x2="52" y2="${it.ly - 4}" stroke="#C3CBD9" stroke-width="1"/><text x="56" y="${it.ly - 2}" font-size="13.5" font-weight="${it.w}" fill="${it.c}">${esc(it.a)}</text><text x="56" y="${it.ly + 13}" font-size="12" fill="#5F6B7C">${esc(it.b)}</text>`).join("")}
+  </svg>`;
+}
+function hcHtml(code, name, d) {
+  const c = d.card, up = (c.chg == null ? true : c.chg >= 0), tf = c.tf || {};
+  const pill = d.full_break ? "완전 이탈" : d.label;
+  const say = d.full_break ? "완전 이탈 — 지지선 아래" : (HC_SAY[d.state] || d.label);
+  const fg = d.full_break ? DOT_BLK : d.fg, bg = d.full_break ? "#E5E7EB" : (d.bg || "#F3F4F6");
+  const tfs = c.tf ? ["5", "15", "30", "120"].map(m => `<div class="${tf[m] ? "ok" : tf[m] === false ? "no" : "na"}"><span>${m}분</span><b>${tf[m] ? "✓ 위" : tf[m] === false ? "✕ 아래" : "모름"}</b></div>`).join("") : "";
+  const gauge = hcSvg(c, up);
+  return `<div class="hcf"><div class="fh"><b class="nm">${esc(name)}</b><span class="cd">${esc(code)}</span></div>
+    <div class="fbody"><div class="fl"><div class="big" style="color:${fg}">${esc(c.pts)}<small>/100</small></div>
+      <span class="hpill" style="background:${bg};color:${fg}"><i></i>${esc(pill)}</span>
+      ${tfs ? `<div class="tfv">${tfs}</div>` : ""}</div>
+      <div class="fr">${gauge || `<div class="fnone">15분 구름·초입가 계산에 봉이 모자라요${c.px != null ? `<br>현재 ${HC_FS(c.px)} ${c.chg != null ? HC_PC(c.chg) : ""}` : ""}</div>`}</div></div>
+    <div class="fsay">${esc(say)}${c.reason ? `<span> · ${esc(c.reason)}</span>` : ""}</div>
+    <div class="fft">${esc(c.asof)} 봉${c.stale ? " · ⚠ 60선은 옛 값" : ""} · 표시만 · 추천 아님</div></div>`;
+}
+const HC = { el: null, t: null, td: null };
+function hcHide() { clearTimeout(HC.t); HC.td = null; if (HC.el) HC.el.classList.remove("on"); }
+function hcShow(td) {
+  const tr = td.closest("tr[data-c]"), d = tr && S.dots && S.dots[tr.dataset.c];
+  if (!d || !d.card) return;
+  const name = tr.dataset.n || "";
+  if (!HC.el) { HC.el = document.createElement("div"); HC.el.id = "hcard"; HC.el.setAttribute("role", "tooltip"); document.body.appendChild(HC.el); }
+  HC.el.innerHTML = hcHtml(tr.dataset.c, name, d);
+  HC.td = td;
+  const r = td.getBoundingClientRect(), rr = tr.getBoundingClientRect(), el = HC.el;   // 카드는 줄 오른쪽 끝 밖에(줄의 다른 칸을 안 가림)
+  el.style.left = "0px"; el.style.top = "0px"; el.classList.add("on");
+  const w = el.offsetWidth, h = el.offsetHeight, vw = innerWidth, vh = innerHeight;
+  let x = rr.right + 8; if (x + w > vw - 8) x = Math.max(8, rr.left - w - 8);              // 오른쪽이 모자라면 왼쪽
+  if (x < 8) x = 8;
+  let y = r.top - 6; if (y + h > vh - 8) y = Math.max(8, vh - h - 8);                    // 아래가 모자라면 위로 밀기
+  el.style.left = Math.round(x) + "px"; el.style.top = Math.round(y) + "px";
+}
+function hcBind() {
+  DOT_TABLES.forEach(id => {
+    const tb = $(id);
+    if (!tb || tb._hc) return;
+    tb._hc = 1;
+    tb.addEventListener("mouseover", e => { const td = e.target.closest && e.target.closest("td.hcw"); if (!td || td === HC.td) return; clearTimeout(HC.t); HC.t = setTimeout(() => hcShow(td), 150); });
+    tb.addEventListener("focusin", e => { const td = e.target.closest && e.target.closest("td.hcw"); if (td) hcShow(td); });
+    tb.addEventListener("focusout", hcHide);
+    tb.addEventListener("mouseout", e => { const td = e.target.closest && e.target.closest("td.hcw"); if (td && !td.contains(e.relatedTarget)) hcHide(); });
+  });
+}
+addEventListener("scroll", hcHide, true);
+addEventListener("keydown", e => { if (e.key === "Escape") hcHide(); });
 function decorateDots() {
   if (!S.dots) return;
+  hcBind();
   DOT_TABLES.forEach(id => {
     const tb = $(id);
     if (!tb) return;
@@ -816,7 +916,7 @@ function decorateDots() {
         const old = td.querySelector(".rdot");                      // v440 ● 가 남아 있으면 지움
         if (old) old.remove();
         td.style.color = col;
-        if (d) td.title = d.tip;
+        if (d) { if (d.card) { td.removeAttribute("title"); td.classList.add("hcw"); if (i === 1) td.tabIndex = 0; } else td.title = d.tip; }   // v516 카드 숫자가 있으면 마우스 = F 카드(없으면 예전 글자 툴팁)
       });
     });
   });
