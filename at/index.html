@@ -194,6 +194,16 @@ td.hcw:focus-visible{ outline:2px solid #1864AB; outline-offset:-2px; }
 /* v521 결론 띠에 종목명 */
 .d7nm{ font-size:16px; font-weight:900; color:#fff; letter-spacing:-.01em; opacity:1; } .d7cd{ font-size:12.5px; font-weight:700; opacity:.8; }
 .d7p .d7eb{ line-height:1.5; }
+
+/* v522 📈 상승 진입 모음 */
+.rsbox{ width:min(1040px,96vw); height:min(780px,92vh); }
+.rsmb{ flex:1; min-height:0; overflow:auto; }
+.rsc{ display:inline-block; padding:0 7px; border-radius:9px; font-size:11px; font-weight:700; line-height:18px; }
+.rsc.g{ background:#D3F9D8; color:#2B8A3E; } .rsc.t{ background:#EBFBEE; color:#2F9E44; border:1px solid #B2F2BB; line-height:16px; }
+.rsc.r{ background:#FFE3E3; color:#C92A2A; } .rsc.m{ background:#F1F3F5; color:#495057; }
+.rsup{ color:#2B8A3E; font-weight:700; } .rsdn{ color:#C92A2A; font-weight:700; }
+.rst tbody tr.rsold{ opacity:.45; } .rsnew{ font-size:11px; }
+.rst td.nm{ max-width:240px; }
 </style><meta name="robots" content="noindex,nofollow">
 <style>
 #atv-lock{position:fixed;inset:0;z-index:99999;background:#EEF1F5;display:flex;align-items:center;justify-content:center;padding:16px}
@@ -315,6 +325,7 @@ td.hcw:focus-visible{ outline:2px solid #1864AB; outline-offset:-2px; }
   <span id="tchips" class="flex items-center gap-2"></span>
   <button class="btn b50" id="b50" type="button" title="검증 단계 10개 종합 순위(보기만 · 주문 없음)">🏅 TOP50</button>
   <button class="btn b50" id="bea" type="button" title="상위 수익 공통분모(기간별) · TOP50 적중률(보기만)">🔬 분석</button>
+  <button class="btn b50" id="brs" type="button" title="감시 종목 전체에서 지금 15분 ▲안착·시도 · 45·120분 상승 시도 중인 종목(보기만 · 주문 없음)">📈 상승 진입</button>
   <span id="tflow" class="chip num hide"></span>
   <span id="tglobal" class="chip hide"></span>
   <span class="sp"></span>
@@ -396,6 +407,22 @@ td.hcw:focus-visible{ outline:2px solid #1864AB; outline-offset:-2px; }
     <table class="t5t eat"><thead><tr><th class="l">묶음</th><th>1일</th><th>2일</th><th>3일</th><th>1주</th><th>2주</th><th>1개월</th></tr></thead><tbody id="eatbB"></tbody></table></div>
    <div class="dmft t5ft"><span>칸 = 적중률 · 평균 수익 · 건수 · 'TO-BE 이긴 날' = 날짜별로 TOP50 위 10의 적중률이 AS-IS TOP10보다 높았던 날 수</span><span>30건 넘기 전엔 기록 · 결론 아님 · 시스템 출력이며 매수 추천 아님</span></div>
   </section>
+ </div>
+</div>
+<div id="rs" class="dm hide" role="dialog" aria-modal="true" aria-label="상승 진입">
+ <div class="dmbox rsbox">
+  <div class="dmhd"><b class="big">📈 상승 진입 — 감시 종목 전체</b><span id="rssub" class="mut"></span><span class="sp"></span>
+   <button class="btn" id="rsx" type="button">닫기 ✕ (Esc)</button></div>
+  <div class="t5band calm" id="rsband"></div>
+  <div class="t5f" role="group" aria-label="거르기">
+   <button type="button" class="t5fb on" data-rf="all">전체</button><button type="button" class="t5fb" data-rf="settled" title="초입가 위에서 2봉 연속 마감 확정 · 확정 뒤 2봉까지 표시">15분 안착 확정</button>
+   <button type="button" class="t5fb" data-rf="try" title="지금 봉이 초입가를 막 넘음 · 2봉 확인 전(봉이 끝나기 전엔 바뀔 수 있음)">15분 안착 시도</button>
+   <button type="button" class="t5fb" data-rf="mtf" title="15분 신호는 없고 45분·120분만 상승 시도">45·120분만</button>
+   <button type="button" class="t5fb" data-rf="up60" title="15분·5분 60선 둘 다 위인 종목만">60선 위만</button>
+   <button type="button" class="t5fb" data-rf="nowarn" title="45·120분 📉 하락 경고가 지금 떠 있지 않은 종목만">⚠ 하락 경고 없는 것</button>
+   <span class="sp"></span><span id="rscnt" class="mut"></span></div>
+  <div class="rsmb"><table class="t5t rst"><thead><tr><th>#</th><th class="l">종목</th><th>15분</th><th title="종가 ÷ 15분 초입가(검은 계단선) − 1">초입가 대비</th><th title="15분 60선(차트 굵은 청록선)">15분 60선</th><th title="5분 60선">5분 60선</th><th title="45분봉 📈 상승 시도 · 📉 하락 경고">45분</th><th title="120분봉 📈 상승 시도 · 📉 하락 경고">120분</th><th title="마지막 5분봉">기준 봉</th></tr></thead><tbody id="rstb"></tbody></table></div>
+  <div class="dmft t5ft"><span>15분 안착 확정 = 종가가 초입가 위에서 2봉 연속 마감 · 시도 = 지금 봉이 막 넘음(2봉 확인 전) · 45·120분 상승 시도 = 📉 신호 뒤 지금 봉이 기준가 위(마감 전엔 바뀜)</span><span>줄 더블클릭 → 한화면에서 이 종목(차트·판단) · 흐린 줄 = 5분봉 캐시가 멈춘 옛 값 · 시스템 출력이며 매수 추천 아님</span></div>
  </div>
 </div>
 <div id="t5" class="dm hide" role="dialog" aria-modal="true" aria-label="매수 TOP50">
@@ -1891,6 +1918,67 @@ $("ea").addEventListener("click", e => {
   if (sb) { const g = sb.parentElement; g.querySelectorAll("button").forEach(x => x.classList.toggle("on", x === sb)); EA[g.dataset.k] = sb.dataset.v; eaPaint(); }
 });
 document.addEventListener("keydown", e => { if (e.key === "Escape") closeEA(); });
+
+// ── v522 📈 상승 진입 모음 — 형 "이거 기능화 하면 좋겠는데 매번 물어보는 것도 그렇고" ──
+//   감시 종목 전체에서 지금 ① 15분 ▲안착 확정 ② 15분 안착 시도 ③ 45·120분 📈 상승 시도 인 종목을 한 표로 · 서버가 뒤에서 45초마다 계산 · 열려 있는 동안 30초마다 다시 읽음 · 표시만.
+const RS = { d: null, f: "all", first: null, timer: null, sel: null };
+const RSCAT = { settled: ["g", "▲ 안착 확정"], try: ["t", "▲ 안착 시도"], mtf: ["m", "45·120분만"] };
+const rsNote = r => r.cat === "settled" ? (r.n === 0 ? "지금 봉" : `${r.n}봉 지남`) : r.cat === "try" ? "지금 봉이 막 넘음" : "";
+const rsMt = (u, w) => u ? '<span class="rsc t">📈 상승 시도</span>' : (w ? '<span class="rsc r">📉 하락 경고</span>' : '<span class="mut">·</span>');
+const rs60 = v => v == null ? '<span class="mut">모름</span>' : (v ? '<span class="rsup">위</span>' : '<span class="rsdn">아래</span>');
+function rsKeep(r) {
+  if (RS.f === "settled" || RS.f === "try" || RS.f === "mtf") return r.cat === RS.f;
+  if (RS.f === "up60") return r.a15 === true && r.a5 === true;
+  if (RS.f === "nowarn") return !r.w45 && !r.w120;
+  return true;
+}
+function rsPaint() {
+  const d = RS.d;
+  if (!d || !d.ok) { $("rssub").textContent = ""; $("rsband").textContent = (d && d.why) || "자료 없음"; $("rstb").innerHTML = emptyRow(9, (d && d.why) || "자료 없음"); $("rscnt").textContent = ""; return; }
+  const all = d.rows || [], rows = all.filter(rsKeep), cnt = k => all.filter(r => r.cat === k).length, old = all.filter(r => r.stale).length;
+  $("rssub").textContent = `${d.t || ""} 계산 · 감시 ${d.n}종목 중 ${all.length}종목`;
+  $("rsband").innerHTML = `<b>15분 안착 확정 ${cnt("settled")}</b> · <b>안착 시도 ${cnt("try")}</b> · <b>45·120분만 ${cnt("mtf")}</b>${old ? ` · <span class="rsdn">옛 값 ${old}</span>` : ""}<span class="mut"> — 15분 마지막 봉 기준 · 시도는 봉이 끝나기 전엔 바뀔 수 있어요 · 30초마다 갱신${d.err ? ` · ⚠ ${esc(d.err)}` : ""}</span>`;
+  $("rscnt").textContent = `${rows.length} / ${all.length}종목`;
+  const now = Date.now();
+  $("rstb").innerHTML = rows.length ? rows.map((r, i) => {
+    const c = RSCAT[r.cat], t0 = RS.first && RS.first[r.code + "|" + r.cat], nw = t0 && now - t0 < 600000;
+    const vs = r.vs == null ? "·" : `${r.vs > 0 ? "+" : ""}${r.vs.toFixed(1)}%`;
+    return `<tr data-c="${esc(r.code)}" data-n="${esc(r.name)}" tabindex="0" class="${r.stale ? "rsold" : ""}${RS.sel === r.code ? " t5sel" : ""}">
+      <td class="mut">${i + 1}</td><td class="l nm" title="${esc(r.code)}">${nameOnly(r.name, r.code)}${rtChip(r.code)} <span class="mut" style="font-weight:400">${esc(r.code)}</span>${nw ? ' <span class="rsnew" title="이 화면을 연 뒤 새로 들어온 종목(10분 동안)">🆕</span>' : ""}</td>
+      <td class="l"><span class="rsc ${c[0]}">${c[1]}</span> <span class="mut">${esc(rsNote(r))}</span></td>
+      <td>${vs}${r.line ? `<span class="mut"> · ${Math.round(r.line).toLocaleString()}</span>` : ""}</td><td>${rs60(r.a15)}</td><td>${rs60(r.a5)}</td><td>${rsMt(r.u45, r.w45)}</td><td>${rsMt(r.u120, r.w120)}</td>
+      <td class="mut">${esc((r.t || "").slice(6))}${r.stale ? " ⚠옛 값" : ""}</td></tr>`;
+  }).join("") : emptyRow(9, "이 조건에 걸린 종목이 없어요");
+}
+async function rsLoad() {
+  try { RS.d = await api("/api/one/rising"); } catch (e) { RS.d = { ok: false, why: `불러오기 실패: ${e.message}`, rows: [] }; }
+  if (RS.d.ok) {                                          // 🆕 = 이 화면을 연 뒤 처음 본 (종목·구분) — 처음 열 때 있던 건 새 것이 아님
+    const first = RS.first === null;
+    RS.first = RS.first || {};
+    for (const r of RS.d.rows || []) { const k = r.code + "|" + r.cat; if (!(k in RS.first)) RS.first[k] = first ? 0 : Date.now(); }
+  }
+  rsPaint();
+  if (!RS.d.ok && !$("rs").classList.contains("hide")) setTimeout(() => { if (!$("rs").classList.contains("hide")) rsLoad(); }, 3000);   // 서버가 처음 계산하는 동안 다시 물어봄
+}
+async function openRS() {
+  $("rs").classList.remove("hide");
+  if (!RS.d) $("rstb").innerHTML = emptyRow(9, "계산 중…(처음 한 번은 몇 초)");
+  await rsLoad();
+  clearInterval(RS.timer); RS.timer = setInterval(() => { if (!$("rs").classList.contains("hide")) rsLoad(); }, 30000);
+}
+const closeRS = () => { $("rs").classList.add("hide"); clearInterval(RS.timer); };
+$("brs").addEventListener("click", openRS);
+$("rsx").addEventListener("click", closeRS);
+$("rs").addEventListener("click", e => {
+  if (e.target === $("rs")) { closeRS(); return; }
+  const fb = e.target.closest(".t5fb[data-rf]");
+  if (fb) { RS.f = fb.dataset.rf; document.querySelectorAll("#rs .t5fb").forEach(x => x.classList.toggle("on", x === fb)); rsPaint(); return; }
+  const tr = e.target.closest("#rstb tr[data-c]");
+  if (tr) { RS.sel = tr.dataset.c; document.querySelectorAll("#rstb tr[data-c]").forEach(r => r.classList.toggle("t5sel", r.dataset.c === RS.sel)); }
+});
+$("rs").addEventListener("dblclick", e => { const tr = e.target.closest("#rstb tr[data-c]"); if (tr) { closeRS(); select(tr.dataset.c, tr.dataset.n); } });
+$("rs").addEventListener("keydown", e => { const tr = e.target.closest("#rstb tr[data-c]"); if (tr && e.key === "Enter") { closeRS(); select(tr.dataset.c, tr.dataset.n); } });
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeRS(); });
 
 // ── v436 📌 지금 볼 것(두 탭 맨 위 · 시안 `시안_분석_지금볼것.html`) — 날짜가 쌓이면 막대·문장이 저절로 바뀜 ──
 const EA_NEED = { short: 10, long: 15 };
