@@ -697,7 +697,10 @@ function paintPane(tf, d) {
   const itryDn = itry && itry.kind === "dn", itrySet = itry && itry.phase === "settled", itryHold = itry && itry.phase === "hold";
   const itryChip = itry ? `<span class="tw ${itryHold ? "twh" : itryDn ? "twr twn" : "twg twu"}" title="${esc(itryHold ? `${itry.at} 지금 봉 종가 ${fmt(itry.close)}가 초입가 ${fmt(itry.line)}와 0.1% 이내라 위/아래를 나눌 수 없음 — 판단 보류(회색 · 깜빡임 없음)\n선에서 벗어나 2봉 연속 마감하면 ▲안착·▼이탈로 확정해요\n표시만(검증 대기)` : itrySet ? `${itry.at} 기준 초입가 ${fmt(itry.line)} ${itryDn ? "아래" : "위"}에 2봉 연속 마감 — ${itryDn ? "▼이탈" : "▲안착"} 확정(종가 ${fmt(itry.close)})\n확정 뒤 2봉 동안은 지금 봉에 깜빡 · 그 뒤엔 화살표만 남아요\n표시만(검증 대기)` : `${itry.at} 지금 봉이 초입가 ${fmt(itry.line)} ${itryDn ? "아래로" : "위로"} 마감 중(종가 ${fmt(itry.close)})\n봉이 끝나기 전엔 확정 아님 · 다음 봉도 같은 쪽이면 ${itryDn ? "▼이탈" : "▲안착"} 확정 · 되돌아오면 사라짐\n표시만(검증 대기)`)}">${itryHold ? "⏸선붙음" : itrySet ? (itryDn ? "📉이탈" : "📈안착") : (itryDn ? "📉경고" : "📈시도")}</span>` : "";
   const tws = itryChip + [twk].filter(k => tw[k]).map(k => `<span class="tw ${tw[k].on ? "twr" : "twg"}${tw[k].on ? " twn" : tw[k].up ? " twu" : ""}" title="${esc(tw[k].tip)}">${tw[k].on ? "📉" : tw[k].up ? "📈" : "↗"}${k}</span>`).join(" ");
-  head.innerHTML = `${tf}분봉 <span>${d.n}봉 · 60선 ${d.above60 === true ? "위" : d.above60 === false ? "아래" : "—"}</span>${tws}${ixs}`
+  // v524 형 "(a) 점선 SMA60의 위/아래도 같이 표시" — 굵은 청록(지수이평) 위/아래 옆에 분홍 점선(단순이평) 위/아래. 둘이 다르면 주황으로(가격이 두 선 사이)
+  const sU = v => v === true ? "위" : v === false ? "아래" : "—", s60d = d.above_sma60 !== d.above60 && d.above_sma60 != null && d.above60 != null;
+  const sma60 = `<span class="s60" style="font-size:.9em;opacity:.85${s60d ? ";color:#E8590C;font-weight:700" : ""}" title="굵은 청록 = 지수이평 60봉(위/아래 판정 기준) ${fmt(d.ma60)} · 분홍 점선 = 단순이평 60봉 ${fmt(d.sma60)} · 지금 ${fmt(d.close)}${s60d ? "\n⚠ 두 선이 다른 쪽 — 가격이 두 선 사이에 있어요(판정은 굵은 청록 기준)" : ""}\n표시만">· 점선 ${sU(d.above_sma60)}</span>`;
+  head.innerHTML = `${tf}분봉 <span>${d.n}봉 · 60선 ${d.above60 === true ? "위" : d.above60 === false ? "아래" : "—"}</span>${sma60}${tws}${ixs}`
     + `<span style="color:#2B8A3E">${s("sup")}</span><span style="color:#C2255C">${s("res")}</span>` + pinLegend(d.pins);
   // v506 형 "B안(세로 띠) + 완성된 봉은 봉색을 다른색으로" — 신호 봉이 지금 봉이면 세로 띠가 깜빡, 끝난 봉이면 옅은 띠 + 봉이 보라색으로 남음
   const twS = tw[twk] || null, twI = twS ? (d.bars || []).findIndex(b => b.time === twS.time) : -1;
