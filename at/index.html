@@ -590,9 +590,37 @@ function placeTw(p) {
     lab.style.left = Math.round(Math.max(2, Math.min(x - lab.offsetWidth / 2, pw - lab.offsetWidth - 2)) - left) + "px";
   });
 }
+/* v533 형 "F로 반영" — 15분 차트: ① 안착 유지 구간(▲안착 봉 → 다음 ▼이탈 봉 · 지금 안착 중이면 오른쪽 끝까지)을 옅은 파랑으로 칠함 ② 지난 신호(가장 최근 1개 빼고)는 아래쪽 시간축 위에 ▲파랑·▼빨강 짧은 막대
+   (가장 최근 신호의 진한 세로 띠·글자·화살표는 그대로). 끌기·확대에 따라 placeTw와 같이 다시 맞춤 · 신호 수·2봉 확인은 그대로 · 화면만 */
+function placeZone(p) {
+  const z = p.zone || { segs: [], bars: [] }, cv = p.tagEl.parentElement, ts = p.ch.timeScale();
+  p.zEls = p.zEls || [];
+  const items = [...z.segs.map(s => ({ ...s, k: "seg" })), ...z.bars.map(b => ({ ...b, k: "bar" }))];
+  while (p.zEls.length < items.length) { const e = document.createElement("div"); cv.insertBefore(e, p.tagEl); p.zEls.push(e); }
+  let pw = cv.clientWidth;
+  try { pw -= p.ch.priceScale("right").width(); } catch (e) { /* 지운 차트 */ }
+  p.zEls.forEach((el, n) => {
+    const it = items[n];
+    if (!it) { el.style.display = "none"; return; }
+    const x0 = ts.timeToCoordinate(it.t0), x1 = it.t1 == null ? null : ts.timeToCoordinate(it.t1);
+    if (x0 === null || (it.k === "seg" && it.t1 != null && x1 === null)) { el.style.display = "none"; return; }
+    const xp = it.prev ? ts.timeToCoordinate(it.prev) : null, step = xp !== null ? Math.abs(x0 - xp) : 10;     // 막대 폭 = 지금 확대 정도의 봉 간격 × 1.5
+    if (it.k === "seg") {
+      const L = Math.max(0, Math.round(x0)), R = Math.min(pw, it.t1 == null ? pw : Math.round(x1));
+      if (R - L < 1) { el.style.display = "none"; return; }
+      el.style.cssText = `position:absolute;z-index:3;pointer-events:none;top:0;bottom:26px;display:block;left:${L}px;width:${R - L}px;background:rgba(24,100,171,.07)`;
+      el.textContent = ""; return;
+    }
+    const w = Math.max(10, Math.round(step * 1.5)), L = Math.round(x0 - w / 2);
+    if (L + w < 0 || L > pw) { el.style.display = "none"; return; }
+    el.style.cssText = `position:absolute;z-index:3;pointer-events:none;bottom:26px;display:block;left:${L}px;width:${w}px;height:14px;background:rgba(${it.up ? "24,100,171" : "217,45,32"},.85);border-radius:3px 3px 0 0;color:#fff;font:700 10px/14px sans-serif;text-align:center`;
+    el.textContent = it.up ? "▲" : "▼";
+  });
+}
 function placeTags(p) {
   if (!p || p.st.gone || !p.tagEl) return;
   try { placeTw(p); } catch (e) { /* 띠는 없어도 차트는 그대로 */ }
+  try { placeZone(p); } catch (e) { /* 구간·막대는 없어도 차트는 그대로 */ }
   const ixb = p.el.querySelector(".ixb");
   if (ixb) ixb.classList.toggle("nar", p.tagEl.clientWidth < 300);   // v491 좁은 칸은 '구름 안'만
   const h = p.tagEl.clientHeight - 26;                         // 아래 시간 축 높이만큼 뺌
@@ -746,6 +774,20 @@ function paintPane(tf, d) {
     evs.slice(-1).forEach(e => { const i = bi.get(e.time), up = e.kind === "up";       // 가장 최근 신호 하나만(전부 칠하면 CJ ENM처럼 3일에 10개라 정작 중요한 띠가 묻힘 — 형 절충안 취지) · 지난 신호는 화살표만
       p.tw.push({ time: e.time, prev: i > 0 ? d.bars[i - 1].time : null, live: false, on: !up, blue: up, txt: up ? "▲ 안착" : "▼ 이탈" }); });
   } catch (e) { /* 띠는 없어도 차트는 그대로 */ }
+  // v533 형 "F로 반영 · 120선 H1" — 15분 칸: 안착 유지 구간 칠하기 + 지난 신호 아래 막대 + 120봉 이평(보라 굵은 선 · 가격축에 120 이름표)
+  if (tf === 15) {
+    p.zone = { segs: [], bars: [] };
+    try {
+      const bars = d.bars || [], evs = (d.ichi_ev || []).filter(e => bars.some(b => b.time === e.time)), bi = new Map(bars.map((b, i) => [b.time, i]));
+      if (bars.length && evs.length && evs[0].kind === "dn") p.zone.segs.push({ t0: bars[0].time, t1: evs[0].time });          // 보이는 구간 앞에서 이미 안착 중이던 구간
+      evs.forEach((e, k) => { if (e.kind === "up") p.zone.segs.push({ t0: e.time, t1: evs[k + 1] ? evs[k + 1].time : null }); });   // 마지막 안착이 이어지는 중이면 t1=null(오른쪽 끝까지)
+      evs.slice(0, -1).forEach(e => { const i = bi.get(e.time); p.zone.bars.push({ t0: e.time, up: e.kind === "up", prev: i > 0 ? bars[i - 1].time : null }); });
+    } catch (e) { p.zone = { segs: [], bars: [] }; }
+    try {
+      p.s120 = p.s120 || p.ch.addLineSeries({ color: "#6741D9", lineWidth: 3, priceLineVisible: false, lastValueVisible: true, title: "120", crosshairMarkerVisible: false });
+      p.s120.setData(d.s120 || []);
+    } catch (e) { /* 120선은 없어도 차트는 그대로 */ }
+  }
   for (const k in p.ma) p.ma[k].setData(d.ma[k] || []);
   // v530 형 "5분봉 볼벤 150 1 · 상단 하단만(중심 빼고)" — 5분 칸에만 볼린저밴드 상단·하단(150봉 · ±1σ). 선 두께 2(이평 선 아래 묻히지 않게) · 화면만
   if (tf === 5) try {
