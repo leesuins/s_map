@@ -700,7 +700,9 @@ function paintPane(tf, d) {
   // v524 형 "(a) 점선 SMA60의 위/아래도 같이 표시" — 굵은 청록(지수이평) 위/아래 옆에 분홍 점선(단순이평) 위/아래. 둘이 다르면 주황으로(가격이 두 선 사이)
   const sU = v => v === true ? "위" : v === false ? "아래" : "—", s60d = d.above_sma60 !== d.above60 && d.above_sma60 != null && d.above60 != null;
   const sma60 = `<span class="s60" style="font-size:.9em;opacity:.85${s60d ? ";color:#E8590C;font-weight:700" : ""}" title="굵은 청록 = 지수이평 60봉(위/아래 판정 기준) ${fmt(d.ma60)} · 분홍 점선 = 단순이평 60봉 ${fmt(d.sma60)} · 지금 ${fmt(d.close)}${s60d ? "\n⚠ 두 선이 다른 쪽 — 가격이 두 선 사이에 있어요(판정은 굵은 청록 기준)" : ""}\n표시만">· 점선 ${sU(d.above_sma60)}</span>`;
-  head.innerHTML = `${tf}분봉 <span>${d.n}봉 · 60선 ${d.above60 === true ? "위" : d.above60 === false ? "아래" : "—"}</span>${sma60}${tws}${ixs}`
+  const bbU = tf === 5 && d.bb && d.bb.bbu && d.bb.bbu.length ? d.bb.bbu[d.bb.bbu.length - 1].value : null, bbL = tf === 5 && d.bb && d.bb.bbl && d.bb.bbl.length ? d.bb.bbl[d.bb.bbl.length - 1].value : null;
+  const bbs = bbU != null && bbL != null && d.close != null ? `<span style="color:#AE3EC9;font-size:.9em" title="볼린저밴드(150봉 · ±1표준편차) 상단 ${fmt(bbU)} · 하단 ${fmt(bbL)} · 지금 ${fmt(d.close)}\n보라색 선 2개 = 상단·하단(중심선은 안 그림) · v530 표시만">· 볼벤 ${d.close > bbU ? "상단 위" : d.close < bbL ? "하단 아래" : "밴드 안"}</span>` : "";   // v530
+  head.innerHTML = `${tf}분봉 <span>${d.n}봉 · 60선 ${d.above60 === true ? "위" : d.above60 === false ? "아래" : "—"}</span>${sma60}${bbs}${tws}${ixs}`
     + `<span style="color:#2B8A3E">${s("sup")}</span><span style="color:#C2255C">${s("res")}</span>` + pinLegend(d.pins);
   // v506 형 "B안(세로 띠) + 완성된 봉은 봉색을 다른색으로" — 신호 봉이 지금 봉이면 세로 띠가 깜빡, 끝난 봉이면 옅은 띠 + 봉이 보라색으로 남음
   const twS = tw[twk] || null, twI = twS ? (d.bars || []).findIndex(b => b.time === twS.time) : -1;
@@ -719,6 +721,11 @@ function paintPane(tf, d) {
       p.tw.push({ time: e.time, prev: i > 0 ? d.bars[i - 1].time : null, live: false, on: !up, blue: up, txt: up ? "▲ 안착" : "▼ 이탈" }); });
   } catch (e) { /* 띠는 없어도 차트는 그대로 */ }
   for (const k in p.ma) p.ma[k].setData(d.ma[k] || []);
+  // v530 형 "5분봉 볼벤 150 1 · 상단 하단만(중심 빼고)" — 5분 칸에만 볼린저밴드 상단·하단(150봉 · ±1σ). 선 두께 2(이평 선 아래 묻히지 않게) · 화면만
+  if (tf === 5) try {
+    p.bb = p.bb || ["bbu", "bbl"].reduce((o, k) => (o[k] = p.ch.addLineSeries({ color: "#AE3EC9", lineWidth: 2, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false }), o), {});
+    p.bb.bbu.setData((d.bb && d.bb.bbu) || []); p.bb.bbl.setData((d.bb && d.bb.bbl) || []);
+  } catch (e) { /* 밴드는 없어도 차트는 그대로 */ }
   if (p.ixl) p.ixl.setData(d.ichi_line || []);
   if (p.cloud) { p.cloud.set(d.ichi_cloud || []); cloudBadge(p, d); }     // v491                // v484 정배열초입 검은 계단선
   p.pls.forEach(x => p.cs.removePriceLine(x)); p.pls = []; p.tags = [];
