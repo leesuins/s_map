@@ -617,10 +617,36 @@ function placeZone(p) {
     el.textContent = it.up ? "▲" : "▼";
   });
 }
+/* v534 형 "15분 차트로 매수매도 타점"(시안 1) — 주문 일지의 매수·매도를 15분 봉 위에: 가격 자리에 ▲(매수 보라)·▼(매도 마젠타) + 이름표(시각 · 매수/매도1차/2차 · 가격).
+   같은 쪽 이름표가 가까우면 세로로 쌓아 안 겹치게 · 끌기·확대에 따라 다시 맞춤 · 읽기만(주문·판단 무관) · 화면만 */
+function placeTrades(p) {
+  const list = p.trades || [], cv = p.tagEl.parentElement, ts = p.ch.timeScale();
+  p.trEls = p.trEls || [];
+  while (p.trEls.length < list.length * 2) { const e = document.createElement("div"); cv.insertBefore(e, p.tagEl); p.trEls.push(e); }
+  let pw = cv.clientWidth, ph = cv.clientHeight - 26;
+  try { pw -= p.ch.priceScale("right").width(); } catch (e) { /* 지운 차트 */ }
+  const placed = [], fmtP = v => Math.round(v).toLocaleString("ko-KR");
+  p.trEls.forEach(e => { e.style.display = "none"; });
+  list.forEach((t, n) => {
+    const a = p.trEls[n * 2], c = p.trEls[n * 2 + 1];
+    const x = ts.timeToCoordinate(t.time), y = p.cs.priceToCoordinate(t.price);
+    if (x === null || y === null || x < -10 || x > pw + 10) return;
+    const buy = t.side === "buy", col = buy ? "#7048E8" : "#C2255C";
+    const near = placed.filter(q => q.buy === buy && Math.abs(q.x - x) < 110).length;          // 가까운 같은 쪽 이름표 수만큼 한 줄씩 더 멀리
+    placed.push({ buy, x });
+    const off = near * 19, ty = buy ? Math.min(y + 22 + off, ph - 18) : Math.max(y - 42 - off, 2);
+    a.style.cssText = `position:absolute;z-index:6;pointer-events:none;display:block;left:${Math.round(x - 7)}px;top:${Math.round(buy ? y + 4 : y - 20)}px;color:${col};font:900 15px/16px sans-serif;text-shadow:0 0 2px #fff,0 0 2px #fff`;
+    a.textContent = buy ? "▲" : "▼";
+    c.style.cssText = `position:absolute;z-index:6;pointer-events:none;display:block;white-space:nowrap;top:${Math.round(ty)}px;background:${col};color:#fff;font:700 11px/16px sans-serif;padding:0 5px;border-radius:4px`;
+    c.textContent = `${String(t.ts).slice(11, 16)} ${buy ? "매수" : "매도" + (t.stage === 1 ? "1차" : t.stage === 2 ? "2차" : "")} ${fmtP(t.price)}`;
+    c.style.left = Math.round(Math.max(2, Math.min(x - 34, pw - c.offsetWidth - 2))) + "px";
+  });
+}
 function placeTags(p) {
   if (!p || p.st.gone || !p.tagEl) return;
   try { placeTw(p); } catch (e) { /* 띠는 없어도 차트는 그대로 */ }
   try { placeZone(p); } catch (e) { /* 구간·막대는 없어도 차트는 그대로 */ }
+  try { placeTrades(p); } catch (e) { /* 타점은 없어도 차트는 그대로 */ }
   const ixb = p.el.querySelector(".ixb");
   if (ixb) ixb.classList.toggle("nar", p.tagEl.clientWidth < 300);   // v491 좁은 칸은 '구름 안'만
   const h = p.tagEl.clientHeight - 26;                         // 아래 시간 축 높이만큼 뺌
@@ -756,7 +782,9 @@ function paintPane(tf, d) {
   const sma60 = `<span class="s60" style="font-size:.9em;opacity:.85${s60d ? ";color:#E8590C;font-weight:700" : ""}" title="굵은 청록 = 지수이평 60봉(위/아래 판정 기준) ${fmt(d.ma60)} · 분홍 점선 = 단순이평 60봉 ${fmt(d.sma60)} · 지금 ${fmt(d.close)}${s60d ? "\n⚠ 두 선이 다른 쪽 — 가격이 두 선 사이에 있어요(판정은 굵은 청록 기준)" : ""}\n표시만">· 점선 ${sU(d.above_sma60)}</span>`;
   const bbU = tf === 5 && d.bb && d.bb.bbu && d.bb.bbu.length ? d.bb.bbu[d.bb.bbu.length - 1].value : null, bbL = tf === 5 && d.bb && d.bb.bbl && d.bb.bbl.length ? d.bb.bbl[d.bb.bbl.length - 1].value : null;
   const bbs = bbU != null && bbL != null && d.close != null ? `<span style="color:#AE3EC9;font-size:.9em" title="볼린저밴드(150봉 · ±1표준편차) 상단 ${fmt(bbU)} · 하단 ${fmt(bbL)} · 지금 ${fmt(d.close)}\n보라색 선 2개 = 상단·하단(중심선은 안 그림) · v530 표시만">· 볼벤 ${d.close > bbU ? "상단 위" : d.close < bbL ? "하단 아래" : "밴드 안"}</span>` : "";   // v530
-  head.innerHTML = `${tf}분봉 <span>${d.n}봉 · 60선 ${d.above60 === true ? "위" : d.above60 === false ? "아래" : "—"}</span>${sma60}${bbs}${tws}${ixs}`
+  const nTb = tf === 15 ? (d.trades || []).filter(t => t.side === "buy").length : 0, nTs = tf === 15 ? (d.trades || []).filter(t => t.side === "sell").length : 0;   // v534
+  const trc = nTb || nTs ? `<span style="font-size:.9em" title="주문 일지 기준(읽기만 · 체결 확정 아님) — 지금 보이는 15분봉 기간의 매수·매도 주문. 가격 자리에 ▲매수 · ▼매도 표시"><b style="color:#7048E8">▲매수${nTb}</b> <b style="color:#C2255C">▼매도${nTs}</b></span>` : "";
+  head.innerHTML = `${tf}분봉 <span>${d.n}봉 · 60선 ${d.above60 === true ? "위" : d.above60 === false ? "아래" : "—"}</span>${sma60}${bbs}${trc}${tws}${ixs}`
     + `<span style="color:#2B8A3E">${s("sup")}</span><span style="color:#C2255C">${s("res")}</span>` + pinLegend(d.pins);
   // v506 형 "B안(세로 띠) + 완성된 봉은 봉색을 다른색으로" — 신호 봉이 지금 봉이면 세로 띠가 깜빡, 끝난 봉이면 옅은 띠 + 봉이 보라색으로 남음
   const twS = tw[twk] || null, twI = twS ? (d.bars || []).findIndex(b => b.time === twS.time) : -1;
@@ -776,6 +804,7 @@ function paintPane(tf, d) {
   } catch (e) { /* 띠는 없어도 차트는 그대로 */ }
   // v533 형 "F로 반영 · 120선 H1" — 15분 칸: 안착 유지 구간 칠하기 + 지난 신호 아래 막대 + 120봉 이평(보라 굵은 선 · 가격축에 120 이름표)
   if (tf === 15) {
+    p.trades = Array.isArray(d.trades) ? d.trades : [];                                   // v534 매수·매도 타점(없으면 빈 칸)
     p.zone = { segs: [], bars: [] };
     try {
       const bars = d.bars || [], evs = (d.ichi_ev || []).filter(e => bars.some(b => b.time === e.time)), bi = new Map(bars.map((b, i) => [b.time, i]));
