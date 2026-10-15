@@ -34,7 +34,7 @@
 
 /* v506 120분 차트 신호 봉 세로 띠(형 B안) */
 .twb{ position:absolute; top:0; bottom:26px; z-index:4; pointer-events:none; --c:217,45,32; }
-.twb.twbg{ --c:43,138,62; }
+.twb.twbg{ --c:43,138,62; }.twb.twbb{--c:24,100,171}
 .twb.twbl{ background:rgba(var(--c),.34); animation:twband 1s ease-in-out infinite; }
 .twb.twbd{ background:rgba(var(--c),.10); border-left:1px dashed rgba(var(--c),.6); border-right:1px dashed rgba(var(--c),.6); }
 .twb i{ position:absolute; top:4px; font-style:normal; font-size:12px; font-weight:800; line-height:16px; white-space:nowrap; padding:0 6px; border-radius:4px; }
@@ -415,14 +415,14 @@ td.hcw:focus-visible{ outline:2px solid #1864AB; outline-offset:-2px; }
    <button class="btn" id="rsx" type="button">닫기 ✕ (Esc)</button></div>
   <div class="t5band calm" id="rsband"></div>
   <div class="t5f" role="group" aria-label="거르기">
-   <button type="button" class="t5fb on" data-rf="all">전체</button><button type="button" class="t5fb" data-rf="settled" title="초입가 위에서 2봉 연속 마감 확정 · 확정 뒤 2봉까지 표시">15분 안착 확정</button>
+   <button type="button" class="t5fb on" data-rf="all">전체</button><button type="button" class="t5fb" data-rf="settled" title="초입가 위에서 2봉 연속 마감 확정 · 확정 뒤 2봉까지 표시 · 구름(정배열) 상태와는 별개">15분 초입가 위 안착</button>
    <button type="button" class="t5fb" data-rf="try" title="지금 봉이 초입가를 막 넘음 · 2봉 확인 전(봉이 끝나기 전엔 바뀔 수 있음)">15분 안착 시도</button>
    <button type="button" class="t5fb" data-rf="mtf" title="15분 신호는 없고 45분·120분만 상승 시도">45·120분만</button>
    <button type="button" class="t5fb" data-rf="up60" title="15분·5분 60선 둘 다 위인 종목만">60선 위만</button>
    <button type="button" class="t5fb" data-rf="nowarn" title="45·120분 📉 하락 경고가 지금 떠 있지 않은 종목만">⚠ 하락 경고 없는 것</button>
    <span class="sp"></span><span id="rscnt" class="mut"></span></div>
   <div class="rsmb"><table class="t5t rst"><thead><tr><th>#</th><th class="l">종목</th><th>15분</th><th title="종가 ÷ 15분 초입가(검은 계단선) − 1">초입가 대비</th><th title="15분 60선(차트 굵은 청록선)">15분 60선</th><th title="5분 60선">5분 60선</th><th title="45분봉 📈 상승 시도 · 📉 하락 경고">45분</th><th title="120분봉 📈 상승 시도 · 📉 하락 경고">120분</th><th title="마지막 5분봉">기준 봉</th></tr></thead><tbody id="rstb"></tbody></table></div>
-  <div class="dmft t5ft"><span>15분 안착 확정 = 종가가 초입가 위에서 2봉 연속 마감 · 시도 = 지금 봉이 막 넘음(2봉 확인 전) · 45·120분 상승 시도 = 📉 신호 뒤 지금 봉이 기준가 위(마감 전엔 바뀜)</span><span>줄 더블클릭 → 한화면에서 이 종목(차트·판단) · 흐린 줄 = 5분봉 캐시가 멈춘 옛 값 · 시스템 출력이며 매수 추천 아님</span></div>
+  <div class="dmft t5ft"><span>15분 안착 확정 = 종가가 초입가(검은 계단선) 위에서 2봉 연속 마감(구름·정배열 상태와는 별개 — 15분 칸에 따로 표시) · 시도 = 지금 봉이 막 넘음(2봉 확인 전) · 45·120분 상승 시도 = 📉 신호 뒤 지금 봉이 기준가 위(마감 전엔 바뀜)</span><span>줄 더블클릭 → 한화면에서 이 종목(차트·판단) · 흐린 줄 = 5분봉 캐시가 멈춘 옛 값 · 시스템 출력이며 매수 추천 아님</span></div>
  </div>
 </div>
 <div id="t5" class="dm hide" role="dialog" aria-modal="true" aria-label="매수 TOP50">
@@ -555,7 +555,7 @@ function placeTw(p) {
     const xp = w.prev !== null ? ts.timeToCoordinate(w.prev) : null;
     const bw = Math.max(16, Math.round((xp !== null ? Math.abs(x - xp) : 14) * 1.5));
     const left = Math.round(x - bw / 2);
-    el.className = w.hold ? "twb twbh" : `twb ${w.live ? "twbl" : "twbd"}${w.on ? "" : " twbg"}`;   // v514 선 붙음은 회색 · 깜빡임 없음
+    el.className = w.hold ? "twb twbh" : `twb ${w.live ? "twbl" : "twbd"}${w.on ? "" : " twbg"}${w.blue ? " twbb" : ""}`;   // v514 선 붙음은 회색 · 깜빡임 없음
     el.style.cssText = `left:${left}px;width:${bw}px;display:block`;
     el.innerHTML = w.quiet ? "" : `<i>${w.txt || (w.live ? (w.up ? "📈 상승 시도" : "📉 하락 경고 중") : "📉")}</i>`;   // 상승 시도 띠가 같이 있으면 옅은 띠는 이름표 없이(겹침 방지)
     const lab = el.firstChild;
@@ -712,6 +712,12 @@ function paintPane(tf, d) {
   }
   if (itry && (d.bars || []).length && itry.time === d.bars[d.bars.length - 1].time) p.tw.push({ time: itry.time, prev: itry.prev, live: !itryHold, hold: !!itryHold, on: itry.kind === "dn", up: itry.kind === "up", txt: itryHold ? "⏸ 선 붙음 · 판단 보류" : itrySet ? (itryDn ? "📉 이탈 확정" : "📈 안착 확정") : "" });   // v512 · v513 확정 직후도
   p.cs.setData(p.tw.length && !p.tw[0].live && !p.tw[0].hold ? d.bars.map((b, i) => i === twI ? { ...b, color: TW_DONE, wickColor: TW_DONE } : b) : d.bars);
+  // v528 형 "안착했다고 하면 이렇게 마커 하면 되지 않을까?"(120분 차트 세로 띠 모양) — 15분 가장 최근 ▲안착(파랑)·▼이탈(빨강) 확정 봉에 같은 옅은 세로 띠 + 글자. 신호 수·2봉 확인은 그대로 · 화면만
+  if (tf === 15 && (d.ichi_ev || []).length && (d.bars || []).length) try {
+    const bi = new Map(d.bars.map((b, i) => [b.time, i])), evs = d.ichi_ev.filter(e => bi.has(e.time) && !(itry && itry.time === e.time));
+    evs.slice(-1).forEach(e => { const i = bi.get(e.time), up = e.kind === "up";       // 가장 최근 신호 하나만(전부 칠하면 CJ ENM처럼 3일에 10개라 정작 중요한 띠가 묻힘 — 형 절충안 취지) · 지난 신호는 화살표만
+      p.tw.push({ time: e.time, prev: i > 0 ? d.bars[i - 1].time : null, live: false, on: !up, blue: up, txt: up ? "▲ 안착" : "▼ 이탈" }); });
+  } catch (e) { /* 띠는 없어도 차트는 그대로 */ }
   for (const k in p.ma) p.ma[k].setData(d.ma[k] || []);
   if (p.ixl) p.ixl.setData(d.ichi_line || []);
   if (p.cloud) { p.cloud.set(d.ichi_cloud || []); cloudBadge(p, d); }     // v491                // v484 정배열초입 검은 계단선
@@ -1928,6 +1934,7 @@ const RS = { d: null, f: "all", first: null, timer: null, sel: null };
 const RSCAT = { settled: ["g", "▲ 안착 확정"], try: ["t", "▲ 안착 시도"], mtf: ["m", "45·120분만"] };
 const rsNote = r => r.cat === "settled" ? (r.n === 0 ? "지금 봉" : `${r.n}봉 지남`) : r.cat === "try" ? "지금 봉이 막 넘음" : "";
 const rsMt = (u, w) => u ? '<span class="rsc t">📈 상승 시도</span>' : (w ? '<span class="rsc r">📉 하락 경고</span>' : '<span class="mut">·</span>');
+const rsCloud = r => !r.cloud ? "" : ` <span class="${r.cloud === "양운" && r.cpos === "위" ? "rsup" : "mut"}" title="구름(선행스팬) 상태 — 안착(초입가 위 2봉 마감)과는 따로예요 · 정배열(양운)이고 가격이 구름 위일 때만 초록 · v529">· ${r.cloud === "양운" ? "정배열" : "역배열"} 구름 ${esc(r.cpos || "")}</span>`;   // v529 형 "정배열 위에 안착이라 표현하면 맞아?" → 안착은 초입가 기준 · 구름 상태는 따로 표시
 const rs60 = v => v == null ? '<span class="mut">모름</span>' : (v ? '<span class="rsup">위</span>' : '<span class="rsdn">아래</span>');
 function rsKeep(r) {
   if (RS.f === "settled" || RS.f === "try" || RS.f === "mtf") return r.cat === RS.f;
@@ -1940,7 +1947,7 @@ function rsPaint() {
   if (!d || !d.ok) { $("rssub").textContent = ""; $("rsband").textContent = (d && d.why) || "자료 없음"; $("rstb").innerHTML = emptyRow(9, (d && d.why) || "자료 없음"); $("rscnt").textContent = ""; return; }
   const all = d.rows || [], rows = all.filter(rsKeep), cnt = k => all.filter(r => r.cat === k).length, old = all.filter(r => r.stale).length;
   $("rssub").textContent = `${d.t || ""} 계산 · 감시 ${d.n}종목 중 ${all.length}종목`;
-  $("rsband").innerHTML = `<b>15분 안착 확정 ${cnt("settled")}</b> · <b>안착 시도 ${cnt("try")}</b> · <b>45·120분만 ${cnt("mtf")}</b>${old ? ` · <span class="rsdn">옛 값 ${old}</span>` : ""}<span class="mut"> — 15분 마지막 봉 기준 · 시도는 봉이 끝나기 전엔 바뀔 수 있어요 · 30초마다 갱신${d.err ? ` · ⚠ ${esc(d.err)}` : ""}</span>`;
+  $("rsband").innerHTML = `<b>15분 초입가 위 안착 확정 ${cnt("settled")}</b> · <b>안착 시도 ${cnt("try")}</b> · <b>45·120분만 ${cnt("mtf")}</b>${old ? ` · <span class="rsdn">옛 값 ${old}</span>` : ""}<span class="mut"> — 15분 마지막 봉 기준 · 시도는 봉이 끝나기 전엔 바뀔 수 있어요 · 30초마다 갱신${d.err ? ` · ⚠ ${esc(d.err)}` : ""}</span>`;
   $("rscnt").textContent = `${rows.length} / ${all.length}종목`;
   const now = Date.now();
   $("rstb").innerHTML = rows.length ? rows.map((r, i) => {
@@ -1948,7 +1955,7 @@ function rsPaint() {
     const vs = r.vs == null ? "·" : `${r.vs > 0 ? "+" : ""}${r.vs.toFixed(1)}%`;
     return `<tr data-c="${esc(r.code)}" data-n="${esc(r.name)}" tabindex="0" class="${r.stale ? "rsold" : ""}${RS.sel === r.code ? " t5sel" : ""}">
       <td class="mut">${i + 1}</td><td class="l nm" title="${esc(r.code)}">${nameOnly(r.name, r.code)}${rtChip(r.code)} <span class="mut" style="font-weight:400">${esc(r.code)}</span>${nw ? ' <span class="rsnew" title="이 화면을 연 뒤 새로 들어온 종목(10분 동안)">🆕</span>' : ""}</td>
-      <td class="l"><span class="rsc ${c[0]}">${c[1]}</span> <span class="mut">${esc(rsNote(r))}</span></td>
+      <td class="l"><span class="rsc ${c[0]}">${c[1]}</span> <span class="mut">${esc(rsNote(r))}</span>${rsCloud(r)}</td>
       <td>${vs}${r.line ? `<span class="mut"> · ${Math.round(r.line).toLocaleString()}</span>` : ""}</td><td>${rs60(r.a15)}</td><td>${rs60(r.a5)}</td><td>${rsMt(r.u45, r.w45)}</td><td>${rsMt(r.u120, r.w120)}</td>
       <td class="mut">${esc((r.t || "").slice(6))}${r.stale ? " ⚠옛 값" : ""}</td></tr>`;
   }).join("") : emptyRow(9, "이 조건에 걸린 종목이 없어요");
