@@ -368,7 +368,7 @@ td.hcw:focus-visible{ outline:2px solid #1864AB; outline-offset:-2px; }
    </div>
    <div class="card a-chart">
    <div class="chead"><span class="nm whitespace-nowrap" id="cname">종목을 누르세요</span><span id="ccode" class="mut"></span><span class="sp"></span><small id="cinfo" class="mut num"></small><button class="btn dbtn" id="dbtn" type="button" title="상세정보 (종목 더블클릭으로도 열려요)">ⓘ<span class="wide"> 상세정보</span></button>
-    <button class="btn on" data-mode="4">▦ 4칸</button><button class="btn" data-mode="5">5분</button><button class="btn" data-mode="15">15분</button><button class="btn" data-mode="45">45분</button><button class="btn" data-mode="120">120분</button></div>
+    <button class="btn" id="spm" type="button" title="차트 기간 줄이기 (4칸 모두 · 봉 수 배수)">−</button><span id="spl" class="num mut" style="white-space:nowrap;font-size:.85em" title="차트 기간(4칸 모두)">기간 ×1</span><button class="btn" id="spp" type="button" title="차트 기간 늘리기 (4칸 모두 · 봉 수 배수)">＋</button><button class="btn on" data-mode="4">▦ 4칸</button><button class="btn" data-mode="5">5분</button><button class="btn" data-mode="15">15분</button><button class="btn" data-mode="45">45분</button><button class="btn" data-mode="120">120분</button></div>
    <div id="srad" class="srad hide" aria-live="polite"></div>
    <div id="panes" class="grid4"></div>
    <details class="legend"><summary>ⓘ 선 읽는 법 <span class="mut">· 차트 <a href="https://www.tradingview.com/" target="_blank" rel="noopener">TradingView Lightweight Charts™</a></span></summary>굵은 선 = 지수이평 20(주황)·60(하늘) · 점선 = Avg 20·60 · 파랑 점선 = 차트선(2번↑ 닿은 가격·추세선) · 초록·자주 점선 = 피보(일봉)·직전 저점·전고점 · ★ = 지지 1·저항 1 · 📍 빨강 = 매수 조건 충족 · 회색 = 60선 아래 · 보라 ▲ = 매수 주문 · 시간외 포함 · 10분마다 저장된 봉(실시간 아님)</details>
@@ -486,6 +486,31 @@ const ageS = s => (typeof s === "number") ? (s < 90 ? `${Math.round(s)}초 전` 
 const S = { code: null, name: "", mode: "4", panes: {}, ix: {}, t: {}, rt: {}, tw: {} };
 try { const h = location.hash.match(/code=([0-9A-Z]{6})/); S.code = h ? h[1] : (localStorage.getItem("one.code") || null); } catch (e) { S.code = null; }
 try { S.mode = localStorage.getItem("one.mode") || "4"; } catch (e) { /* 기본 4칸 */ }
+// v531 형 "(차트기간) 늘리고 줄이고 하는 기능 · 차트 4개 모두" — 칸마다 기본 봉 수(5분 150 · 15분 130 · 45분 120 · 120분 80)에 곱하는 배수 · 서버가 그만큼 더 줘서 휠 확대보다 더 과거까지 · ★저항·지지 값은 그대로 · 화면만
+const SPANS = [0.5, 0.75, 1, 1.5, 2, 3, 4], BASE_BARS = { 5: 150, 15: 130, 45: 120, 120: 80 };
+S.si = SPANS.indexOf(1);
+try { const v = +localStorage.getItem("one.span"); if (SPANS.includes(v)) S.si = SPANS.indexOf(v); } catch (e) { /* 기본 ×1 */ }
+function spanUi() {
+  const l = $("spl"), m = $("spm"), p = $("spp"); if (!l || !m || !p) return;
+  const x = SPANS[S.si];
+  l.textContent = `기간 ×${x}`;
+  l.title = "차트 기간(4칸 모두) — " + Object.keys(BASE_BARS).map(k => `${k}분 ${Math.round(BASE_BARS[k] * x)}봉`).join(" · ") + "\n마우스 휠·끌기로 더 확대해도 이 봉 수까지만 보임";
+  m.disabled = S.si <= 0; p.disabled = S.si >= SPANS.length - 1;
+  m.style.opacity = m.disabled ? ".35" : ""; p.style.opacity = p.disabled ? ".35" : "";
+}
+// v532 형 "휠로 줄이면(기간 늘리면) 차트가 없어" → "오 좋지" — 사람이 휠·끌기로 왼쪽 끝(받은 봉이 끝난 자리)을 12봉 넘게 벗어나면 기간을 한 단계 더 불러옴(1.5초에 한 번 · 서버가 이미 다 준 칸은 안 함 · 끝 ×4에서 멈춤)
+let moreAt = 0;
+function autoMore(p, r) {
+  if (!r || !p.st.user || p.st.gone || p.full === false || S.si >= SPANS.length - 1 || r.from > -12) return;
+  const t = Date.now(); if (t - moreAt < 1500) return;
+  moreAt = t; setSpan(S.si + 1);
+}
+function setSpan(i) {
+  i = Math.max(0, Math.min(SPANS.length - 1, i)); if (i === S.si) return;
+  S.si = i; try { localStorage.setItem("one.span", String(SPANS[i])); } catch (e) { /* 무시 */ }
+  Object.values(S.panes).forEach(p => { p.st.user = false; p.first = true; });          // 새 봉 수에 맞춰 다시 맞춤(휠로 확대했던 것도 풀림)
+  spanUi(); loadCharts();
+}
 
 async function api(path) {
   let r;
@@ -668,7 +693,7 @@ function buildPanes() {
     pane.ixl = ixl;
     if (tf === 15) { pane.cloud = new CloudPrim(); cs.attachPrimitive(pane.cloud); }   // v491 구름 칠하기(봉 뒤)
     S.panes[tf] = pane;
-    ch.timeScale().subscribeVisibleLogicalRangeChange(() => tagLater(pane));
+    ch.timeScale().subscribeVisibleLogicalRangeChange(r => { tagLater(pane); autoMore(pane, r); });
     ["wheel", "mouseup", "touchend", "dblclick"].forEach(ev => cv.addEventListener(ev, () => tagLater(pane), { passive: true }));
     try { new ResizeObserver(() => tagLater(pane)).observe(cv); } catch (e) { /* 옛 브라우저 */ }
   });
@@ -685,6 +710,7 @@ function paintPane(tf, d) {
   const p = S.panes[tf];
   if (!p || p.code !== S.code) return;
   const head = p.el.querySelector(".ph");
+  p.full = !!d.ok && d.n >= Math.round((BASE_BARS[tf] || 0) * (d.span || 1) * 0.98);   // v532 서버가 요청한 봉 수를 다 채워 줬으면(더 불러올 과거가 있을 수 있음) true
   if (!d.ok) { if (p.cloud) { p.cloud.set([]); cloudBadge(p, d); } head.innerHTML = `${tf}분봉 <span>${esc(d.why || "자료 없음")}</span>`; p.cs.setData([]); Object.values(p.ma).forEach(s => s.setData([])); return; }
   const st = d.star || {};
   const s = k => st[k] ? `★${k === "sup" ? "지지" : "저항"} ${fmt(st[k].v)}(${esc(st[k].src)})` : "";
@@ -760,7 +786,7 @@ function paintPane(tf, d) {
 async function loadCharts() {
   if (!S.code) return;
   await Promise.all(Object.keys(S.panes).map(async tf => {
-    try { const d = await api(`/api/one/chart?code=${S.code}&tf=${tf}`); const p = S.panes[tf]; if (!p || p.first || !same(`c${tf}:${S.code}`, d)) { same(`c${tf}:${S.code}`, d); paintPane(+tf, d); } }
+    try { const sp = S.si, d = await api(`/api/one/chart?code=${S.code}&tf=${tf}${SPANS[sp] !== 1 ? `&span=${SPANS[sp]}` : ""}`); if (sp !== S.si) return; const p = S.panes[tf]; if (!p || p.first || !same(`c${tf}:${S.code}:${sp}`, d)) { same(`c${tf}:${S.code}:${sp}`, d); paintPane(+tf, d); } }
     catch (e) { const p = S.panes[tf]; if (p) p.el.querySelector(".ph").innerHTML = `${tf}분봉 <span class="bad">${esc(e.message)}</span>`; }
   }));
 }
@@ -1543,6 +1569,7 @@ document.querySelectorAll(".tabs[data-g]").forEach(g => g.querySelectorAll(".tab
   g.querySelectorAll(".tab").forEach(x => x.classList.toggle("on", x === t));
   g.closest(".card").querySelectorAll("[data-p]").forEach(p => p.classList.toggle("hide", p.dataset.p !== t.dataset.t));
 }));
+spanUi(); $("spm").onclick = () => setSpan(S.si - 1); $("spp").onclick = () => setSpan(S.si + 1);
 document.querySelectorAll(".btn[data-mode]").forEach(b => b.onclick = () => {
   S.mode = b.dataset.mode; try { localStorage.setItem("one.mode", S.mode); } catch (e) { /* 무시 */ }
   buildPanes(); loadCharts();
