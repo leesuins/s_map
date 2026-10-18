@@ -4,7 +4,7 @@
 .t5t td.t5ml{white-space:nowrap}
 .t5t td.t5ml .t5d{margin-right:1px}
 .t5t td.t5mlold{opacity:.4}
-.pltag{ position:absolute; inset:0; pointer-events:none; z-index:5; overflow:hidden; }.pltag span{ position:absolute; left:4px; font-size:11px; line-height:15px; padding:0 4px; border-radius:2px; color:#fff; white-space:nowrap; opacity:.88; pointer-events:auto; cursor:default; }.ov60{ position:absolute; inset:0 0 26px 0; z-index:6; pointer-events:none; display:flex; align-items:center; justify-content:center; background:rgba(73,80,87,.34); }.ov60 b{ background:rgba(33,37,41,.86); color:#fff; border:0; border-radius:6px; padding:5px 12px; font-size:13px; line-height:1.35; text-align:center; margin-top:0; box-shadow:0 1px 4px rgba(0,0,0,.15); }.ov60 small{ display:block; font-weight:400; font-size:11px; opacity:.9; }tbody tr.x60 td:nth-child(2){ text-decoration:line-through; text-decoration-thickness:2px; text-decoration-color:#343A40; }.t5chk{ display:inline-flex; align-items:center; gap:4px; border:1px solid #DDE2EA; border-radius:999px; padding:0 10px; font-size:12px; color:#1F2430; cursor:pointer; white-space:nowrap; }.t5chk input{ margin:0; cursor:pointer; } .t5chk:has(input:checked){ border-color:#1E8E5A; background:#E7F6EE; font-weight:700; }.ixc{ margin-left:2px; font-size:10.5px; font-weight:700; color:#1E8E5A; text-decoration:none; display:inline-block; }.ph span.pinlg{ white-space:normal; } .pinlg b{ font-weight:700; margin-right:1px; }
+.pltag{ position:absolute; inset:0; pointer-events:none; z-index:5; overflow:hidden; }.pltag span{ position:absolute; left:4px; font-size:11px; line-height:15px; padding:0 4px; border-radius:2px; color:#fff; white-space:nowrap; opacity:.88; pointer-events:auto; cursor:default; }.ov60{ position:absolute; inset:0 0 26px 0; z-index:6; pointer-events:none; display:flex; align-items:center; justify-content:center; background:rgba(73,80,87,.34); }.ov60 b{ background:rgba(33,37,41,.86); color:#fff; border:0; border-radius:6px; padding:5px 12px; font-size:13px; line-height:1.35; text-align:center; margin-top:0; box-shadow:0 1px 4px rgba(0,0,0,.15); }.ov60 small{ display:block; font-weight:400; font-size:11px; opacity:.9; }tbody tr.x60 td:nth-child(2){ text-decoration:line-through; text-decoration-thickness:2px; text-decoration-color:#343A40; }.t5chk{ display:inline-flex; align-items:center; gap:4px; border:1px solid #DDE2EA; border-radius:999px; padding:0 10px; font-size:12px; color:#1F2430; cursor:pointer; white-space:nowrap; }.t5chk input{ margin:0; cursor:pointer; } .t5chk:has(input:checked){ border-color:#1E8E5A; background:#E7F6EE; font-weight:700; }.ixc{ margin-left:2px; font-size:10.5px; font-weight:700; color:#1E8E5A; text-decoration:none; display:inline-block; } .rcc{ margin-left:3px; font-size:10px; font-weight:700; display:inline-block; font-variant-numeric:tabular-nums; } .rc-hi{ color:#1E8E5A; } .rc-mid{ color:#B7791F; } .rc-lo{ color:#868E96; } .t5t td.t5rc{ text-align:right; font-weight:700; font-variant-numeric:tabular-nums; }.ph span.pinlg{ white-space:normal; } .pinlg b{ font-weight:700; margin-right:1px; }
 /* v490 15분 ☁ 칩 — 색 바탕(정배열·구름 위 = 초록 · 구름 안 = 노랑 · 구름 아래 = 빨강) · 좁으면 줄바꿈 */
 .ph span.ixchip{ display:inline-block; max-width:100%; white-space:normal; padding:0 6px; border-radius:4px; font-weight:700; }
 .ph span.ixg{ background:#D3F9D8; color:#2B8A3E; } .ph span.ixy{ background:#FFF3BF; color:#8F6A00; } .ph span.ixr{ background:#FFE3E3; color:#C92A2A; }
@@ -472,7 +472,7 @@ td.hcw:focus-visible{ outline:2px solid #1864AB; outline-offset:-2px; }
    <button type="button" class="t5all" id="t5all" aria-pressed="false" title="조건검색 조건식 · 선발 단계까지 칸으로">☰ 조건 전부 보기</button><label class="t5chk" title="🛰 종목 레이더가 🟢 NORMAL(정상)·🟡 WATCH(관찰)인 종목만 — 이름 글자색과 같은 값 · 5분봉 없는 종목(모름)은 빠짐 · 다른 거르기와 같이 걸림"><input type="checkbox" id="t5nw"> 🛰 정상·관찰만</label><button type="button" class="t5hfx" id="t5hfx" hidden title="열 제목에서 건 필터를 모두 풀기">열 필터 해제</button><span class="sp"></span><span id="t5cnt" class="mut"></span>
   </div>
   <div class="t5mb">
-   <div class="t5tw"><table class="t5t"><thead><tr><th>#</th><th class="l" data-hk="name">종목</th><th class="l" data-hk="score">점수 /10</th>
+   <div class="t5tw"><table class="t5t"><thead><tr><th>#</th><th class="l" data-hk="name">종목</th><th class="l" data-hk="score">점수 /10</th><th data-hk="rec" title="🔄 회복점수(0~100) — 선이 다시 올라온 정도 · 누르면 높은 순 정렬 · 표시·정렬만(경계점수·순위·매수 규칙과 무관)">회복</th>
     <th title="📊 판단 — 그날 P(LONG) 상위 10% (B-23)" data-hk="judge">판단</th><th title="트랙 — 추세·점화 통과" data-hk="track">트랙</th><th title="👑 왕관 — 자격 1 · 조건부 ½ (가장 최근 마감 회차)" data-hk="crown">👑</th>
     <th title="증거 3개↑" data-hk="evid">증거</th><th title="수급 5일 외국인+기관 순매수 +" data-hk="flow">수급</th><th title="📈 차트 상태 — 긍정 &gt; 부정 (A-19~22)" data-hk="chart">차트</th>
     <th title="52주 고점 근처 — 그날 위 20%" data-hk="hi">고점</th><th title="RS20 ≥ 0 — 지수보다 강함" data-hk="rs">RS</th><th title="20일선 위 + 20일선 오름" data-hk="ma20">20선</th>
@@ -1473,6 +1473,8 @@ function decorateDots() {
       if (nm) {
         const old = nm.querySelector(".ixc");
         if (old) old.remove();
+        const oldr = nm.querySelector(".rcc"); if (oldr) oldr.remove();
+        if (d && d.rec != null && id !== "t5tb") nm.insertAdjacentHTML("beforeend", recChip(d));          // v557 목록 이름 뒤 ↺회복점수
         if (d && d.cloud) { const sp = document.createElement("span"); sp.className = "ixc"; sp.textContent = "(구름)"; sp.title = "15분 구름 위(형 HTS 정배열초입 9·26·52) — 마우스 = 선행1·2·초입가"; nm.appendChild(sp); }
       }                  // v475 ✂ 분봉 60선 4칸 모두 아래 → v476 종목 이름 칸에만 취소선(글자색 그대로 · 표시만)
       [0, 1].forEach(i => {                                         // 순서 숫자 칸 + 종목 이름 칸의 글자색
@@ -1490,7 +1492,10 @@ let dotTry = 0;
 async function loadDots() {
   let d;
   try { d = await api("/api/one/sradars"); } catch (e) { return; }
-  if (d.n) { S.dots = d.dots || {}; decorateDots(); if (T5.nw && T5.d && !$("t5").classList.contains("hide")) t5paint(); }   // v479 레이더 단계가 새로 오면 거른 목록도
+  if (d.n) { const n0 = Object.keys(S.dots || {}).length; S.dots = d.dots || {}; decorateDots();
+    const recUse = (T5.sort && T5.sort.k === "rec") || T5.hf.rec || Object.keys(S.dots).length !== n0;   // v557 회복 열이 새 값으로 채워지게(무한 반복 없게 개수 바뀔 때만)
+    if (T5.nw && T5.d && !$("t5").classList.contains("hide")) t5paint();
+    else if (recUse && T5.d && !$("t5").classList.contains("hide")) t5paint(); }   // v479 레이더 단계가 새로 오면 거른 목록도
   if ((d.busy || !d.n) && dotTry++ < 40) setTimeout(loadDots, 1500);   // 처음 켤 때 뒤에서 계산 중 → 1.5초 뒤 다시(v478 3초 → 1.5초 · ✂는 먼저 옴)
   else if (!d.busy) dotTry = 0;
 }
@@ -1806,11 +1811,18 @@ function t5mlTip(r, tf) {
     + (m.stale ? " — ⚠ 옛 값(캐시가 멈춤 · 지금 값 아님)" : "");
 }
 const t5mlCell = (r, tf) => `<td class="t5x t5ml${(r.ml || {}).stale ? " t5mlold" : ""}" title="${esc(t5mlTip(r, tf))}">${T5ML[tf].map(n => t5dot(t5mlv(r, tf, n))).join("")}</td>`;
+function recChip(d) {                                    // v557 회복점수 작은 표시 — 보기만(경계점수와 별개 · 어떤 합계에도 안 들어감)
+  if (!d || d.rec == null) return "";
+  const n = d.rec, cl = n >= 60 ? "rc-hi" : n >= 30 ? "rc-mid" : "rc-lo";
+  return `<span class="rcc ${cl}" title="회복점수 ${n}/100 — 선이 다시 올라온 정도(표시만 · 경계점수·매수 규칙과 무관)">↺${n}</span>`;
+}
+const t5recCell = c => { const d = (S.dots || {})[c]; return d && d.rec != null ? `<td class="t5rc ${d.rec >= 60 ? "rc-hi" : d.rec >= 30 ? "rc-mid" : "rc-lo"}" title="회복점수 ${d.rec}/100 — 표시·정렬만 · 경계점수와 별개">${d.rec}</td>` : '<td class="t5rc mut">—</td>'; };
 function t5vals(r, k) {                                  // v450 열 제목 필터 — 그 칸에 보이는 값(⚠만 여러 개일 수 있음)
   if (k === "name") return [r.held ? "보유 중" : "미보유"];
   if (k === "score") return [r.score + "점"];
   if (k === "top10") return [r.top10 ? "TOP10 (1~10위)" : "그 밖"];
   if (k === "conds") return [(r.conds || []).length + "개"];
+  if (k === "rec") { const x = ((S.dots || {})[r.code] || {}).rec; return [x == null ? "—" : x + "점"]; }
   if (k === "warn") return r.warn.length ? r.warn.map(String) : ["⚠ 없음"];
   if (k === "g120") return [T5G[(r.g120 || {}).k] || T5G.n];                // v454 120분 20/60 — 골든·데드·위·아래·판정 불가
   if (k === "ml5" || k === "ml15") return [t5mlCat(r, k.slice(2))];        // v466 분봉선
@@ -1826,7 +1838,8 @@ function t5rows(skip) {                                  // skip = 이 열의 �
     : r.warn.length === 0) && hk.every(k => t5vals(r, k).some(v => T5.hf[k].has(v))));
 }
 // v500 형 "TOP 50에는 적용안 했네?" — 점수·매수순·조건식 수 열 제목 = 바로 정렬(점수·조건식은 큰 순부터 · 매수순은 1위부터) · 필터는 제목 옆 ▾ · 화면에서만
-const T5NUM = { score: { v: r => r.score, first: "desc" }, conds: { v: r => (r.conds || []).length, first: "desc" }, top10: { v: r => (r.top10 ? +r.top10 : null), first: "asc" } };
+const T5NUM = { score: { v: r => r.score, first: "desc" }, conds: { v: r => (r.conds || []).length, first: "desc" }, top10: { v: r => (r.top10 ? +r.top10 : null), first: "asc" },
+  rec: { v: r => { const x = ((S.dots || {})[r.code] || {}).rec; return x == null ? null : x; }, first: "desc" } };   // v557 회복점수 열 — 보기·정렬만(경계점수·순위·매수 규칙에는 안 들어감)
 function t5sorted(rs) {
   const so = T5.sort, f = so && T5NUM[so.k]; if (!f) return rs;
   const ix = new Map(rs.map((r, i) => [r.code, i]));
@@ -1853,7 +1866,7 @@ function hfShow(th) {
   const all = new Set(); ((T5.d && T5.d.rows) || []).forEach(r => t5vals(r, k).forEach(v => all.add(v)));
   let vs = [...all];
   const num = x => parseFloat(x);
-  vs.sort((a, b) => k === "score" || k === "conds" ? num(b) - num(a)
+  vs.sort((a, b) => k === "score" || k === "conds" || k === "rec" ? (isNaN(num(b)) ? -1 : isNaN(num(a)) ? 1 : num(b) - num(a))
     : k === "g120" ? T5GV.indexOf(a) - T5GV.indexOf(b)
     : T5DOT.includes(a) && T5DOT.includes(b) ? T5DOT.indexOf(a) - T5DOT.indexOf(b) : a.localeCompare(b, "ko"));
   const on = T5.hf[k];
@@ -1911,7 +1924,7 @@ function t5paint() {
   const d = T5.d;
   if (!d) return;
   t5band(d);
-  if (!d.ok) { $("t5tb").innerHTML = `<tr><td colspan="17" class="l mut">${esc(d.why || "자료 없음")}</td></tr>`; $("t5det").innerHTML = ""; $("t5cnt").textContent = ""; return; }
+  if (!d.ok) { $("t5tb").innerHTML = `<tr><td colspan="18" class="l mut">${esc(d.why || "자료 없음")}</td></tr>`; $("t5det").innerHTML = ""; $("t5cnt").textContent = ""; return; }
   const ct = d.cut || {}, cr = ct.rows || [];                // v468 15분 600선 아래 뺀 것
   $("t5sub").textContent = `${d.day.slice(4, 6)}/${d.day.slice(6)} 예측 기록 ${d.n_all}종목 중 · 👑 ${d.crown_day ? d.crown_day.slice(4, 6) + "/" + d.crown_day.slice(6) + " 마감" : "기록 없음"} · ${String(d.at).slice(11, 16)} 계산`
     + (ct.on ? ` · ✂ 15분 600선 아래 ${cr.length}개 뺌` : "");
@@ -1924,6 +1937,7 @@ function t5paint() {
   $("t5tb").innerHTML = rs.map(r => `<tr tabindex="0" data-c="${esc(r.code)}" data-n="${esc(r.name)}" class="${r.code === T5.sel ? "t5sel" : ""}">
     <td>${r.rank}</td><td class="l nm" title="${esc(r.name)}">${rtMini(r.code)}${twChip(r.code, true)}${twChip(r.code, true) ? " " : ""}${esc(r.name)}${r.held ? '<span class="t5held">보유</span>' : ""}</td>
     <td class="l"><div class="t5sc"><b>${r.score}</b><i style="width:${r.score * 7}px"></i></div></td>
+    ${t5recCell(r.code)}
     ${T5COLS.map(k => `<td>${t5dot(r.ck[k])}</td>`).join("")}<td class="mut">${r.top10 || "—"}</td>
     <td class="t5g t5g${esc((r.g120 || {}).k || "n")}" title="${esc(T5G[(r.g120 || {}).k] || T5G.n)}">${esc((r.g120 || {}).t || "—")}</td>
     <td class="t5x" title="${esc((r.conds || []).join(" · ") || "조건검색에 안 걸림")}">${(r.conds || []).length ? `<span class="t5cn">${r.conds.length}</span>` : '<span class="mut">0</span>'}</td>
@@ -1953,7 +1967,7 @@ function t5mlSec(r) {                                  // v466 상세 — 분봉
 }
 async function openT5() {
   $("t5").classList.remove("hide");
-  if (!T5.d) $("t5tb").innerHTML = '<tr><td colspan="17" class="l mut">계산 중…(처음 한 번은 몇 초)</td></tr>';
+  if (!T5.d) $("t5tb").innerHTML = '<tr><td colspan="18" class="l mut">계산 중…(처음 한 번은 몇 초)</td></tr>';
   try { T5.d = await api("/api/one/top50"); } catch (e) { T5.d = { ok: false, why: `불러오기 실패: ${e.message}`, rows: [] }; }
   t5paint();
 }
