@@ -1618,6 +1618,32 @@ $("ipanes").addEventListener("keydown", e => { const b = e.target.closest(".rbl[
 $("rbx").addEventListener("click", closeRB);
 $("rb").addEventListener("click", e => { if (e.target === $("rb")) { closeRB(); return; } const b = e.target.closest("#rbmodes button"); if (b) { RB.mode = b.dataset.m; rbLoad(); } });
 document.addEventListener("keydown", e => { if (e.key === "Escape") closeRB(); });
+// v554 형 "이쪽 차트에서도 지지 부분 눈에 띄게" — 지수 칸 작은 차트에 ⑬ 일봉 지지 1~3차를 굵은 남색 선 + 오른쪽 이름표로(표시만).
+// 일봉 레벨이라 이름에 '일봉'을 붙임 · 현재가 아래 3% 안 지지는 차트 눈금에 포함시켜 갭 하락 날에도 화면 안에 보이게.
+const SUP_LW = [2, 3, 4], SUP_COL = "#0B1220";
+function paintSup(p, m) {
+  (p.sl || []).forEach(l => { try { p.cs.removePriceLine(l); } catch (e) { /* 무시 */ } });
+  p.sl = [];
+  const rb = m && m.rebound, bars = (m && m.bars) || [];
+  const sups = (rb && rb.ok && (rb.sups || (rb.sup1 ? [rb.sup1] : []))) || [];       // 서버가 옛 코드(sups 없음)면 1차 지지만이라도 그림
+  const last = bars.length ? Number(bars[bars.length - 1].close) : NaN;
+  p.supIn = sups.map(s => Number(s.price)).filter(v => isFinite(last) && v < last && v >= last * 0.97);
+  sups.forEach((s, i) => {
+    try {
+      p.sl.push(p.cs.createPriceLine({ price: Number(s.price), color: SUP_COL, lineWidth: SUP_LW[i] || 4, lineStyle: 0, axisLabelVisible: true,
+        axisLabelColor: SUP_COL, axisLabelTextColor: "#FFFFFF", title: `일봉 ${i + 1}차 지지` }));
+    } catch (e) { /* 무시 */ }
+  });
+  if (!p.supProv) {
+    p.supProv = true;
+    p.cs.applyOptions({ autoscaleInfoProvider: orig => {
+      const r = orig();
+      if (!r || !r.priceRange || !(p.supIn || []).length) return r;
+      const lo = Math.min(r.priceRange.minValue, ...p.supIn), hi = r.priceRange.maxValue;
+      return { priceRange: { minValue: lo, maxValue: hi }, margins: r.margins };
+    } });
+  }
+}
 const IX_LINES = [["conv", "#E03131", 1, 0], ["base", "#E8590C", 2, 0], ["slow", "#2B8A3E", 2, LS.Dashed], ["ema20", "#2F6FED", 1, 0], ["vwap", "#9C36B5", 2, LS.Dotted]];
 function paintMarket(d) {
   S.market = d;
@@ -1647,6 +1673,7 @@ function paintMarket(d) {
     const rbEl = p.el.querySelector(".rbl"); rbEl.dataset.rb = k; rbEl.innerHTML = rbSum(m.rebound);     // v547 ⑬ 반등 관찰 요약 두 줄(누르면 차트)
     rbEl.title = rbTip(m.rebound);
     p.cs.setData(dayAxis(m.bars || []));
+    paintSup(p, m);                                                       // v554 일봉 지지 1~3차 굵은 선
     IX_LINES.forEach(([n]) => p.ls[n].setData((m.lines || {})[n] || []));
     if ((m.bars || []).length) requestAnimationFrame(p.fit);          // 지수는 늘 하루 전체(사람이 확대하면 그대로)
   });
