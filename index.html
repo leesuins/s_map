@@ -1227,9 +1227,9 @@ function rbLadder(g){
   const Y=p=>T+(mx-p)/(mx-mn)*H,f=p=>fmtN(p),lab=[],left=[];
   let o=`<svg class="rb-lad" viewBox="0 0 ${W} ${H+T*2}" role="img" aria-label="지지·저항 가격 사다리">`;
   o+=`<line x1="${X0}" y1="${T}" x2="${X0}" y2="${T+H}" stroke="var(--line)" stroke-width="2"/>`;
-  g.zones.forEach(z=>{const y1=Y(z.hi),y2=Y(z.lo),h=Math.max(8,y2-y1),c=z.below?"var(--down)":"var(--up)";
+  g.zones.forEach(z=>{const y1=Y(z.hi),y2=Y(z.lo),h=Math.max(8,y2-y1),mid=z.lo<g.close&&z.hi>g.close,c=mid?"var(--muted)":z.below?"var(--down)":"var(--up)";
     o+=`<rect x="${X0-34}" y="${y1-(h-(y2-y1))/2}" width="68" height="${h}" rx="3" fill="${c}" opacity=".16"/>`;
-    left.push({y:(y1+y2)/2,x:X0-44,t:`<text text-anchor="end" font-size="12" font-weight="600" fill="${c}">${z.below?"지지 구간":"저항 구간"} ${f(z.lo)}~${f(z.hi)}</text>`})});
+    left.push({y:(y1+y2)/2,x:X0-44,t:`<text text-anchor="end" font-size="12" font-weight="600" fill="${c}">${mid?"현재가 걸친 구간":z.below?"지지 구간":"저항 구간"} ${f(z.lo)}~${f(z.hi)}</text>`})});
   [[g.upper,"위 경계"],[g.lower,"아래 경계"]].forEach(([p,t])=>{const y=Y(p);
     o+=`<line x1="${X0-70}" y1="${y}" x2="${X0+70}" y2="${y}" stroke="var(--muted)" stroke-width="1.2" stroke-dasharray="5 4"/>`;left.push({y,x:X0-78,t:`<text text-anchor="end" font-size="11.5" fill="var(--muted)">${t} ${f(p)} (${p>g.close?"+":"−"}${(g.s5*100).toFixed(1)}%)</text>`})});
   g.levels.forEach(x=>{const up=x.p>g.close,c=up?"var(--up)":"var(--down)",y=Y(x.p);
@@ -1250,7 +1250,7 @@ function reboundHtml(r){const g=reboundGuide(r);if(!g)return`<p class="note">반
   const st=g.early?`<b style="color:var(--ok)">▲ 반등 후보 신호 켜짐</b> — 하락 소진 신호가 겹쳤습니다 (확정 매수 아님)`:`<b>▲ 반등 후보 신호 꺼짐</b> — 반전 확인(D)과 A·B·C 중 2개가 함께 필요 (지금 A·B·C ${g.nABC}개${g.cond.D.ok?"":", 반전 미확인"})`;
   const row=(k,t,c2)=>`<li>${ck(c2.ok)}<span><b>${k}</b> ${t}${c2.last&&!c2.ok?` <small class="muted">(최근 ${md(c2.last)}에 닿음)</small>`:""}</span><span class="num muted">${c2.v||""}</span></li>`;
   const lv=g.levels.slice().reverse().map(x=>`<tr class="${x.p<g.close?"":"rb-up"}"><td class="num">${fmtN(x.p)}</td><td>${esc(x.nm)}</td><td class="num ${x.dist>0?"up":"dn"}">${fmtP(x.dist,1)}</td><td class="num muted">${x.days<0.1?"<0.1":x.days.toFixed(1)}</td></tr>`).join("");
-  const zn=g.zones.map(z=>`<li>${z.below?"지지 후보":"반등 목표"} ${fmtN(z.lo)}~${fmtN(z.hi)} <small class="muted">(${z.n}개 겹침: ${z.names.map(esc).join(", ")})</small></li>`).join("");
+  const zn=g.zones.map(z=>`<li>${z.lo<g.close&&z.hi>g.close?"현재가 걸친 구간":z.below?"지지 후보":"반등 목표"} ${fmtN(z.lo)}~${fmtN(z.hi)} <small class="muted">(${z.n}개 겹침: ${z.names.map(esc).join(", ")})</small></li>`).join("");
   return `<div class="note" style="margin-top:0">${st}</div>
     <ul class="gates">${row("A 위치",g.cond.A.txt,g.cond.A)}${row("B 소진",g.cond.B.txt,g.cond.B)}${row("C 진정",g.cond.C.txt,g.cond.C)}${row("D 확인",g.cond.D.txt,g.cond.D)}</ul>
     <div class="note">확정 ★ 매수 전환(엔진 규칙): 종가 60일선(${fmtN(g.ma60)}) 위 3일 ${ck(g.conf.above3)} · 60일선 상승 전환 ${ck(g.conf.slopeUp)} · 지금 60일선 대비 ${fmtP(g.dist60,1)}</div>
