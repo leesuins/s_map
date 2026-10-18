@@ -123,6 +123,13 @@ tr.pm-row.sel td{background:var(--accent-soft)}
 td.c{text-align:center}
 td.pc{font-family:var(--f-mono);font-variant-numeric:tabular-nums;color:var(--muted)}
 .sec.rb-wide{grid-column:1/-1}.sec.rb-wide .tbl-wrap{max-width:760px}
+.lvc{min-width:176px}.lvt{display:flex;justify-content:space-between;gap:10px;font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}.lvt .dn{color:var(--down)}.lvt .up{color:var(--up)}
+.lvb{position:relative;height:10px;margin:4px 0 3px}.lvb:before{content:"";position:absolute;left:0;right:0;top:4px;height:2px;background:var(--line)}.lvb .s,.lvb .r{position:absolute;top:0;width:3px;height:10px}.lvb .s{left:0;background:var(--down)}.lvb .r{right:0;background:var(--up)}.lvb b{position:absolute;top:-1px;width:12px;height:12px;margin-left:-6px;border-radius:50%;background:var(--fg);border:2px solid var(--surface);box-shadow:0 0 0 1px var(--fg)}
+.kbw{position:relative;display:block}.lvchip{position:absolute;right:3px;top:50%;transform:translateY(-50%);font-size:10.5px;font-weight:700;border-radius:999px;padding:0 6px;line-height:16px;white-space:nowrap}.lvchip.s{color:var(--down);background:var(--down-soft)}.lvchip.r{color:var(--up);background:var(--up-soft)}.lvchip.z{color:var(--muted);background:var(--surface-2)}.lvchip.v{color:var(--violet);background:var(--violet-soft)}
+.wk-lv{margin:6px 0 0;font-size:13px;line-height:1.5}.wk-lv .dn{color:var(--down)}.wk-lv .up{color:var(--up)}
+.lvw{margin:10px 0;border:1px solid var(--line);border-radius:8px;padding:8px 12px;background:var(--surface)}.lvw summary{cursor:pointer;font-weight:700;font-size:14px}.lvw-ax{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin:8px 0 2px 92px;max-width:520px}
+.lvw-r{display:flex;align-items:center;gap:8px;margin:6px 0}.lvw-n{width:84px;font-size:13px}.lvw-n small{display:block;font-size:11px;color:var(--muted)}.lvw-t{position:relative;flex:1;max-width:520px;height:34px;background:var(--bg);border-radius:6px}.lvw-t .bd{position:absolute;top:0;bottom:0;background:#DDE2E9;border-radius:6px}.lvw-t .cur{position:absolute;left:50%;top:-2px;bottom:-2px;width:2px;background:var(--fg)}.lvw-t .tk{position:absolute;top:10px;bottom:10px;width:3px;margin-left:-1px;opacity:.55}.lvw-t .tk.s{background:var(--down)}.lvw-t .tk.r{background:var(--up)}.lvw-t .tk.nr{top:4px;bottom:4px;opacity:1}
+.lvp{margin-top:6px}.lvp-r{display:flex;gap:12px;padding:6px 0;border-top:1px solid var(--surface-2);font-size:13px}.lvp-r>b{flex:none;width:74px}.lvp-r .dn{color:var(--down)}.lvp-r .up{color:var(--up)}
 .rb-lad-wrap{margin:8px 0}.rb-lad{width:100%;max-width:780px;height:auto;display:block;background:var(--surface);border:1px solid var(--line);border-radius:8px}.rb-leg{margin-top:4px}.rb-det{margin:6px 0}.rb-det summary{cursor:pointer;font-size:12.5px;color:var(--muted)}.rb-zn{list-style:none;margin:6px 0;padding:0;font-size:12.5px}.rb-zn li{display:block;padding:2px 0}.rb-up td{color:var(--muted)}.rb-now td{background:var(--surface-2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
 td.pc.mx{font-weight:800;color:var(--fg)}   /* 세 확률 중 가장 큰 칸 = 굵게 (판단과 무관) */
 td.pc.on-l{color:var(--up);font-weight:700;box-shadow:inset 0 -2px 0 var(--up)}
@@ -1097,16 +1104,49 @@ function nextTD(d,n){let t=new Date(d+"T12:00:00Z"),c=0;while(c<n){t.setUTCDate(
 function dateBanner(){const ok=results.filter(r=>!r.error);if(!ok.length)return"";const cl=ok.map(r=>r.isProv&&r.official?r.official.lastDate:r.lastDate).filter(Boolean),cnt={};cl.forEach(x=>cnt[x]=(cnt[x]||0)+1);
   const base=Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a]||(a<b?1:-1))[0];if(!base)return"";const pv=ok.filter(r=>r.isProv&&r.provInfo&&r.provInfo.t).map(r=>r.provInfo.t).sort().pop(),a=nextTD(base,1),z=nextTD(base,5);
   return`<div class="dbn"><div class="dbn-i"><small>① 분석 기준</small><b>${mdw(base)} 종가</b>${pv?`<em>+ 잠정 시세 ${kstHM(pv)} 반영</em>`:""}</div><div class="dbn-a">→</div><div class="dbn-i on"><small>② 예상 시작</small><b>${mdw(a)}</b><em>다음 거래일</em></div><div class="dbn-a">→</div><div class="dbn-i"><small>③ 전망 기간 (오를·횡보·내릴 확률)</small><b>${mdw(a)} ~ ${mdw(z)}</b><em>향후 5거래일</em></div></div>`}
+
+// ── 레벨 요약 (표시 전용: 판단·확률·비중에 쓰이지 않음) ─────────────────────────────
+const LV_CACHE=new WeakMap();
+function lvInfo(r){if(!r||r.error)return null;if(LV_CACHE.has(r))return LV_CACHE.get(r);
+  const g=reboundGuide(r);let o=null;
+  if(g){const dn=g.levels.filter(x=>x.p<g.close).sort((a,b)=>b.p-a.p)[0]||null,up=g.levels.filter(x=>x.p>g.close).sort((a,b)=>a.p-b.p)[0]||null,mid=g.zones.find(z=>z.lo<g.close&&z.hi>g.close),tol=0.75*g.atr;
+    let chip=null;if(g.early)chip={t:"▲ 후보",c:"v"};else if(mid)chip={t:"겹침 구간",c:"z"};
+    else{const dd=dn?g.close-dn.p:1e18,du=up?up.p-g.close:1e18,m=Math.min(dd,du);if(m<=tol)chip=dd<=du?{t:"지지 근접",c:"s"}:{t:"저항 근접",c:"r"}}
+    o={g,dn,up,chip}}
+  LV_CACHE.set(r,o);return o}
+function lvCell(r){const L=lvInfo(r);if(!L)return`<span class="muted">–</span>`;const{g,dn,up}=L,
+  pos=dn&&up?Math.round((g.close-dn.p)/(up.p-dn.p)*100):50,short=x=>x?fmtN(x.p)+" "+fmtP(x.dist,1):"–";
+  return`<div class="lvc"><div class="lvt"><span class="dn" title="${dn?esc(dn.nm):""}">▼ ${short(dn)}</span><span class="up" title="${up?esc(up.nm):""}">▲ ${short(up)}</span></div>
+    <div class="lvb"><i class="s"></i><i class="r"></i><b style="left:${pos}%"></b></div>
+    <small class="muted">${g.early?'<b style="color:var(--ok)">▲ 켜짐</b>':"▲ 꺼짐"} · A·B·C ${g.nABC}개${g.early?"":g.cond.D.ok?"":" · 반전 미확인"}</small></div>`}
+function lvChip(id){const r=results.find(x=>x.id===id),L=r&&lvInfo(r);return L&&L.chip?`<span class="lvchip ${L.chip.c}">${L.chip.t}</span>`:""}
+function lvLine(){const r=results.find(x=>x.id==="kospi"),L=lvInfo(r);if(!L)return"";const{g,dn,up}=L;
+  return`<p class="wk-lv">📍 <b>${esc(dn?dn&&"코스피":"코스피")}</b>는 ${dn?`<b class="dn">지지 ${fmtN(dn.p)}</b> (${fmtP(dn.dist,1)})`:"아래 지지 없음"}와 ${up?`<b class="up">저항 ${fmtN(up.p)}</b> (${fmtP(up.dist,1)})`:"위 저항 없음"} 사이 · 5일 경계 ±${(g.s5*100).toFixed(1)}% · ▲ 반등 후보 ${g.early?"켜짐":"꺼짐"} <small class="muted">(표시 전용 · 미검증)</small></p>`}
+function lvWeekBlock(r){const ids=["kospi","kosdaq","ndx","spx"].filter(id=>results.find(x=>x.id===id&&!x.error));if(!ids.length)return"";
+  const NM={kospi:"코스피",kosdaq:"코스닥",ndx:"나스닥100",spx:"S&P500"},X=d=>Math.max(0,Math.min(100,50+d/8*50));
+  const rows=ids.map(id=>{const L=lvInfo(results.find(x=>x.id===id));if(!L)return"";const{g,dn,up}=L,sp=g.s5*100,
+    ticks=g.levels.filter(x=>Math.abs(x.dist)<=8).map(x=>{const near=(dn&&x.p===dn.p)||(up&&x.p===up.p);return`<i class="tk ${x.p<g.close?"s":"r"}${near?" nr":""}" style="left:${X(x.dist)}%" title="${esc(x.nm)} ${fmtN(x.p)} (${fmtP(x.dist,1)})"></i>`}).join("");
+    return`<div class="lvw-r"><div class="lvw-n"><b>${NM[id]}</b><small>경계 ±${sp.toFixed(1)}%</small></div><div class="lvw-t"><i class="bd" style="left:${X(-sp)}%;width:${X(sp)-X(-sp)}%"></i>${ticks}<i class="cur"></i></div></div>`}).join("");
+  const w0=String(r.week||"").slice(0,10),days=["월","화","수","목","금"],dts=days.map((_,k)=>{if(!/^\d{4}-\d\d-\d\d$/.test(w0))return"";const t=new Date(w0+"T12:00:00Z");t.setUTCDate(t.getUTCDate()+k);return t.toISOString().slice(5,10).replace("-","/")});
+  const per=days.map(()=>[]),far=[];
+  ids.forEach(id=>{const L=lvInfo(results.find(x=>x.id===id));if(!L)return;[L.dn,L.up].forEach(x=>{if(!x)return;const k=Math.max(1,Math.ceil(x.days));const t=`${NM[id]} <b class="${x.p<L.g.close?"dn":"up"}">${fmtN(x.p)}</b> (${fmtP(x.dist,1)})`;if(k<=5)per[k-1].push(t);else far.push(t)})});
+  const plan=days.map((d,k)=>`<div class="lvp-r"><b>${d}${dts[k]?` <small>${dts[k]}</small>`:""}</b><span>${per[k].length?per[k].join(" · ")+` <small class="muted">닿을 수 있는 날 후보</small>`:`<span class="muted">${k===4?"주간 채점: 5일 경계 안에서 마감했나 · 건드린 레벨 기록":"가까운 레벨 없음"}</span>`}</span></div>`).join("");
+  return`<details class="lvw" open><summary>📍 주간 레벨 지도 · 요일별 점검 <small class="muted">표시 전용 — 비중·판단은 그대로</small></summary>
+    <div class="lvw-ax"><span>−8%</span><span>−4%</span><span>0</span><span>+4%</span><span>+8%</span></div>${rows}
+    <p class="note">가운데 검정 선 = 현재가, 회색 띠 = 5일 1σ 경계, 파랑 = 지지, 빨강 = 저항(진한 눈금 = 가장 가까운 레벨). 시장 기준 ${esc(String(r.base||""))} 종가.</p>
+    <div class="lvp">${plan}</div>
+    <p class="note">요일은 무작위보행 가정의 전형적 도달 거래일(≈일 올림)이며 예측이 아닙니다.${far.length?` 이번 주 밖: ${far.join(" · ")}`:""}</p></details>`}
 function renderTable(){
-  let h=`<thead><tr><th>시장</th><th>판단</th><th class="c">오를 확률<br><small>향후 5거래일</small></th><th class="c">횡보 확률<br><small>향후 5거래일</small></th><th class="c">내릴 확률<br><small>향후 5거래일</small></th><th>신뢰도</th><th>시장 국면</th><th class="c" title="이 규칙이 이 시장에서 과거에 맞힌 비율 (5일 뒤 기준)">적중률</th><th class="c">우선순위</th><th class="adv">주의 신호</th></tr></thead><tbody>`;
+  let h=`<thead><tr><th>시장</th><th>판단</th><th class="c">오를 확률<br><small>향후 5거래일</small></th><th class="c">횡보 확률<br><small>향후 5거래일</small></th><th class="c">내릴 확률<br><small>향후 5거래일</small></th><th class="adv" title="가장 가까운 지지(▼)·저항(▲)과 현재가 위치. 표시 전용 — 판단에 쓰이지 않음">가까운 레벨<br><small>반등 관찰</small></th><th>신뢰도</th><th>시장 국면</th><th class="c" title="이 규칙이 이 시장에서 과거에 맞힌 비율 (5일 뒤 기준)">적중률</th><th class="c">우선순위</th><th class="adv">주의 신호</th></tr></thead><tbody>`;
   for(const r of results){
     const sel=r.id===state.sel?" sel":"";
-    if(r.error){h+=`<tr class="pm-row${sel}" data-id="${r.id}"><td><b>${esc(dn(r))}</b></td><td colspan="9" class="muted">${esc(r.error)}</td></tr>`;continue}
+    if(r.error){h+=`<tr class="pm-row${sel}" data-id="${r.id}"><td><b>${esc(dn(r))}</b></td><td colspan="10" class="muted">${esc(r.error)}</td></tr>`;continue}
     h+=`<tr class="pm-row${sel}" data-id="${r.id}" tabindex="0">
       <td><b>${esc(dn(r))}</b><div class="rdt">${r.isProv&&r.official?`${md(r.official.lastDate)} 종가 · <b>${md(r.lastDate)} 잠정</b>`:`${md(r.lastDate)} 종가`}</div></td>
       <td>${posPill(r)}${r.isProv?`<span class="pv-badge" title="${r.provInfo.claude?"Claude가 웹에서 확인한 값":r.provInfo.manual?"직접 입력값":r.provInfo.hub?"허브 실시간 값":"실시간 현재가"} ${fmtN(r.provInfo.price)}를 임시 종가로 넣고 계산했습니다">잠정</span><div class="prov${r.provInfo.changed?" chg":""}">종가 기준: ${r.official.wait?WAIT_KO[r.official.wait]:FINAL_KO[r.official.final]} · ${r.official.pU}/${r.official.pS}/${r.official.pD}${r.provInfo.changed?" → 판단 달라짐":r.provInfo.dU?` → 오를 ${r.provInfo.dU>0?"+":""}${r.provInfo.dU}p`:""}</div>`:""}${r.prov?`<div class="prov${r.prov.changed?" chg":""}" title="현재가 ${fmtN(r.prov.price)}를 오늘의 임시 종가로 넣고 계산한 결과입니다. 공식 판단은 종가 확정 후 바뀝니다.">${r.prov.manual?"입력값 잠정":"장중 잠정"}: ${r.prov.wait?WAIT_KO[r.prov.wait]:FINAL_KO[r.prov.final]} · ${r.prov.pU}/${r.prov.pS}/${r.prov.pD}${r.prov.changed?" (달라짐)":r.prov.dU||r.prov.dD?` (오를 ${r.prov.dU>=0?"+":""}${r.prov.dU}p)`:" (변화 없음)"}</div>`:""}</td>
       ${(()=>{const mx=Math.max(r.pU,r.pS,r.pD),m=v=>v===mx?" mx":"",tt=(k)=>` title="${k}${r.pos===({u:"LONG",s:"CASH",d:"SHORT"})[k==="오를"?"u":k==="횡보"?"s":"d"]?" · 지금 판단과 같은 칸 (색 밑줄)":""}${({오를:r.pU,횡보:r.pS,내릴:r.pD})[k]===mx?" · 세 확률 중 가장 큼 (굵은 글씨)":""}"`;
         return`<td class="c pc${r.pos==="LONG"?" on-l":""}${m(r.pU)}"${tt("오를")}>${r.pU}%</td><td class="c pc${r.pos==="CASH"?" on-c":""}${m(r.pS)}"${tt("횡보")}>${r.pS}%</td><td class="c pc${r.pos==="SHORT"?" on-s":""}${m(r.pD)}"${tt("내릴")}>${r.pD}%</td>`})()}
+      <td class="adv">${lvCell(r)}</td>
       <td><div class="conf"><div class="track"><div class="fill" style="width:${r.conf}%"></div></div><span class="num">${r.conf}</span></div></td>
       <td>${rgTag(r.reg.r)}</td>
       <td class="c">${trCell(r.tr,r.pos)}</td>
@@ -2073,7 +2113,7 @@ function calDaily(){const c=calSt(),ym=calYm(),[y,mo]=ym.split("-").map(Number),
       const hol=(HOLIDAYS.kr.has(ds)?"한국 휴장":"")+(HOLIDAYS.us.has(ds)?(HOLIDAYS.kr.has(ds)?"·":"")+"미국 휴장":"");
       const pd=predDay(ds),clickable=any||useRep||!!pd;
       h+=`<button type="button" class="cc${inM?"":" out"}${ds===last?" last":""}${future?" fut":""}${c.sel==="d:"+ds?" sel":""}" ${clickable?`data-day="${ds}"`:"disabled"}><span class="dn">${t.getUTCDate()}${hol?` <i>${hol}</i>`:""}${ds===last?' <i class="now">최근</i>':""}</span>`+
-        (clickable?ids.map(id=>{if(CAL_OF[id]&&!isTradingDay(ds,CAL_OF[id]))return`<span class="kb b-no">${!one?`<em>${CAL_SHORT[id]}</em>`:""}<span class="t">휴장</span></span>`;const lx=pd&&pd.m[id]?predX(pd.m[id]):null;if(lx)return calBar(lx,id,{name:!one,live:true});const rx=useRep&&rep.engine[id]?rep.engine[id].full:null;const x=rx||(A[id]&&A[id][ds]);return calBar(x,id,{name:!one,star:!!rx})}).join("")+(one&&recs[0][1]&&!useRep?`<span class="cp">${recs[0][1].pU}/${recs[0][1].pS}/${recs[0][1].pD}</span>`:""):"")+`</button>`}
+        (clickable?ids.map(id=>{if(CAL_OF[id]&&!isTradingDay(ds,CAL_OF[id]))return`<span class="kb b-no">${!one?`<em>${CAL_SHORT[id]}</em>`:""}<span class="t">휴장</span></span>`;const lx=pd&&pd.m[id]?predX(pd.m[id]):null;if(lx)return`<span class="kbw">${calBar(lx,id,{name:!one,live:true})}${ds===last?lvChip(id):""}</span>`;const rx=useRep&&rep.engine[id]?rep.engine[id].full:null;const x=rx||(A[id]&&A[id][ds]);return calBar(x,id,{name:!one,star:!!rx})}).join("")+(one&&recs[0][1]&&!useRep?`<span class="cp">${recs[0][1].pU}/${recs[0][1].pS}/${recs[0][1].pD}</span>`:""):"")+`</button>`}
     const wr=ids.map(id=>[id,WA[id]&&WA[id][ms]]),wany=wr.some(r=>r[1])||rep;
     h+=`<button type="button" class="cc wk${c.sel==="w:"+ms?" sel":""}" ${wany?`data-wk="${ms}"`:"disabled"}>`+
       (rep?`<span class="wkx"><span class="wk-bar mini"><i class="l" style="width:${rep.exposure.long}%"></i><i class="c" style="width:${rep.exposure.cash}%"></i></span><b>매수 ${rep.exposure.long}%</b> <small>경보 ${esc(rep.alert.ko)}</small></span>`:"")+
@@ -2170,12 +2210,13 @@ function renderWeekly(){const el=$("#wkBody");if(!el)return;if(!WEEKLY_RECS.leng
   if(sel)sel.value=i;
   const ex=r.exposure||{long:0,cash:100,short:0},al=r.alert||{},live=wkLiveAlert(),rep=r.report||{};
   const A=WK_ALERT[al.stage]||WK_ALERT.N,Lv=live&&WK_ALERT[live.st];
-  let h=`<div class="wk-top"><div class="wk-head"><div class="eyebrow">${esc(r.week)} · 기준 ${esc(r.base)} 종가</div><h3>${esc(kn(rep.headline||""))}</h3><p class="wk-line">“${esc(kn(rep.line||""))}”</p></div>
+  let h=`<div class="wk-top"><div class="wk-head"><div class="eyebrow">${esc(r.week)} · 기준 ${esc(r.base)} 종가</div><h3>${esc(kn(rep.headline||""))}</h3><p class="wk-line">“${esc(kn(rep.line||""))}”</p>${i===0?lvLine():""}</div>
    <div class="wk-expo"><div class="wk-bar" role="img" aria-label="매수 ${ex.long}% 관망 ${ex.cash}% 매도 ${ex.short||0}%"><i class="l" style="width:${ex.long}%"></i><i class="c" style="width:${ex.cash}%"></i><i class="s" style="width:${ex.short||0}%"></i></div>
    <div class="wk-bl"><span><b class="lc">매수 ${ex.long}%</b></span><span><b class="cc2">관망 ${ex.cash}%</b></span><span><b class="sc">매도 ${ex.short||0}%</b></span></div>
    <div class="wk-al"><span class="al al-${A.c}">경보 ${A.ko}</span><small>${al.change?`10년물 ${al.change.d10>0?"+":""}${al.change.d10}bp · 나스닥 ${fmtP(al.change.nd,2)} · 달러/원 ${fmtP(al.change.fx,2)} · WTI ${fmtP(al.change.oil,2)}`:""}</small>
    ${i===0&&live?`<span class="al al-${Lv.c}" title="지금 데이터(${live.asOf} 주)로 다시 계산">지금 ${Lv.ko}</span>${live.st!==al.stage?`<small class="warn">리포트 때와 달라짐 → 비중 ${Lv.adj-A.adj>0?"+":""}${Lv.adj-A.adj}%p 검토</small>`:""}`:""}</div></div></div>`;
   if(rep.why)h+=`<ul class="wk-why">${rep.why.map(x=>`<li>${esc(kn(x))}</li>`).join("")}</ul>`;
+  if(i===0)h+=lvWeekBlock(r);
   if(rep.full)h+=`<details class="wk-fullbox"><summary>📖 상세 리포트 (전염 경로 · 시장별 이유 · 요일별 플랜 · 삼성 실적 케이스 · 경보 · 시나리오)</summary><pre class="wk-full">${esc(kn(rep.full))}</pre></details>`;
   const EQS={kospi:1,kosdaq:1,ndx:1,spx:1},grp=id=>{const sd=wkSide(r.engine[id].full.j);return sd>0?(WK_RATE[id]?1:0):sd<0?(WK_RATE[id]?1:2):3},
     key=id=>wkEdge(r.engine[id])+(EQS[id]?3:0)+(r.engine[id].full.pU-r.engine[id].full.pD)/10;
