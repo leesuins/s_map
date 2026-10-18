@@ -1286,25 +1286,28 @@ function rbLadder(g){
   left.forEach(l=>l.ty=l.y);left.sort((a,b)=>a.y-b.y);for(let i=1;i<left.length;i++)if(left[i].ty-left[i-1].ty<16)left[i].ty=left[i-1].ty+16;
   left.forEach(l=>{o+=l.t.replace("<text ",`<text x="${l.x}" y="${l.ty+4}" `)});
   return o+`</svg>`}
+let RB_SPAN=120; // 레벨 차트 기간(거래일): 60=3개월·120=6개월(기본)·250=12개월
+function setRbSpan(n){RB_SPAN=n;try{renderDetail()}catch(e){}}
+function rbSpanBar(){return `<div class="rb-span" style="display:flex;gap:4px;align-items:center;margin:2px 0 4px"><span class="muted" style="font-size:12px">기간</span>${[[60,"3개월"],[120,"6개월"],[250,"12개월"]].map(([n,t])=>`<button type="button" onclick="setRbSpan(${n})" style="font:inherit;font-size:12px;padding:2px 9px;border-radius:999px;border:1px solid var(--line);cursor:pointer;background:${RB_SPAN===n?"var(--fg)":"var(--surface)"};color:${RB_SPAN===n?"var(--surface)":"var(--fg)"}">${t}</button>`).join("")}</div>`}
 function rbChartE(g,r){
   // 시안 E (2026-10-18): 최근 60거래일 + 미래 25일 1σ 콘. 콘 안쪽만 층 색을 진하게, 오른쪽에 닿는 데 걸리는 일수 막대. 표시 전용
   try{
-  const bars=(r.bars||[]).filter(b=>b.c>0),N=60;if(bars.length<N+60)return"";
+  const bars=(r.bars||[]).filter(b=>b.c>0),N=Math.min(RB_SPAN,bars.length-60);if(N<30)return"";
   const c=bars.map(b=>b.c),n=c.length,H0=n-N,close=g.close,sd=g.sd20,F=25;
   const ma=(k,m)=>{let t=0;for(let j=k-m+1;j<=k;j++)t+=c[j];return t/m};
-  const W=860,Ht=350,X0=10,BW=8,XN=X0+BW*(N-1),XF=XN+BW*F,GX=XF+22,Y0=16,Y1=300,fp=p=>fmtN(p);
+  const W=860,Ht=350,X0=10,BW=8,XN=X0+472,BWh=472/(N-1),XF=XN+BW*F,GX=XF+22,Y0=16,Y1=300,fp=p=>fmtN(p);
   const merge=a=>{const o=[];a.forEach(x=>{if(!o.length||Math.abs(x.p/o[o.length-1].p-1)>0.006)o.push(x)});return o};
   const ups=merge(g.levels.filter(x=>x.p>close*1.0005).sort((a,b)=>a.p-b.p)).slice(0,3),dns=merge(g.levels.filter(x=>x.p<close*0.9995).sort((a,b)=>b.p-a.p)).slice(0,2);
   const cone=k=>({u:close*Math.exp(sd*Math.sqrt(k)),d:close*Math.exp(-sd*Math.sqrt(k))});
   const ys=[close,g.upper,g.lower,cone(F).u,cone(F).d,...ups.map(x=>x.p),...dns.map(x=>x.p),...c.slice(-N)].filter(x=>x>0);
-  let mx=Math.max(...ys.filter(x=>x<=close*1.2)),mn=Math.min(...ys.filter(x=>x>=close*0.8));const pad=(mx-mn)*0.04;mx+=pad;mn-=pad;
-  const Y=p=>Y0+(mx-p)/(mx-mn)*(Y1-Y0),X=k=>X0+BW*k,id="e"+String(r.id).replace(/\W/g,"");
+  const lim=N<=60?0.2:0.5;let mx=Math.max(...ys.filter(x=>x<=close*(1+lim))),mn=Math.min(...ys.filter(x=>x>=close*(1-lim)));const pad=(mx-mn)*0.04;mx+=pad;mn-=pad;
+  const Y=p=>Y0+(mx-p)/(mx-mn)*(Y1-Y0),X=k=>X0+BWh*k,id="e"+String(r.id).replace(/\W/g,"");
   const conePts=[];for(let k=0;k<=F;k++)conePts.push([XN+BW*k,Y(cone(k).u)]);const dnPts=[];for(let k=F;k>=0;k--)dnPts.push([XN+BW*k,Y(cone(k).d)]);
   const poly=a=>a.map(q=>q[0].toFixed(1)+","+q[1].toFixed(1)).join(" ");
   const RED="var(--up)",BLU="var(--down)";
   const bandsA=[],lastU=[close,...ups.map(x=>x.p)],lastD=[close,...dns.map(x=>x.p)],aU=[.26,.16,.09],aD=[.26,.16];
   const rect=(hi,lo,col,op,clip)=>`<rect x="${X0}" y="${Y(hi)}" width="${XF-X0}" height="${Math.max(1,Y(lo)-Y(hi))}" fill="${col}" opacity="${op}"${clip?` clip-path="url(#${id}k)"`:""}/>`;
-  let o=`<svg class="rb-lad rb-e" viewBox="0 0 ${W} ${Ht+16}" role="img" aria-label="코스피 같은 시장의 최근 60거래일 종가와 미래 25거래일 1시그마 콘, 지지·저항 층과 닿는 데 걸리는 일수">`;
+  let o=`<svg class="rb-lad rb-e" viewBox="0 0 ${W} ${Ht+16}" role="img" aria-label="코스피 같은 시장의 최근 ${N}거래일 종가와 미래 25거래일 1시그마 콘, 지지·저항 층과 닿는 데 걸리는 일수">`;
   o+=`<defs><clipPath id="${id}p"><rect x="${X0}" y="${Y0}" width="${XF-X0}" height="${Y1-Y0}"/></clipPath><clipPath id="${id}k"><polygon points="${poly(conePts.concat(dnPts))}"/></clipPath></defs>`;
   o+=`<rect x="${XN}" y="${Y0}" width="${XF-XN}" height="${Y1-Y0}" fill="var(--surface-2)"/>`;
   o+=`<g clip-path="url(#${id}p)">`;
@@ -1340,7 +1343,7 @@ function rbChartE(g,r){
 function topHasE(r){return !(r.pos==="LONG"||r.pos==="SHORT")}
 function topChart(r){ // 관망(포지션 없음)이면 레벨 차트(시안 E)가 종가·20/60일선·경계를 모두 포함 → 차트 하나만 표시. 포지션 있으면 목표·손절선 때문에 기존 차트 유지
   if(r.pos==="LONG"||r.pos==="SHORT")return chartSVG(r);
-  try{const g=reboundGuide(r),e=g&&rbChartE(g,r);if(e)return `<div class="rb-lad-wrap">${e}<div class="note rb-leg">빨강 층 = 위쪽 반등 자리(1·2·3차) · 파랑 층 = 아래쪽 지지(1·2차) · 회색 콘 = 1σ 범위(5일째가 위·아래 경계) · 선 끝 동그라미 = 그 가격에 닿는 전형적 거래일(예측 아님) · 반등 레벨은 미검증, 판단·비중에 쓰이지 않는 관찰용</div></div>`}catch(e){}
+  try{const g=reboundGuide(r),e=g&&rbChartE(g,r);if(e)return `<div class="rb-lad-wrap">${rbSpanBar()}${e}<div class="note rb-leg">빨강 층 = 위쪽 반등 자리(1·2·3차) · 파랑 층 = 아래쪽 지지(1·2차) · 회색 콘 = 1σ 범위(5일째가 위·아래 경계) · 선 끝 동그라미 = 그 가격에 닿는 전형적 거래일(예측 아님) · 반등 레벨은 미검증, 판단·비중에 쓰이지 않는 관찰용</div></div>`}catch(e){}
   return chartSVG(r)}
 function reboundHtml(r){const g=reboundGuide(r);if(!g)return`<p class="note">반등 관찰: 데이터가 부족합니다 (130거래일 필요)</p>`;
   const ck=ok=>`<span class="${ok?"ck-ok":"ck-no"}">${ok?"✓":"✗"}</span>`,md=d=>d?d.slice(5).replace("-","/"):"";
@@ -1351,7 +1354,7 @@ function reboundHtml(r){const g=reboundGuide(r);if(!g)return`<p class="note">반
   return `<div class="note" style="margin-top:0">${st}</div>
     <ul class="gates">${row("A 위치",g.cond.A.txt,g.cond.A)}${row("B 소진",g.cond.B.txt,g.cond.B)}${row("C 진정",g.cond.C.txt,g.cond.C)}${row("D 확인",g.cond.D.txt,g.cond.D)}</ul>
     <div class="note">확정 ★ 매수 전환(엔진 규칙): 종가 60일선(${fmtN(g.ma60)}) 위 3일 ${ck(g.conf.above3)} · 60일선 상승 전환 ${ck(g.conf.slopeUp)} · 지금 60일선 대비 ${fmtP(g.dist60,1)}</div>
-    <div class="rb-lad-wrap">${topHasE(r)?"":(rbChartE(g,r)||rbLadder(g))}<div class="note rb-leg" ${topHasE(r)?"hidden":""}>빨강 층 = 위쪽 반등 자리(1·2·3차) · 파랑 층 = 아래쪽 지지(1·2차) · 회색 콘 = 1σ 범위(5일째가 위·아래 경계)로, 콘 안쪽만 색이 진합니다 · 선 끝의 동그라미 = 그 가격에 닿는 데 걸리는 전형적 거래일(무작위보행 가정, 예측 아님)</div></div>
+    <div class="rb-lad-wrap">${topHasE(r)?"":(rbSpanBar()+(rbChartE(g,r)||rbLadder(g)))}<div class="note rb-leg" ${topHasE(r)?"hidden":""}>빨강 층 = 위쪽 반등 자리(1·2·3차) · 파랑 층 = 아래쪽 지지(1·2차) · 회색 콘 = 1σ 범위(5일째가 위·아래 경계)로, 콘 안쪽만 색이 진합니다 · 선 끝의 동그라미 = 그 가격에 닿는 데 걸리는 전형적 거래일(무작위보행 가정, 예측 아님)</div></div>
     <details class="rb-det"><summary>예전 가격 사다리로 보기</summary>${rbLadder(g)}</details>
     <details class="rb-det"><summary>숫자 표로 보기</summary><div class="tbl-wrap"><table class="mini rb"><thead><tr><th class="num">가격</th><th>레벨</th><th class="num">현재가 대비</th><th class="num" title="무작위보행 가정에서 전형적으로 닿는 데 걸리는 거래일 (예측 아님)">≈거래일</th></tr></thead><tbody>${lv}<tr class="rb-now"><td class="num"><b>${fmtN(g.close)}</b></td><td><b>현재가 (${md(g.date)} 종가)</b></td><td></td><td></td></tr></tbody></table></div>${zn?`<ul class="rb-zn">${zn}</ul>`:""}</details>
     <div class="note">위 경계 ${fmtN(g.upper)} · 아래 경계 ${fmtN(g.lower)} (5일 1σ ±${(g.s5*100).toFixed(2)}%). <b style="color:var(--warn)">미검증</b> — ${g.useReal?"일봉 시가·고가·저가 반영":"일봉 고가·저가가 없어 종가로 근사"}. 2020-08~2026-10 실제 고저가로 검증한 결과 ▲ 신호 뒤 5·10일 성적은 평소와 통계적 차이가 없었고(코스피 ▲ 54번 평균 +0.58% · 상승 59% vs 평소 +0.38% · 56%) 일부 시장(SOX·S&P500)은 오히려 약했습니다. 판단·비중에는 쓰이지 않는 관찰용입니다.</div>`}
