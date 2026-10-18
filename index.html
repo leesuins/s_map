@@ -123,7 +123,7 @@ tr.pm-row.sel td{background:var(--accent-soft)}
 td.c{text-align:center}
 td.pc{font-family:var(--f-mono);font-variant-numeric:tabular-nums;color:var(--muted)}
 .sec.rb-wide{grid-column:1/-1}.sec.rb-wide .tbl-wrap{max-width:760px}
-.rb-zn{list-style:none;margin:6px 0;padding:0;font-size:12.5px}.rb-zn li{display:block;padding:2px 0}.rb-up td{color:var(--muted)}.rb-now td{background:var(--surface-2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.rb-lad-wrap{margin:8px 0}.rb-lad{width:100%;max-width:780px;height:auto;display:block;background:var(--surface);border:1px solid var(--line);border-radius:8px}.rb-leg{margin-top:4px}.rb-det{margin:6px 0}.rb-det summary{cursor:pointer;font-size:12.5px;color:var(--muted)}.rb-zn{list-style:none;margin:6px 0;padding:0;font-size:12.5px}.rb-zn li{display:block;padding:2px 0}.rb-up td{color:var(--muted)}.rb-now td{background:var(--surface-2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
 td.pc.mx{font-weight:800;color:var(--fg)}   /* 세 확률 중 가장 큰 칸 = 굵게 (판단과 무관) */
 td.pc.on-l{color:var(--up);font-weight:700;box-shadow:inset 0 -2px 0 var(--up)}
 td.pc.on-c{color:var(--cash);font-weight:700;box-shadow:inset 0 -2px 0 var(--cash)}
@@ -1221,6 +1221,30 @@ function reboundGuide(r){
   const above3=c.slice(-3).every((x,q)=>x>ma(i-2+q,60)),conf={above3,slopeUp:ma60>ma60p,dist:(close/ma60-1)*100};
   return{useReal,close,date:bars[i].d,ma60,dist60:conf.dist,rsi:rsi[i],atr:A,sd20,sd60,s5:r.s5,upper:close*(1+r.s5),lower:close*(1-r.s5),fib:F,levels:L,zones:Z,cond,nABC,early,conf,hasV}
   }catch(e){return null}}
+function rbLadder(g){
+  // 가격 사다리: 위=저항(빨강) · 아래=지지(파랑), 현재가·5일 경계·겹침 구간을 가격 비율 그대로 배치
+  const W=760,H=330,T=14,X0=250,pr=[g.upper,g.lower,g.close,...g.levels.map(x=>x.p)],mx0=Math.max(...pr),mn0=Math.min(...pr),pad=(mx0-mn0)*0.05,mx=mx0+pad,mn=mn0-pad;
+  const Y=p=>T+(mx-p)/(mx-mn)*H,f=p=>fmtN(p),lab=[],left=[];
+  let o=`<svg class="rb-lad" viewBox="0 0 ${W} ${H+T*2}" role="img" aria-label="지지·저항 가격 사다리">`;
+  o+=`<line x1="${X0}" y1="${T}" x2="${X0}" y2="${T+H}" stroke="var(--line)" stroke-width="2"/>`;
+  g.zones.forEach(z=>{const y1=Y(z.hi),y2=Y(z.lo),h=Math.max(8,y2-y1),c=z.below?"var(--down)":"var(--up)";
+    o+=`<rect x="${X0-34}" y="${y1-(h-(y2-y1))/2}" width="68" height="${h}" rx="3" fill="${c}" opacity=".16"/>`;
+    left.push({y:(y1+y2)/2,x:X0-44,t:`<text text-anchor="end" font-size="12" font-weight="600" fill="${c}">${z.below?"지지 구간":"저항 구간"} ${f(z.lo)}~${f(z.hi)}</text>`})});
+  [[g.upper,"위 경계"],[g.lower,"아래 경계"]].forEach(([p,t])=>{const y=Y(p);
+    o+=`<line x1="${X0-70}" y1="${y}" x2="${X0+70}" y2="${y}" stroke="var(--muted)" stroke-width="1.2" stroke-dasharray="5 4"/>`;left.push({y,x:X0-78,t:`<text text-anchor="end" font-size="11.5" fill="var(--muted)">${t} ${f(p)} (${p>g.close?"+":"−"}${(g.s5*100).toFixed(1)}%)</text>`})});
+  g.levels.forEach(x=>{const up=x.p>g.close,c=up?"var(--up)":"var(--down)",y=Y(x.p);
+    o+=`<line x1="${X0-30}" y1="${y}" x2="${X0+30}" y2="${y}" stroke="${c}" stroke-width="${x.k==="fib"?1.6:2.6}" ${x.k==="fib"?'stroke-dasharray="4 3"':""}/>`;
+    lab.push({y,ty:y,x,c})});
+  lab.sort((a,b)=>a.y-b.y);for(let i=1;i<lab.length;i++)if(lab[i].ty-lab[i-1].ty<17)lab[i].ty=lab[i-1].ty+17;
+  lab.forEach(l=>{const x=l.x,nm=x.nm.replace(" · 지지","").replace(" · 저항","").replace("(반등 저항)","·저항").replace("(눌림 지지)","·지지");
+    o+=`<polyline points="${X0+30},${l.y} ${X0+50},${l.ty} ${X0+62},${l.ty}" fill="none" stroke="${l.c}" stroke-width="1" opacity=".5"/>`;
+    o+=`<text x="${X0+66}" y="${l.ty+4}" font-size="12.5" fill="var(--fg)"><tspan font-weight="700" fill="${l.c}">${f(x.p)}</tspan> ${esc(nm)} <tspan fill="var(--muted)">${fmtP(x.dist,1)} · ≈${x.days<0.1?"0.1":x.days.toFixed(1)}일</tspan></text>`});
+  const yc=Y(g.close);
+  o+=`<line x1="${X0-90}" y1="${yc}" x2="${X0+90}" y2="${yc}" stroke="var(--fg)" stroke-width="2.6"/><polygon points="${X0-98},${yc-6} ${X0-86},${yc} ${X0-98},${yc+6}" fill="var(--fg)"/>`;
+  left.push({y:yc,x:X0-104,t:`<text text-anchor="end" font-size="13" font-weight="800" fill="var(--fg)">현재 ${f(g.close)}</text>`});
+  left.forEach(l=>l.ty=l.y);left.sort((a,b)=>a.y-b.y);for(let i=1;i<left.length;i++)if(left[i].ty-left[i-1].ty<16)left[i].ty=left[i-1].ty+16;
+  left.forEach(l=>{o+=l.t.replace("<text ",`<text x="${l.x}" y="${l.ty+4}" `)});
+  return o+`</svg>`}
 function reboundHtml(r){const g=reboundGuide(r);if(!g)return`<p class="note">반등 관찰: 데이터가 부족합니다 (130거래일 필요)</p>`;
   const ck=ok=>`<span class="${ok?"ck-ok":"ck-no"}">${ok?"✓":"✗"}</span>`,md=d=>d?d.slice(5).replace("-","/"):"";
   const st=g.early?`<b style="color:var(--ok)">▲ 반등 후보 신호 켜짐</b> — 하락 소진 신호가 겹쳤습니다 (확정 매수 아님)`:`<b>▲ 반등 후보 신호 꺼짐</b> — 반전 확인(D)과 A·B·C 중 2개가 함께 필요 (지금 A·B·C ${g.nABC}개${g.cond.D.ok?"":", 반전 미확인"})`;
@@ -1230,8 +1254,8 @@ function reboundHtml(r){const g=reboundGuide(r);if(!g)return`<p class="note">반
   return `<div class="note" style="margin-top:0">${st}</div>
     <ul class="gates">${row("A 위치",g.cond.A.txt,g.cond.A)}${row("B 소진",g.cond.B.txt,g.cond.B)}${row("C 진정",g.cond.C.txt,g.cond.C)}${row("D 확인",g.cond.D.txt,g.cond.D)}</ul>
     <div class="note">확정 ★ 매수 전환(엔진 규칙): 종가 60일선(${fmtN(g.ma60)}) 위 3일 ${ck(g.conf.above3)} · 60일선 상승 전환 ${ck(g.conf.slopeUp)} · 지금 60일선 대비 ${fmtP(g.dist60,1)}</div>
-    <div class="tbl-wrap"><table class="mini rb"><thead><tr><th class="num">가격</th><th>레벨</th><th class="num">현재가 대비</th><th class="num" title="무작위보행 가정에서 전형적으로 닿는 데 걸리는 거래일 (예측 아님)">≈거래일</th></tr></thead><tbody>${lv}<tr class="rb-now"><td class="num"><b>${fmtN(g.close)}</b></td><td><b>현재가 (${md(g.date)} 종가)</b></td><td></td><td></td></tr></tbody></table></div>
-    ${zn?`<ul class="rb-zn">${zn}</ul>`:""}
+    <div class="rb-lad-wrap">${rbLadder(g)}<div class="note rb-leg">빨강 = 위쪽 저항 · 파랑 = 아래쪽 지지 · 굵은 선 = 과거 저점·고점·매물대, 점선 = 피보나치 · 옅은 음영 = 레벨 2개 이상이 겹친 구간 · 회색 점선 = 5일 1σ 경계 · ≈일 = 무작위보행 가정에서 닿는 데 걸리는 전형적 거래일(예측 아님)</div></div>
+    <details class="rb-det"><summary>숫자 표로 보기</summary><div class="tbl-wrap"><table class="mini rb"><thead><tr><th class="num">가격</th><th>레벨</th><th class="num">현재가 대비</th><th class="num" title="무작위보행 가정에서 전형적으로 닿는 데 걸리는 거래일 (예측 아님)">≈거래일</th></tr></thead><tbody>${lv}<tr class="rb-now"><td class="num"><b>${fmtN(g.close)}</b></td><td><b>현재가 (${md(g.date)} 종가)</b></td><td></td><td></td></tr></tbody></table></div>${zn?`<ul class="rb-zn">${zn}</ul>`:""}</details>
     <div class="note">위 경계 ${fmtN(g.upper)} · 아래 경계 ${fmtN(g.lower)} (5일 1σ ±${(g.s5*100).toFixed(2)}%). <b style="color:var(--warn)">미검증</b> — ${g.useReal?"일봉 시가·고가·저가 반영":"일봉 고가·저가가 없어 종가로 근사"}. 2020-08~2026-10 실제 고저가로 검증한 결과 ▲ 신호 뒤 5·10일 성적은 평소와 통계적 차이가 없었고(코스피 ▲ 54번 평균 +0.58% · 상승 59% vs 평소 +0.38% · 56%) 일부 시장(SOX·S&P500)은 오히려 약했습니다. 판단·비중에는 쓰이지 않는 관찰용입니다.</div>`}
 function renderDetail(){
   const r=results.find(x=>x.id===state.sel)||results[0];const el=$("#detail");
