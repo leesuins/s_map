@@ -1205,7 +1205,7 @@ function reboundGuide(r){
   hvnAt(i).forEach(p=>lev.push({p,k:"hvn",nm:"매물대"}));
   const L=lev.filter(x=>Math.abs(x.p/close-1)<=RB.range).sort((a,b)=>a.p-b.p);
   L.forEach(x=>{if(x.k!=="fib")x.nm+=" · "+(x.p<close?"지지":"저항");x.dist=(x.p/close-1)*100;x.days=Math.pow(Math.abs(Math.log(x.p/close))/sd20,2)});
-  const A=atr[i],zones=[];let cur=[];L.forEach(x=>{if(cur.length&&x.p-cur[0].p>A){zones.push(cur);cur=[]}cur.push(x)});if(cur.length)zones.push(cur);
+  const A=atr[i],zones=[];let cur=[];L.forEach(x=>{if(cur.length&&x.p-cur[0].p>A*0.75){zones.push(cur);cur=[]}cur.push(x)});if(cur.length)zones.push(cur);
   const Z=zones.filter(z=>z.length>=2).map(z=>({lo:z[0].p,hi:z[z.length-1].p,n:z.length,below:z[z.length-1].p<close,names:z.map(x=>x.nm)}));
   // 조건 A~D (그날까지의 자료만): 직전 60·120일 저점, 직전 구간 피보 눌림, 매물대에 종가가 ATR×0.75 안으로 닿았나
   const touchAt=k=>{const tol=RB.tolAtr*atr[k];if(!tol)return false;const w=(N)=>LW.slice(Math.max(0,k-N),k),wh=(N)=>HG.slice(Math.max(0,k-N),k),mn=a=>Math.min(...a),mxx=a=>Math.max(...a);
@@ -1214,7 +1214,7 @@ function reboundGuide(r){
   const touch=[];for(let q=0;q<3;q++)touch.push({d:bars[i-q].d,hit:touchAt(i-q)});
   const rsiMin3=Math.min(rsi[i],rsi[i-1],rsi[i-2]);
   const cond={A:{ok:touch[0].hit,last:(touch.find(x=>x.hit)||{}).d||null,txt:"종가가 지지 레벨(직전 60·120일 저점·피보 눌림·매물대) ATR×0.75 안에 닿음"},
-    B:{ok:rsiMin3<RB.rsiOS&&rsi[i]>rsi[i-1],v:`RSI ${rsi[i].toFixed(0)} (최근 3일 최저 ${rsiMin3.toFixed(0)})`,txt:"RSI가 30 아래였다가 오늘 올라섬"},
+    B:{ok:rsiMin3<=RB.rsiOS&&rsi[i]>rsi[i-1],v:`RSI ${rsi[i].toFixed(0)} (최근 3일 최저 ${rsiMin3.toFixed(0)})`,txt:"RSI가 30 아래였다가 오늘 올라섬"},
     C:{ok:sd20/sd60<=RB.calm&&atr[i]<atr[i-3],v:`σ20/σ60 ${(sd20/sd60).toFixed(2)} · ATR ${atr[i]<atr[i-3]?"감소":"증가"}`,txt:"변동성비 1.3 이하 + ATR이 3일 전보다 작음"},
     D:useReal?{ok:c[i]>o[i]&&c[i]>h[i-1],txt:"양봉 + 종가가 어제 고가 위 (반전 확인)"}:{ok:c[i]>c[i-1],txt:"오늘 종가가 어제 종가 위 (반전 확인 — 일봉 시가·고가가 없어 근사)"}};
   const nABC=[cond.A,cond.B,cond.C].filter(x=>x.ok).length,early=cond.D.ok&&nABC>=2;
