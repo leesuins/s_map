@@ -1337,6 +1337,11 @@ function rbChartE(g,r){
   o+=`<line x1="150" y1="${Y1+16}" x2="170" y2="${Y1+16}" stroke="#B7791F" stroke-width="2"/><text x="175" y="${Y1+20}">20일선</text><line x1="225" y1="${Y1+16}" x2="245" y2="${Y1+16}" stroke="#4C84C4" stroke-width="2.4"/><text x="250" y="${Y1+20}">60일선 ${fp(g.ma60)}</text></g>`;
   o+=`<text x="${X0}" y="${Ht+8}" font-size="10.5" fill="var(--muted)">● 콘의 5일째 점 = 5일 1σ 경계: 위 ${fp(cone(5).u)} (+${(g.s5*100).toFixed(1)}%) · 아래 ${fp(cone(5).d)} (−${(g.s5*100).toFixed(1)}%)</text>`;
   return o+`</svg>`}catch(e){return""}}
+function topHasE(r){return !(r.pos==="LONG"||r.pos==="SHORT")}
+function topChart(r){ // 관망(포지션 없음)이면 레벨 차트(시안 E)가 종가·20/60일선·경계를 모두 포함 → 차트 하나만 표시. 포지션 있으면 목표·손절선 때문에 기존 차트 유지
+  if(r.pos==="LONG"||r.pos==="SHORT")return chartSVG(r);
+  try{const g=reboundGuide(r),e=g&&rbChartE(g,r);if(e)return `<div class="rb-lad-wrap">${e}<div class="note rb-leg">빨강 층 = 위쪽 반등 자리(1·2·3차) · 파랑 층 = 아래쪽 지지(1·2차) · 회색 콘 = 1σ 범위(5일째가 위·아래 경계) · 선 끝 동그라미 = 그 가격에 닿는 전형적 거래일(예측 아님) · 반등 레벨은 미검증, 판단·비중에 쓰이지 않는 관찰용</div></div>`}catch(e){}
+  return chartSVG(r)}
 function reboundHtml(r){const g=reboundGuide(r);if(!g)return`<p class="note">반등 관찰: 데이터가 부족합니다 (130거래일 필요)</p>`;
   const ck=ok=>`<span class="${ok?"ck-ok":"ck-no"}">${ok?"✓":"✗"}</span>`,md=d=>d?d.slice(5).replace("-","/"):"";
   const st=g.early?`<b style="color:var(--ok)">▲ 반등 후보 신호 켜짐</b> — 하락 소진 신호가 겹쳤습니다 (확정 매수 아님)`:`<b>▲ 반등 후보 신호 꺼짐</b> — 반전 확인(D)과 A·B·C 중 2개가 함께 필요 (지금 A·B·C ${g.nABC}개${g.cond.D.ok?"":", 반전 미확인"})`;
@@ -1346,7 +1351,7 @@ function reboundHtml(r){const g=reboundGuide(r);if(!g)return`<p class="note">반
   return `<div class="note" style="margin-top:0">${st}</div>
     <ul class="gates">${row("A 위치",g.cond.A.txt,g.cond.A)}${row("B 소진",g.cond.B.txt,g.cond.B)}${row("C 진정",g.cond.C.txt,g.cond.C)}${row("D 확인",g.cond.D.txt,g.cond.D)}</ul>
     <div class="note">확정 ★ 매수 전환(엔진 규칙): 종가 60일선(${fmtN(g.ma60)}) 위 3일 ${ck(g.conf.above3)} · 60일선 상승 전환 ${ck(g.conf.slopeUp)} · 지금 60일선 대비 ${fmtP(g.dist60,1)}</div>
-    <div class="rb-lad-wrap">${rbChartE(g,r)||rbLadder(g)}<div class="note rb-leg">빨강 층 = 위쪽 반등 자리(1·2·3차) · 파랑 층 = 아래쪽 지지(1·2차) · 회색 콘 = 1σ 범위(5일째가 위·아래 경계)로, 콘 안쪽만 색이 진합니다 · 선 끝의 동그라미 = 그 가격에 닿는 데 걸리는 전형적 거래일(무작위보행 가정, 예측 아님)</div></div>
+    <div class="rb-lad-wrap">${topHasE(r)?"":(rbChartE(g,r)||rbLadder(g))}<div class="note rb-leg" ${topHasE(r)?"hidden":""}>빨강 층 = 위쪽 반등 자리(1·2·3차) · 파랑 층 = 아래쪽 지지(1·2차) · 회색 콘 = 1σ 범위(5일째가 위·아래 경계)로, 콘 안쪽만 색이 진합니다 · 선 끝의 동그라미 = 그 가격에 닿는 데 걸리는 전형적 거래일(무작위보행 가정, 예측 아님)</div></div>
     <details class="rb-det"><summary>예전 가격 사다리로 보기</summary>${rbLadder(g)}</details>
     <details class="rb-det"><summary>숫자 표로 보기</summary><div class="tbl-wrap"><table class="mini rb"><thead><tr><th class="num">가격</th><th>레벨</th><th class="num">현재가 대비</th><th class="num" title="무작위보행 가정에서 전형적으로 닿는 데 걸리는 거래일 (예측 아님)">≈거래일</th></tr></thead><tbody>${lv}<tr class="rb-now"><td class="num"><b>${fmtN(g.close)}</b></td><td><b>현재가 (${md(g.date)} 종가)</b></td><td></td><td></td></tr></tbody></table></div>${zn?`<ul class="rb-zn">${zn}</ul>`:""}</details>
     <div class="note">위 경계 ${fmtN(g.upper)} · 아래 경계 ${fmtN(g.lower)} (5일 1σ ±${(g.s5*100).toFixed(2)}%). <b style="color:var(--warn)">미검증</b> — ${g.useReal?"일봉 시가·고가·저가 반영":"일봉 고가·저가가 없어 종가로 근사"}. 2020-08~2026-10 실제 고저가로 검증한 결과 ▲ 신호 뒤 5·10일 성적은 평소와 통계적 차이가 없었고(코스피 ▲ 54번 평균 +0.58% · 상승 59% vs 평소 +0.38% · 56%) 일부 시장(SOX·S&P500)은 오히려 약했습니다. 판단·비중에는 쓰이지 않는 관찰용입니다.</div>`}
@@ -1406,7 +1411,7 @@ function renderDetail(){
       <div><h3>조심할 점</h3>${r.risks.length?`<ul>${r.risks.slice(0,4).map(t=>`<li>${esc(ko(t))}</li>`).join("")}</ul>`:'<p class="muted" style="margin:0">두드러진 반대 요인 없음</p>'}</div>
       <div><h3>이렇게 되면 판단이 틀린 것</h3><p style="margin:0;font-size:13px">${esc(ko(r.scenario))}</p></div>
     </div>
-    ${chartSVG(r)}${plan}
+    ${topChart(r)}${plan}
     <div class="secs adv">
       ${sec("①","현재 상태",kv([["종가",fmtN(m.close)],["5일 수익률",fmtP(m.ret5)],["20일 수익률",fmtP(m.ret20)],["과열 지표 RSI(14)",m.rsi.toFixed(0)],["60일 고점 대비",fmtP(m.dd)]]))}
       ${sec("②","시장 국면",`<div style="margin-bottom:4px">${rgTag(r.reg.r)} <span class="muted" style="font-size:12px">5일 전 ${REG_KO[r.regPrev]}</span></div><div class="note">${esc(ko(r.reg.why))}</div>`)}
