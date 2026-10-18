@@ -122,6 +122,8 @@ tr.pm-row:hover td{background:var(--surface-2)}
 tr.pm-row.sel td{background:var(--accent-soft)}
 td.c{text-align:center}
 td.pc{font-family:var(--f-mono);font-variant-numeric:tabular-nums;color:var(--muted)}
+.sec.rb-wide{grid-column:1/-1}.sec.rb-wide .tbl-wrap{max-width:760px}
+.rb-zn{list-style:none;margin:6px 0;padding:0;font-size:12.5px}.rb-zn li{display:block;padding:2px 0}.rb-up td{color:var(--muted)}.rb-now td{background:var(--surface-2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
 td.pc.mx{font-weight:800;color:var(--fg)}   /* 세 확률 중 가장 큰 칸 = 굵게 (판단과 무관) */
 td.pc.on-l{color:var(--up);font-weight:700;box-shadow:inset 0 -2px 0 var(--up)}
 td.pc.on-c{color:var(--cash);font-weight:700;box-shadow:inset 0 -2px 0 var(--cash)}
@@ -1172,6 +1174,59 @@ function chartSVG(r){
     <div class="legend"><span><i style="background:var(--fg)"></i>종가</span><span><i style="background:var(--cash)"></i>20일선</span><span><i style="background:var(--accent);height:3px"></i>60일선 (핵심 추세 필터)</span>${r.pos==="CASH"?"<span>점선: 이 가격을 넘나들면 판단을 다시 봅니다</span>":"<span>점선: 목표가·손절가</span>"}</div>`;
 }
 
+
+/* ===== 반등 관찰 (2026-10-18, 미검증): 피보나치·과거 저점/고점·매물대 레벨 + 하락 소진 신호. 종가만 쓰는 근사(일봉 고가·저가 없음). 판단 규칙에는 영향 없음 =====
+   조기 신호 ▲ = 반전 확인(D, 필수) + [레벨 터치 A · 하락 소진 B · 변동성 진정 C] 중 2개 이상.  확정 ★ = 엔진 규칙(종가 60일선 위 3일 + 60일선 상승 + 확률차·신뢰도) */
+const RB={fibR:[0.236,0.382,0.5,0.618],lb:120,pw:5,keep:3,hvnLb:250,hvnBins:50,hvnTop:4,tolAtr:0.75,rsiOS:30,calm:1.3,range:0.15};
+function reboundGuide(r){
+  try{
+  const bars=(r.bars||[]).filter(b=>b.c>0),n=bars.length;if(n<130)return null;
+  const c=bars.map(b=>b.c),v=bars.map(b=>b.v||0),hasV=v.some(x=>x>0),i=n-1,close=c[i];
+  const sd=a=>{const mu=a.reduce((x,y)=>x+y,0)/a.length;return Math.sqrt(a.reduce((x,y)=>x+(y-mu)**2,0)/a.length)};
+  const ret=c.map((x,k)=>k?x/c[k-1]-1:0),sd20=sd(ret.slice(-20)),sd60=sd(ret.slice(-60));
+  const wil=(arr,N)=>{const o=[];let a=null;arr.forEach((x,k)=>{if(k===0){o.push(null);return}a=a==null?x:a+(x-a)/N;o.push(a)});return o};   // Wilder 평활
+  const tr=c.map((x,k)=>k?Math.abs(x-c[k-1]):0),atr=wil(tr,14);
+  const up=c.map((x,k)=>k?Math.max(x-c[k-1],0):0),dn=c.map((x,k)=>k?Math.max(c[k-1]-x,0):0),au=wil(up,14),ad=wil(dn,14),rsi=au.map((x,k)=>x==null||!ad[k]?null:100-100/(1+x/ad[k]));
+  const ma=(k,N)=>{let s=0;for(let j=k-N+1;j<=k;j++)s+=c[j];return s/N},ma60=ma(i,60),ma60p=ma(i-5,60);
+  const fibAt=k=>{const lo0=Math.max(0,k-RB.lb+1);let hi=-1e18,lo=1e18,hiI=0,loI=0;for(let j=lo0;j<=k;j++){if(c[j]>hi){hi=c[j];hiI=j}if(c[j]<lo){lo=c[j];loI=j}}return{hi,lo,down:hiI<loI}};
+  const lev=[],F=fibAt(i);
+  RB.fibR.forEach(x=>lev.push({p:F.down?F.lo+x*(F.hi-F.lo):F.hi-x*(F.hi-F.lo),k:"fib",nm:`피보나치 ${(x*100).toFixed(1)}% (${F.down?"반등 저항":"눌림 지지"})`}));
+  const lows=[],highs=[];for(let j=RB.pw;j<=n-1-RB.pw;j++){let isL=true,isH=true;for(let q=j-RB.pw;q<=j+RB.pw;q++){if(c[q]<c[j])isL=false;if(c[q]>c[j])isH=false}if(isL)lows.push(j);if(isH)highs.push(j)}
+  lows.slice(-RB.keep).forEach(j=>lev.push({p:c[j],k:"low",nm:`과거 저점 ${bars[j].d.slice(5).replace("-","/")}`}));highs.slice(-RB.keep).forEach(j=>lev.push({p:c[j],k:"high",nm:`과거 고점 ${bars[j].d.slice(5).replace("-","/")}`}));
+  const hvnAt=k=>{if(!hasV)return[];const a=Math.max(0,k-RB.hvnLb+1),seg=c.slice(a,k+1),vs=v.slice(a,k+1),mn=Math.min(...seg),mx=Math.max(...seg),w=(mx-mn)/RB.hvnBins||1,h=Array(RB.hvnBins).fill(0);
+    seg.forEach((x,q)=>{h[Math.min(RB.hvnBins-1,Math.floor((x-mn)/w))]+=vs[q]});const pk=[];for(let q=1;q<RB.hvnBins-1;q++)if(h[q]>=h[q-1]&&h[q]>=h[q+1])pk.push(q);
+    return pk.sort((x,y)=>h[y]-h[x]).slice(0,RB.hvnTop).map(q=>mn+(q+0.5)*w)};
+  hvnAt(i).forEach(p=>lev.push({p,k:"hvn",nm:"매물대"}));
+  const L=lev.filter(x=>Math.abs(x.p/close-1)<=RB.range).sort((a,b)=>a.p-b.p);
+  L.forEach(x=>{if(x.k!=="fib")x.nm+=" · "+(x.p<close?"지지":"저항");x.dist=(x.p/close-1)*100;x.days=Math.pow(Math.abs(Math.log(x.p/close))/sd20,2)});
+  const A=atr[i],zones=[];let cur=[];L.forEach(x=>{if(cur.length&&x.p-cur[0].p>A){zones.push(cur);cur=[]}cur.push(x)});if(cur.length)zones.push(cur);
+  const Z=zones.filter(z=>z.length>=2).map(z=>({lo:z[0].p,hi:z[z.length-1].p,n:z.length,below:z[z.length-1].p<close,names:z.map(x=>x.nm)}));
+  // 조건 A~D (그날까지의 자료만): 직전 60·120일 저점, 직전 구간 피보 눌림, 매물대에 종가가 ATR×0.75 안으로 닿았나
+  const touchAt=k=>{const tol=RB.tolAtr*atr[k];if(!tol)return false;const w=(N)=>c.slice(Math.max(0,k-N),k),mn=a=>Math.min(...a),mxx=a=>Math.max(...a);
+    const sup=[mn(w(60)),mn(w(120))],Fk=(()=>{const a=w(RB.lb);return{hi:mxx(a),lo:mn(a)}})();RB.fibR.forEach(x=>sup.push(Fk.hi-x*(Fk.hi-Fk.lo)));
+    if(k%1===0)hvnAt(k-1).forEach(p=>sup.push(p));return sup.some(p=>Math.abs(c[k]-p)<=tol)};
+  const touch=[];for(let q=0;q<3;q++)touch.push({d:bars[i-q].d,hit:touchAt(i-q)});
+  const rsiMin3=Math.min(rsi[i],rsi[i-1],rsi[i-2]);
+  const cond={A:{ok:touch[0].hit,last:(touch.find(x=>x.hit)||{}).d||null,txt:"종가가 지지 레벨(직전 60·120일 저점·피보 눌림·매물대) ATR×0.75 안에 닿음"},
+    B:{ok:rsiMin3<RB.rsiOS&&rsi[i]>rsi[i-1],v:`RSI ${rsi[i].toFixed(0)} (최근 3일 최저 ${rsiMin3.toFixed(0)})`,txt:"RSI가 30 아래였다가 오늘 올라섬"},
+    C:{ok:sd20/sd60<=RB.calm&&atr[i]<atr[i-3],v:`σ20/σ60 ${(sd20/sd60).toFixed(2)} · ATR ${atr[i]<atr[i-3]?"감소":"증가"}`,txt:"변동성비 1.3 이하 + ATR이 3일 전보다 작음"},
+    D:{ok:c[i]>c[i-1],txt:"오늘 종가가 어제 종가 위 (반전 확인 — 일봉 시가·고가가 없어 근사)"}};
+  const nABC=[cond.A,cond.B,cond.C].filter(x=>x.ok).length,early=cond.D.ok&&nABC>=2;
+  const above3=c.slice(-3).every((x,q)=>x>ma(i-2+q,60)),conf={above3,slopeUp:ma60>ma60p,dist:(close/ma60-1)*100};
+  return{close,date:bars[i].d,ma60,dist60:conf.dist,rsi:rsi[i],atr:A,sd20,sd60,s5:r.s5,upper:close*(1+r.s5),lower:close*(1-r.s5),fib:F,levels:L,zones:Z,cond,nABC,early,conf,hasV}
+  }catch(e){return null}}
+function reboundHtml(r){const g=reboundGuide(r);if(!g)return`<p class="note">반등 관찰: 데이터가 부족합니다 (130거래일 필요)</p>`;
+  const ck=ok=>`<span class="${ok?"ck-ok":"ck-no"}">${ok?"✓":"✗"}</span>`,md=d=>d?d.slice(5).replace("-","/"):"";
+  const st=g.early?`<b style="color:var(--ok)">▲ 반등 후보 신호 켜짐</b> — 하락 소진 신호가 겹쳤습니다 (확정 매수 아님)`:`<b>▲ 반등 후보 신호 꺼짐</b> — 반전 확인(D)과 A·B·C 중 2개가 함께 필요 (지금 A·B·C ${g.nABC}개${g.cond.D.ok?"":", 반전 미확인"})`;
+  const row=(k,t,c2)=>`<li>${ck(c2.ok)}<span><b>${k}</b> ${t}${c2.last&&!c2.ok?` <small class="muted">(최근 ${md(c2.last)}에 닿음)</small>`:""}</span><span class="num muted">${c2.v||""}</span></li>`;
+  const lv=g.levels.slice().reverse().map(x=>`<tr class="${x.p<g.close?"":"rb-up"}"><td class="num">${fmtN(x.p)}</td><td>${esc(x.nm)}</td><td class="num ${x.dist>0?"up":"dn"}">${fmtP(x.dist,1)}</td><td class="num muted">${x.days<0.1?"<0.1":x.days.toFixed(1)}</td></tr>`).join("");
+  const zn=g.zones.map(z=>`<li>${z.below?"지지 후보":"반등 목표"} ${fmtN(z.lo)}~${fmtN(z.hi)} <small class="muted">(${z.n}개 겹침: ${z.names.map(esc).join(", ")})</small></li>`).join("");
+  return `<div class="note" style="margin-top:0">${st}</div>
+    <ul class="gates">${row("A 위치",g.cond.A.txt,g.cond.A)}${row("B 소진",g.cond.B.txt,g.cond.B)}${row("C 진정",g.cond.C.txt,g.cond.C)}${row("D 확인",g.cond.D.txt,g.cond.D)}</ul>
+    <div class="note">확정 ★ 매수 전환(엔진 규칙): 종가 60일선(${fmtN(g.ma60)}) 위 3일 ${ck(g.conf.above3)} · 60일선 상승 전환 ${ck(g.conf.slopeUp)} · 지금 60일선 대비 ${fmtP(g.dist60,1)}</div>
+    <div class="tbl-wrap"><table class="mini rb"><thead><tr><th class="num">가격</th><th>레벨</th><th class="num">현재가 대비</th><th class="num" title="무작위보행 가정에서 전형적으로 닿는 데 걸리는 거래일 (예측 아님)">≈거래일</th></tr></thead><tbody>${lv}<tr class="rb-now"><td class="num"><b>${fmtN(g.close)}</b></td><td><b>현재가 (${md(g.date)} 종가)</b></td><td></td><td></td></tr></tbody></table></div>
+    ${zn?`<ul class="rb-zn">${zn}</ul>`:""}
+    <div class="note">위 경계 ${fmtN(g.upper)} · 아래 경계 ${fmtN(g.lower)} (5일 1σ ±${(g.s5*100).toFixed(2)}%). <b style="color:var(--warn)">미검증</b> — 일봉 고가·저가가 없어 종가로 근사했고, 과거 신호 성적은 평소와 차이가 없었습니다(코스피 ▲ 22번 평균 −0.25% · 상승 59% vs 평소 +0.72% · 59%). 판단·비중에는 쓰이지 않는 관찰용입니다.</div>`}
 function renderDetail(){
   const r=results.find(x=>x.id===state.sel)||results[0];const el=$("#detail");
   if(!r){el.innerHTML="";return}
@@ -1242,6 +1297,7 @@ function renderDetail(){
       ${sec("⑩","기대수익 · 손익비 (5일)",kv([["매수 기대수익",fmtP(r.L.ev,2)],["매수 손익비",r.L.rr.toFixed(2)+"배"],["매도 기대수익",fmtP(r.Sh.ev,2)],["매도 손익비",r.Sh.rr.toFixed(2)+"배"],["5일 평균 흔들림",(r.s5*100).toFixed(2)+"%"]]))}
       ${sec("⑪","최종 판단",`<div>${posPill(r)} <span class="muted" style="font-size:12px">${FINAL_KO[r.cand]} 조건 점검</span></div><ul class="gates">${r.gates.map(g=>`<li><span class="${g.ok?"ck-ok":"ck-no"}">${g.ok?"✓":"✗"}</span><span>${esc(ko(g.g))}</span><span class="num muted">${esc(ko(g.v))}</span></li>`).join("")}</ul>`)}
       ${sec("⑫","틀렸다고 볼 기준",`<div class="note" style="margin-top:0">${isCash?`지금은 ${r.wait?WAIT_KO[r.wait]:"관망"}. ${FINAL_KO[r.cand]}를 가정하면 종가가 ${fmtN(r.cand==="LONG"?r.L.stopPx:r.Sh.stopPx)}를 ${r.cand==="LONG"?"밑돌":"웃돌"} 때 그 시나리오는 버립니다.`:`종가가 ${fmtN(side.stopPx)}를 ${r.pos==="LONG"?"밑돌":"웃돌"}면 판단이 틀린 것입니다. 시장 국면이 ‘추세 전환 중’으로 바뀌어도 다시 봅니다.`}</div>`)}
+      ${sec("⑬","반등 관찰 · 지지·저항 레벨 (미검증)",reboundHtml(r)).replace('class="sec"','class="sec rb-wide"')}
       ${sec("＋","신뢰도 "+r.conf+"점",`<ul class="gates">${r.confLog.map(t=>`<li><span class="muted">${/\+\d/.test(t.replace(/\([^)]*\)/g,""))?"+":"−"}</span><span>${esc(ko(t))}</span><span></span></li>`).join("")||'<li><span class="ck-ok">✓</span><span>감점 요인 없음</span><span></span></li>'}</ul>`)}
     </div>
     <div class="flags adv" style="margin-top:12px">${r.flags.map(f=>`<span class="flag">${FLAG_KO[f.f]}: ${esc(ko(f.t))}</span>`).join("")}</div>`;
