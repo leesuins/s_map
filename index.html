@@ -122,6 +122,7 @@ tr.pm-row:hover td{background:var(--surface-2)}
 tr.pm-row.sel td{background:var(--accent-soft)}
 td.c{text-align:center}
 td.pc{font-family:var(--f-mono);font-variant-numeric:tabular-nums;color:var(--muted)}
+td.pc.mx{font-weight:800;color:var(--fg)}   /* 세 확률 중 가장 큰 칸 = 굵게 (판단과 무관) */
 td.pc.on-l{color:var(--up);font-weight:700;box-shadow:inset 0 -2px 0 var(--up)}
 td.pc.on-c{color:var(--cash);font-weight:700;box-shadow:inset 0 -2px 0 var(--cash)}
 td.pc.on-s{color:var(--down);font-weight:700;box-shadow:inset 0 -2px 0 var(--down)}
@@ -1101,9 +1102,8 @@ function renderTable(){
     h+=`<tr class="pm-row${sel}" data-id="${r.id}" tabindex="0">
       <td><b>${esc(dn(r))}</b><div class="rdt">${r.isProv&&r.official?`${md(r.official.lastDate)} 종가 · <b>${md(r.lastDate)} 잠정</b>`:`${md(r.lastDate)} 종가`}</div></td>
       <td>${posPill(r)}${r.isProv?`<span class="pv-badge" title="${r.provInfo.claude?"Claude가 웹에서 확인한 값":r.provInfo.manual?"직접 입력값":r.provInfo.hub?"허브 실시간 값":"실시간 현재가"} ${fmtN(r.provInfo.price)}를 임시 종가로 넣고 계산했습니다">잠정</span><div class="prov${r.provInfo.changed?" chg":""}">종가 기준: ${r.official.wait?WAIT_KO[r.official.wait]:FINAL_KO[r.official.final]} · ${r.official.pU}/${r.official.pS}/${r.official.pD}${r.provInfo.changed?" → 판단 달라짐":r.provInfo.dU?` → 오를 ${r.provInfo.dU>0?"+":""}${r.provInfo.dU}p`:""}</div>`:""}${r.prov?`<div class="prov${r.prov.changed?" chg":""}" title="현재가 ${fmtN(r.prov.price)}를 오늘의 임시 종가로 넣고 계산한 결과입니다. 공식 판단은 종가 확정 후 바뀝니다.">${r.prov.manual?"입력값 잠정":"장중 잠정"}: ${r.prov.wait?WAIT_KO[r.prov.wait]:FINAL_KO[r.prov.final]} · ${r.prov.pU}/${r.prov.pS}/${r.prov.pD}${r.prov.changed?" (달라짐)":r.prov.dU||r.prov.dD?` (오를 ${r.prov.dU>=0?"+":""}${r.prov.dU}p)`:" (변화 없음)"}</div>`:""}</td>
-      <td class="c pc${r.pos==="LONG"?" on-l":""}">${r.pU}%</td>
-      <td class="c pc${r.pos==="CASH"?" on-c":""}">${r.pS}%</td>
-      <td class="c pc${r.pos==="SHORT"?" on-s":""}">${r.pD}%</td>
+      ${(()=>{const mx=Math.max(r.pU,r.pS,r.pD),m=v=>v===mx?" mx":"",tt=(k)=>` title="${k}${r.pos===({u:"LONG",s:"CASH",d:"SHORT"})[k==="오를"?"u":k==="횡보"?"s":"d"]?" · 지금 판단과 같은 칸 (색 밑줄)":""}${({오를:r.pU,횡보:r.pS,내릴:r.pD})[k]===mx?" · 세 확률 중 가장 큼 (굵은 글씨)":""}"`;
+        return`<td class="c pc${r.pos==="LONG"?" on-l":""}${m(r.pU)}"${tt("오를")}>${r.pU}%</td><td class="c pc${r.pos==="CASH"?" on-c":""}${m(r.pS)}"${tt("횡보")}>${r.pS}%</td><td class="c pc${r.pos==="SHORT"?" on-s":""}${m(r.pD)}"${tt("내릴")}>${r.pD}%</td>`})()}
       <td><div class="conf"><div class="track"><div class="fill" style="width:${r.conf}%"></div></div><span class="num">${r.conf}</span></div></td>
       <td>${rgTag(r.reg.r)}</td>
       <td class="c">${trCell(r.tr,r.pos)}</td>
@@ -1647,7 +1647,7 @@ function manPreview(){const o=$("#manOut");const r=manCalc();if(!r){o.textConten
   o.innerHTML=`→ <b>${esc(r.m.name)} ${fmtN(r.v)}</b>${r.pct!=null?` (${r.pct>=0?"+":""}${r.pct.toFixed(2)}%)`:""} · 기준 종가 ${fmtN(r.ref.c)} (${esc(r.base?"직접 넣은 "+r.base.d.slice(5).replace("-","/")+" 종가":r.last.d)})${r.stale?`<br><span style="color:var(--warn)">파일의 마지막 종가가 ${esc(r.last.d)}입니다. ${["kospi","kosdaq"].includes(r.m.id)?"야간선물은 오늘 주간장 종가 기준이라":"등락률은 전일 종가 기준이라"}, ‘기준 종가’에 가장 최근 ${esc(r.m.name)} 종가를 넣어야 정확합니다.</span>`:""}${r.mode==="fut"?"<br>선물 등락률을 지수에 그대로 적용했습니다 (선물과 지수의 차이는 무시).":""}${curTxt?"<br>"+curTxt:""}`}
 function nextDay(d){const t=new Date(d+"T12:00:00Z");do{t.setUTCDate(t.getUTCDate()+1)}while([0,6].includes(t.getUTCDay()));return t.toISOString().slice(0,10)}
 function mapHint(){const n=results.filter(r=>r.isProv).length;$("#mapHint").textContent=state.useProv!==false
-  ?(n?`${n}개 시장은 현재가·입력값으로 계산한 잠정 판단입니다 (‘잠정’ 표시, 아래 줄이 종가 기준). 시장을 누르면 자세한 설명이 나옵니다`:"지금은 반영할 현재가·입력값이 없어 모두 종가 기준입니다. 시장을 누르면 자세한 설명이 나옵니다")
+  ?(n?`${n}개 시장은 현재가·입력값으로 계산한 잠정 판단입니다 (‘잠정’ 표시, 아래 줄이 종가 기준). 시장을 누르면 자세한 설명이 나옵니다 · 굵은 글씨 = 세 확률 중 가장 큼 · 색 밑줄 = 지금 판단 칸`:"지금은 반영할 현재가·입력값이 없어 모두 종가 기준입니다. 시장을 누르면 자세한 설명이 나옵니다 · 굵은 글씨 = 세 확률 중 가장 큼 · 색 밑줄 = 지금 판단 칸")
   :"종가 기준 공식 판단만 보여줍니다. 현재가·입력값 판단은 각 줄 아래 ‘잠정’ 줄에 있습니다"}
 if(typeof document!=="undefined"&&$("#useProv")){const u=$("#useProv");u.checked=state.useProv!==false;
   u.addEventListener("change",()=>{state.useProv=u.checked;save();refresh();toast(u.checked?"현재가·입력값을 판단에 반영합니다":"종가 기준 판단으로 돌아갑니다")})}
