@@ -1654,7 +1654,7 @@ function paintMarket(d) {
     if (!p) {
       const el = document.createElement("div");
       el.className = "ixpane";
-      el.innerHTML = '<div class="ixhead"></div><div class="ixline l1"></div><div class="ixline l2"></div><div class="rbl" role="button" tabindex="0"></div><div class="cv"></div>';
+      el.innerHTML = '<div class="ixhead"></div><div class="ixline l1"></div><div class="ixline l2"></div><div class="rcv"></div><div class="rbl" role="button" tabindex="0"></div><div class="cv"></div>';
       host.appendChild(el);
       const ch = mkChart(el.querySelector(".cv"));
       const cs = candles(ch, "#D32F2F", "#1565C0");
@@ -1670,6 +1670,7 @@ function paintMarket(d) {
       + (m.signals || []).slice(0, 4).map(s => `<span class="ixt dn">${esc(s)}</span>`).join("") + (m.why ? `<span class="mut">${esc(m.why)}</span>` : "");
     p.el.querySelector(".l1").textContent = m.line1 || "";
     const l2 = p.el.querySelector(".l2"); l2.textContent = m.line2 || ""; l2.style.color = m.full_break ? "#111" : (m.state && m.state !== "NORMAL" ? m.fg : "#6B7280");
+    p.el.querySelector(".rcv").innerHTML = recRow(m.rec_view);                // v556 회복 표시
     const rbEl = p.el.querySelector(".rbl"); rbEl.dataset.rb = k; rbEl.innerHTML = rbSum(m.rebound);     // v547 ⑬ 반등 관찰 요약 두 줄(누르면 차트)
     rbEl.title = rbTip(m.rebound);
     p.cs.setData(dayAxis(m.bars || []));
@@ -2319,6 +2320,15 @@ function eaFocusB() {
 // v439 형 "실제 현재까지 적용된 비쥬얼이 있는데 거기다 적용해야지" — 오른쪽 🛰 지수 경계 칸과 **같은 모양**:
 //      굵은 테두리 = 단계 색(fg) · 머리줄 [이름][🟡 WATCH 알약][점수][신호 칩 4개(.ixt.dn)] · 둘째 줄 회복 · 셋째 줄 ⚡1차/⚫ 완전 이탈.
 //      글·색은 서버가 지수 칸과 같은 함수(market_alert_ui.chip_text)로 만들어 줌.
+// v556 형 "이탈만 있지 회복은 표기된 종목이 없어서" — 이탈 칩과 같은 선들이 지금 가격 위(✓)인지 아래(✗ +올라야 할 %)인지 한 줄(표시만).
+// 정렬 = 위로 돌아온 것 먼저 → 아래인 것은 가까운 선부터(가격이 올라올 때 닿는 순서). 점수는 지수 레이더와 같은 회복 점수(0~100).
+const recRow = (rv, state) => {
+  if (!rv || !rv.items || !rv.items.length) return "";
+  const parts = rv.items.map(x => x.ok ? `<span style="color:#2E9E5B;white-space:nowrap">✓${esc(x.label)}</span>` : `<span style="color:#C0392B;white-space:nowrap">✗${esc(x.label)} +${Number(x.need).toFixed(1)}%</span>`).join(" ");
+  const all = rv.n_ok === rv.n;
+  const tip = "회복 표시(표시만) — ✓ = 가격이 그 선 위 · ✗ = 아직 아래(뒤 숫자 = 그 선까지 올라야 할 거리)\n순서 = 위로 돌아온 것 먼저, 아직 아래인 것은 가까운 선부터(= 가격이 올라올 때 닿는 순서 · 보통 전환5 → 기준13·EMA20 → 느린26)\n회복 점수 0~100: 전환5·기준13·EMA20 +10 · VWAP +15 · 볼린저 중간선 +10 · 상승봉 거래량 +10 · 저점 높아짐 +5 · 일봉 20일·60일 +15씩(느린26은 점수 없음)";
+  return `<div class="ixline" style="white-space:normal;color:#334155" title="${esc(tip)}">🔄 회복 ${rv.score ?? "—"}점 · ${all ? '<b style="color:#2E9E5B">전부 위</b> ' : ""}${parts}</div>`;
+};
 async function loadRadar() {
   const code = S.code, el = $("srad");
   if (!code) { el.className = "srad hide"; return; }
@@ -2332,6 +2342,7 @@ async function loadRadar() {
   el.innerHTML = `<div class="ixhead"><b>🛰 종목 레이더</b><span class="pill" style="background:${esc(d.fg)};">${esc(d.label)}</span><b class="num">${esc(d.score)}점</b>`
     + (d.signals || []).slice(0, 4).map(s => `<span class="ixt dn">${esc(s)}</span>`).join("") + `</div>`
     + `<div class="ixline l1">${esc(d.line1 || "")}</div>`
+    + recRow(d.rec_view)
     + (d.line2 ? `<div class="ixline l2" style="color:${d.full_break ? "#111" : (d.state !== "NORMAL" ? esc(d.fg) : "#6B7280")}">${esc(d.line2)}</div>` : "");
 }
 
