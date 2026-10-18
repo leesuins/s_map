@@ -247,6 +247,15 @@ tr.rec input{font-family:var(--f-mono);font-size:12px;width:62px;padding:2px 4px
 b.wk-sc{display:inline-block;min-width:32px;color:#fff;border-radius:6px;padding:1px 5px;font-size:13px}
 .wk-wait{color:#6a1b9a;font-weight:600}.wk-terms{margin:10px 0;font-size:.9em}.wk-terms ul{margin:6px 0 0 18px;padding:0}.wk-terms li{margin:3px 0}
 .wk-fullbox{margin:4px 0 12px;border:1px solid var(--line);border-radius:10px;padding:8px 12px;background:var(--surface-2)}.wk-fullbox summary{cursor:pointer;font-weight:700;font-size:13.5px}.wk-full{white-space:pre-wrap;font-family:var(--f-body);font-size:13.5px;line-height:1.7;margin:8px 0 0}
+.trk{margin:10px 0;padding:10px 12px;border-radius:10px;background:var(--accent-soft)}.trk-h{font-weight:700;font-size:14px}.trk-h small{font-weight:400;color:var(--muted);margin-left:6px}
+.trk-sum{margin:6px 0 8px;font-size:13px}.trk-r{display:grid;grid-template-columns:minmax(120px,1.3fr) 2fr 56px minmax(110px,1.2fr);align-items:center;gap:8px;padding:5px 6px;border-radius:7px}
+.trk-r.live{background:rgba(70,130,200,.14);outline:1px solid rgba(70,130,200,.5)}.trk-r.best .trk-p b{text-decoration:underline}
+.trk-n b{font-size:14px;margin-right:6px}.trk-n small{color:var(--muted);font-size:11.5px;display:block}
+.trk-b{position:relative;height:18px;border-radius:9px;background:rgba(0,0,0,.08);overflow:hidden}.trk-b i{position:absolute;left:0;top:0;bottom:0;background:#d32f2f;border-radius:9px}.trk-b span{position:absolute;left:8px;top:0;line-height:18px;font-size:12px;font-weight:700;color:#fff;text-shadow:0 0 2px rgba(0,0,0,.5)}
+.trk-d{text-align:center;font-weight:700;font-size:13px;color:var(--muted)}.trk-d.up{color:#d32f2f}.trk-d.dn{color:#1565c0}
+.trk-p{display:flex;align-items:center;gap:6px}.trk-pb{position:relative;flex:1;height:14px;background:rgba(0,0,0,.07);border-radius:7px}.trk-pb::after{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:rgba(0,0,0,.35)}.trk-pb i{position:absolute;top:2px;bottom:2px;border-radius:5px}.trk-pb i.neg,.trk-p b.neg{background:#1565c0;color:#1565c0}.trk-pb i.pos,.trk-p b.pos{background:#d32f2f;color:#d32f2f}.trk-p b{background:none!important;font-size:13px;min-width:56px;text-align:right}
+.trk-f{margin-top:6px;font-size:11.5px;color:var(--muted)}
+@media(max-width:640px){.trk-r{grid-template-columns:1fr 1fr;row-gap:2px}.trk-d{text-align:left}}
 .wk-res{margin:8px 0;padding:8px 10px;border-radius:8px;background:var(--accent-soft);font-size:13px}
 .wk-two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;margin-top:10px}.wk-two h4{margin:0 0 6px;font-size:13.5px}.wk-sn,.wk-ck{margin:0;padding-left:18px;font-size:13px}.wk-sn li,.wk-ck li{margin-bottom:4px}
 @media (max-width:760px){.wk-top,.wk-two{grid-template-columns:minmax(0,1fr)}}
@@ -2053,10 +2062,17 @@ function renderWeekly(){const el=$("#wkBody");if(!el)return;if(!WEEKLY_RECS.leng
     key=id=>wkEdge(r.engine[id])+(EQS[id]?3:0)+(r.engine[id].full.pU-r.engine[id].full.pD)/10;
   const ids=Object.keys(r.engine).sort((a,b)=>(r.engine[b].score??50)-(r.engine[a].score??50)||grp(a)-grp(b)||key(b)-key(a));
   const pc=x=>x==null?"–":Math.round(x*100)+"%",res=r.result;
-  if(r.tracks&&r.tracks.items){const T=r.tracks.items,pn=(res&&res.pnl)||{},vo=r.tracks.vol20||{},liveRule=r.rule||"";   // 2026-10-18 투트랙: 실제 규칙은 그대로, 후보 규칙이었다면 비중·손익
-    h+=`<details class="wk-fullbox" open><summary>🧪 투트랙 비교 — 같은 판단, 규칙만 다르게 (실제 적용: ${esc(liveRule)})</summary><div class="tbl-wrap"><table class="cal-t"><thead><tr><th>규칙</th><th class="c">매수 비중</th><th class="c">${res?"이 주 손익":"손익"}</th></tr></thead><tbody>`+
-    Object.entries(T).map(([k,v])=>`<tr class="${v.rule===liveRule&&k===liveRule?"sel":""}"><td><b>${esc(k)}</b> <small class="muted">${esc(v.title||"")}</small></td><td class="c">${v.long}%</td><td class="c">${pn["트랙 "+k]!=null?fmtP(pn["트랙 "+k],2):"채점 전"}</td></tr>`).join("")+
-    `</tbody></table></div><p class="muted" style="font-size:12px;margin:6px 2px">20일 변동성(연) ${Object.entries(vo).map(([k,v])=>(WK_NAME[k]||k)+" "+Math.round(v*100)+"%").join(" · ")} — S7은 이 값이 25%를 넘는 시장의 비중을 깎음. 규칙은 바뀌지 않음, 금요일 채점 때 손익이 채워짐. 1주 표본은 참고용.</p></details>`}
+  if(r.tracks&&r.tracks.items){const T=r.tracks.items,pn=(res&&res.pnl)||{},vo=r.tracks.vol20||{},liveRule=r.rule||"",ks=Object.keys(T),cur=T[liveRule]?T[liveRule].long:ex.long;   // 2026-10-18 투트랙: 실제 규칙은 그대로, 후보 규칙이었다면 비중·손익 (막대로 한눈에)
+    const i0=i===0,sc=ks.every(k=>pn["트랙 "+k]!=null),mx=sc?Math.max(...ks.map(k=>Math.abs(pn["트랙 "+k])),1):1,best=sc?ks.reduce((a,k)=>pn["트랙 "+k]>pn["트랙 "+a]?k:a,ks[0]):null;
+    const cs=ks.filter(k=>k!=="R1"),lo=cs.reduce((a,k)=>T[k].long<T[a].long?k:a,cs[0]),hi=cs.reduce((a,k)=>T[k].long>T[a].long?k:a,cs[0]);
+    const sum=sc?`채점 결과 — 손실이 가장 작은 쪽: <b>${esc(best)}</b> (${fmtP(pn["트랙 "+best],2)}) · 주식 4개 평균 ${fmtP(res.eqRet,2)}`:`가장 방어적 <b>${esc(lo)}</b> ${T[lo].long}% · 가장 공격적 <b>${esc(hi)}</b> ${T[hi].long}% · 실제 적용 <b>${esc(liveRule)}</b> ${cur}% (R1은 옛 규칙 비교용) — 손익은 금요일 채점 후 채워짐`;
+    h+=`<div class="trk"><div class="trk-h">🧪 투트랙 비교 <small>같은 판단 · 규칙만 다르게 · 실제 비중은 ${esc(liveRule)} 그대로</small></div><div class="trk-sum">${sum}</div>`+
+    ks.map(k=>{const v=T[k],d=v.long-cur,isLive=k===liveRule,p=pn["트랙 "+k],w=p==null?0:Math.round(Math.abs(p)/mx*50);
+      return `<div class="trk-r${isLive?" live":""}${k===best?" best":""}"><div class="trk-n"><b>${esc(k)}</b><small>${esc(v.title||"")}${isLive?(i0?" · 지금 적용":" · 이 주 적용"):""}</small></div>
+      <div class="trk-b" title="매수 ${v.long}% / 관망 ${100-v.long}%"><i style="width:${v.long}%"></i><span>${v.long}%</span></div>
+      <div class="trk-d ${d>0?"up":d<0?"dn":""}">${isLive?"기준":d===0?"같음":(d>0?"+":"")+d+"%p"}</div>
+      <div class="trk-p">${p==null?`<small>채점 전</small>`:`<div class="trk-pb"><i class="${p<0?"neg":"pos"}" style="width:${w}%;${p<0?"right":"left"}:50%"></i></div><b class="${p<0?"neg":"pos"}">${fmtP(p,2)}</b>`}</div></div>`}).join("")+
+    `<div class="trk-f">변동성(20일·연) ${Object.entries(vo).map(([k,v])=>(WK_NAME[k]||k)+" "+Math.round(v*100)+"%").join(" · ")} → S7은 25%를 넘는 시장의 비중을 깎음 · 1주 표본은 참고용</div></div>`}
   h+=`<div class="tbl-wrap"><table class="cal-t wk-t"><thead><tr><th class="c">순위</th><th>시장</th><th>이번 주 판단 (1.5)</th><th class="c">오를/횡보/내릴</th><th class="c" title="0~100, 50 중립. 확률 우위·신뢰·과거 적중·주간 일치·뉴스 근거 합산">점수</th><th>근거</th><th class="c" title="이 규칙이 이 시장에서 낸 매수 신호가 5일 뒤 맞은 비율 (괄호: 아무 날이나 5일 뒤 오른 비율)">과거 적중<br><small>매수 (평소 상승)</small></th><th class="c">가격만</th>${r.gpt&&r.gpt["1.5"]?'<th class="c">GPT 1.5</th>':""}${res?'<th class="c">결과</th>':""}</tr></thead><tbody>`;
   ids.forEach((id,k)=>{const e=r.engine[id],f=e.full,ins=(r.inputs||{})[id]||{},notes=(r.notes||{})[id]||[],w=(rep.watch||{})[id];
     const g=r.gpt&&r.gpt["1.5"]?(r.gpt["1.5"].judg||{})[id]:null;const rr=res&&res.ret?res.ret[id]:null,sd=wkSide(f.j),hit=rr==null||sd===0?null:(sd>0?rr>0:rr<0);
