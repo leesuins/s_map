@@ -863,7 +863,10 @@ try{const raw=localStorage.getItem(KEY);if(raw)state=JSON.parse(raw)}catch(e){}
 if(!state||!Array.isArray(state.markets)||!state.markets.length)state=defaultState();
 else{try{const dm=defaultState().markets;let newest="";
   state.markets.forEach(m=>{const d=dm.find(x=>x.id===m.id);if(!d||!m.csv)return;const sb=parseSeries(m.csv).bars;const last=sb.length?sb[sb.length-1].d||"":"";if(!last)return;
-    const add=d.csv.split("\n").filter(l=>/^\d{4}-\d\d-\d\d,/.test(l)&&l.slice(0,10)>last);
+    const dl=d.csv.split("\n").filter(l=>/^\d{4}-\d\d-\d\d,/.test(l)),dmap=new Map(dl.map(l=>[l.slice(0,10),l.trim()]));
+    // 2026-10-18: 같은 날짜는 내장 데이터(우리 CSV)가 기준 — 나중에 정정한 값(예: 10/8 코스닥 843.09→892.27, 나스닥100 지수 정정)이 저장된 예전 값에 덮이지 않게
+    m.csv=m.csv.split("\n").map(l=>{const k=l.slice(0,10);return /^\d{4}-\d\d-\d\d,/.test(l)&&dmap.has(k)&&dmap.get(k)!==l.trim()?dmap.get(k):l}).join("\n");
+    const add=dl.filter(l=>l.slice(0,10)>last);
     if(add.length){m.csv=m.csv.replace(/\n*$/,"")+"\n"+add.join("\n");const nd=add[add.length-1].slice(0,10);if(nd>newest)newest=nd}});
   if(newest&&(state.cutoff||"").slice(0,10)<newest)state.cutoff=newest+"T15:30"}catch(e){}}
 // 판단 기준 시각이 비어 있으면 내장 데이터의 가장 최근 날짜로 (데이터를 갱신할 때마다 고칠 필요 없음)
@@ -1919,6 +1922,8 @@ function calChip(x,big){if(!x)return`<span class="cchip none">–</span>`;
   const h=calHit(x),mk=h===true?`<b class="ok" aria-label="적중">✓</b>`:h===false?`<b class="ng" aria-label="빗나감">✗</b>`:(x.pos!=="CASH"&&x.o5==null?`<b class="pd" title="5일 뒤 결과 대기">…</b>`:"");
   return`<span class="cchip ${c}${big?" big":""}">${t}${mk}</span>`}
 function calSt(){state.cal=state.cal||{};const c=state.cal;if(!c.tab)c.tab="d";if(!c.mk)c.mk="top3";return c}
+// 2026-10-18: 달력에서 눌러 연 날짜·주 상세는 이번 방문에서만 — 다시 들어오면 닫힌 채로 (예전엔 마지막에 누른 주가 계속 열려 있었음)
+try{if(state.cal)state.cal.sel=null}catch(e){}
 function calShown(){const c=calSt();return c.mk==="top3"?CAL_DEF3:[c.mk]}
 function calLastDate(){let nd="";const S=CAL.a||CAL.d;for(const id in S){const ks=Object.keys(S[id]).sort();const l=ks[ks.length-1]||"";if(l>nd)nd=l}return nd}
 function calWkLabel(x,P){return x?REG_KO[x.reg]||x.reg:""}
