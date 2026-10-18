@@ -269,6 +269,7 @@ b.wk-sc{display:inline-block;min-width:32px;color:#fff;border-radius:6px;padding
 .scp{margin-top:3px;font-size:12px}.scp summary{cursor:pointer;color:var(--accent,#1565c0)}.scp .pr{display:grid;grid-template-columns:64px 1fr 40px 30px;align-items:center;gap:6px;margin:2px 0}.scp .pr span{color:var(--muted)}.scp .pr small{color:var(--muted);font-size:10px}.scp .pb{position:relative;height:9px;border-radius:5px;background:rgba(0,0,0,.08)}.scp .pb::after{content:"";position:absolute;left:50%;top:-1px;bottom:-1px;width:1px;background:rgba(0,0,0,.35)}.scp .pb i{position:absolute;top:1px;bottom:1px;border-radius:4px}.scp .pb i.p{background:#2e7d32}.scp .pb i.n{background:#c62828}.scp b{text-align:right}.scp b.p{color:#2e7d32}.scp b.n{color:#c62828}
 .dbn{display:flex;align-items:stretch;gap:6px;flex-wrap:wrap;margin:6px 0 10px}.dbn-i{flex:1 1 180px;padding:7px 10px;border-radius:8px;background:var(--accent-soft);line-height:1.3}.dbn-i.on{background:#fff3d6;outline:1px solid #e0a800}.dbn-i small{display:block;font-size:11px;color:var(--muted)}.dbn-i b{font-size:15px}.dbn-i em{display:block;font-style:normal;font-size:11.5px;color:var(--muted)}.dbn-a{align-self:center;color:var(--muted);font-weight:700}
 .rdt{font-size:11px;color:var(--muted);font-weight:400;margin-top:1px}.rdt b{color:#b8860b}
+.fold>.panel-h h2::before{content:attr(data-c);color:var(--muted)}.fold>.panel-h h2{cursor:pointer;user-select:none}.fold.closed>.fold-body{display:none}.fold.closed>.panel-h>*:not(h2){display:none}.fold.closed{padding-top:10px;padding-bottom:10px}.fold.closed>.panel-h{margin-bottom:0}.foldbar{margin:6px 2px 10px;font-size:12.5px}
 .wk-res{margin:8px 0;padding:8px 10px;border-radius:8px;background:var(--accent-soft);font-size:13px}
 .wk-two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;margin-top:10px}.wk-two h4{margin:0 0 6px;font-size:13.5px}.wk-sn,.wk-ck{margin:0;padding-left:18px;font-size:13px}.wk-sn li,.wk-ck li{margin-bottom:4px}
 @media (max-width:760px){.wk-top,.wk-two{grid-template-columns:minmax(0,1fr)}}
@@ -336,12 +337,13 @@ small.ref{font-size:10px;color:var(--muted);border:1px solid var(--line);border-
   <div class="summary" id="summary"></div>
   <div class="mood" id="mood" hidden></div>
 
+  <div class="foldbar"><button type="button" class="mini" id="foldAll">접어 둔 메뉴 모두 펼치기</button><small class="muted"> 자주 안 쓰는 메뉴(지금 시세·우선순위·시장 자세히·장중 기록·국면·연동·검증·데이터 넣기)는 접혀 있어요. 제목을 누르면 열리고, 열어 둔 상태는 기억돼요.</small></div>
   <section class="panel" id="weekly">
     <div class="panel-h"><h2>이번 주 포지션</h2><label class="cut">주간 <select id="wkSel"></select></label></div>
     <div id="wkBody"></div>
   </section>
 
-  <section class="panel" id="quotes">
+  <section class="panel" id="quotes" data-fold="quotes">
     <div class="panel-h"><h2>지금 시세</h2><span class="muted" id="qMeta" style="font-size:12.5px"></span><button type="button" class="btn" id="btnMan">✏️ 직접 입력</button><button type="button" class="btn" id="btnQuote">실시간 갱신</button></div>
     <div class="budget" id="budget"></div>
     <div class="qgrid" id="qgrid"></div>
@@ -370,13 +372,13 @@ small.ref{font-size:10px;color:var(--muted);border:1px solid var(--line);border-
       <div class="panel-h"><h2>시장별 판단</h2><label class="provsw"><input type="checkbox" id="useProv"> 현재가·입력값 반영</label><span class="muted" style="font-size:12px" id="mapHint"></span></div>
       <div id="dateBn"></div><div class="tbl-wrap"><table id="pmTable"></table></div>
     </section>
-    <aside class="panel adv" style="display:flex;flex-direction:column;gap:18px">
+    <aside class="panel adv" data-fold="prio" data-title="우선순위 상위 5 · 판단 전 점검표" style="display:flex;flex-direction:column;gap:18px">
       <div><div class="panel-h" style="margin-bottom:8px"><h2>우선순위 상위 5</h2></div><ol class="prio" id="prio"></ol></div>
       <div><div class="panel-h" style="margin-bottom:8px"><h2>판단 전 점검표</h2></div><ul class="checks" id="checks"></ul></div>
     </aside>
   </div>
 
-  <section class="panel" id="detail"></section>
+  <section class="panel" data-fold="detail" data-title="선택한 시장 자세히 — 위 표에서 시장을 누르면 열립니다"><div id="detail"></div></section>
 
   <section class="panel" id="cal">
     <div class="panel-h"><h2>달력</h2>
@@ -388,7 +390,7 @@ small.ref{font-size:10px;color:var(--muted);border:1px solid var(--line);border-
     <div id="calBody"></div>
   </section>
 
-  <section class="panel" id="intra">
+  <section class="panel" id="intra" data-fold="intra">
     <div class="panel-h"><h2>장중 기록</h2><label class="cut">시장 <select id="inMk"></select></label><span class="muted" style="font-size:12px">시세가 들어올 때마다(실시간 2시간마다·직접 입력·Claude 현행화) 그 시각의 잠정 판단을 저장하고, 이후 결과로 채점합니다</span></div>
     <div id="intraBody"></div>
     <details class="man" style="margin-top:10px"><summary>＋ 뉴스·지표 발표 기록 (예상 → 실제 → 반응)</summary>
@@ -406,11 +408,11 @@ small.ref{font-size:10px;color:var(--muted);border:1px solid var(--line);border-
   </section>
 
   <div class="maps adv" id="maps">
-    <section class="panel"><div class="panel-h"><h2>시장 국면 · 60일선 현황</h2></div><div class="tbl-wrap"><table id="maMap"></table></div></section>
-    <section class="panel"><div class="panel-h"><h2>시장 간 연동</h2><span class="muted" style="font-size:12px">최근 60거래일 상관계수. 1에 가까울수록 함께 움직임</span></div><div class="tbl-wrap"><table class="corr" id="corr"></table></div></section>
+    <section class="panel" data-fold="ma"><div class="panel-h"><h2>시장 국면 · 60일선 현황</h2></div><div class="tbl-wrap"><table id="maMap"></table></div></section>
+    <section class="panel" data-fold="corr"><div class="panel-h"><h2>시장 간 연동</h2><span class="muted" style="font-size:12px">최근 60거래일 상관계수. 1에 가까울수록 함께 움직임</span></div><div class="tbl-wrap"><table class="corr" id="corr"></table></div></section>
   </div>
 
-  <section class="panel adv" id="valid">
+  <section class="panel adv" id="valid" data-fold="valid">
     <div class="panel-h"><h2>판단 기록 · 검증</h2><span class="muted" style="font-size:12px">판단을 저장해 두고, 나중에 실제 결과와 맞춰 성적을 매깁니다</span></div>
     <div class="vbar">
       <div class="seg" role="group" aria-label="데이터 원천"><button type="button" data-src="live" class="on">저장한 판단</button><button type="button" data-src="bt">과거 데이터로 시험</button></div>
@@ -429,7 +431,7 @@ small.ref{font-size:10px;color:var(--muted);border:1px solid var(--line);border-
     <div id="vBody"></div>
   </section>
 
-  <section class="panel" id="editor">
+  <section class="panel" id="editor" data-fold="editor">
     <div class="panel-h"><h2>데이터 넣기</h2><span class="muted" style="font-size:12px">입력값은 이 브라우저 안에서만 계산되며 어디로도 전송되지 않습니다</span></div>
     <div class="tabs" id="tabs"></div>
     <div id="edBody"></div>
@@ -1109,7 +1111,7 @@ function renderTable(){
   }
   $("#pmTable").innerHTML=h+"</tbody>";const dbEl=$("#dateBn");if(dbEl)dbEl.innerHTML=dateBanner();
   document.querySelectorAll("#pmTable tr.pm-row").forEach(tr=>{
-    const go=()=>{state.sel=tr.dataset.id;save();renderTable();renderDetail();$("#detail").scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"start"})};
+    const go=()=>{state.sel=tr.dataset.id;save();renderTable();renderDetail();window.foldOpen&&window.foldOpen("detail");$("#detail").scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"start"})};
     tr.addEventListener("click",go);tr.addEventListener("keydown",e=>{if(e.key==="Enter")go()});
   });
 }
@@ -1117,7 +1119,7 @@ function renderTable(){
 function renderPrio(){
   const top=results.filter(r=>!r.error).sort((a,b)=>a.rank-b.rank).slice(0,5);
   $("#prio").innerHTML=top.map(r=>`<li data-id="${r.id}"><span class="rk">${r.rank}</span><div style="min-width:0"><div class="nm">${esc(dn(r))}</div><div class="sub">${REG_KO[r.reg.r]} · 기대수익 ${fmtP(r.P.ev,2)} · 손익비 ${r.P.rr.toFixed(2)}</div><div style="margin-top:3px">${posPill(r)}</div></div></li>`).join("")||'<li class="muted">계산 가능한 시장이 없습니다</li>';
-  document.querySelectorAll("#prio li[data-id]").forEach(li=>li.addEventListener("click",()=>{state.sel=li.dataset.id;save();renderTable();renderDetail();$("#detail").scrollIntoView({block:"start"})}));
+  document.querySelectorAll("#prio li[data-id]").forEach(li=>li.addEventListener("click",()=>{state.sel=li.dataset.id;save();renderTable();renderDetail();window.foldOpen&&window.foldOpen("detail");$("#detail").scrollIntoView({block:"start"})}));
 }
 
 function renderChecks(){
@@ -2136,5 +2138,20 @@ function renderWeekly(){const el=$("#wkBody");if(!el)return;if(!WEEKLY_RECS.leng
 refresh();renderEditor();
 }
 if(typeof module!=="undefined")module.exports={PROFILES,profMin,WEEKLY_DEFAULT,WEEKLY_OK,toMonthly,monthlySummary,PARAMS,parseAV:typeof parseAV!=="undefined"?parseAV:null,analyze,parseSeries,sampleMarkets,correlations,classify,metricsAt,makeRecord,outcomeFrom,evaluate,groupEval,calibBins,buildCalibMap,backtest,timeSlot};
+
+// 2026-10-18 자주 안 쓰는 메뉴는 접어 둠 — 제목을 누르면 펼침(열어 둔 상태는 이 브라우저에 기억)
+(function(){if(typeof document==="undefined")return;
+  const KEY="sm_fold_open",rd=()=>{try{return JSON.parse(localStorage.getItem(KEY)||"{}")}catch(e){return{}}},wr=o=>{try{localStorage.setItem(KEY,JSON.stringify(o))}catch(e){}};
+  function init(){const st=rd();
+    document.querySelectorAll("[data-fold]").forEach(el=>{if(el.dataset.foldInit)return;el.dataset.foldInit="1";const k=el.dataset.fold;
+      let h=el.querySelector(":scope>.panel-h");if(!h||el.dataset.title){h=document.createElement("div");h.className="panel-h";h.innerHTML=`<h2>${el.dataset.title||""}</h2>`;el.prepend(h)}
+      const body=document.createElement("div");body.className="fold-body";[...el.children].filter(c=>c!==h).forEach(c=>body.appendChild(c));el.appendChild(body);
+      el.classList.add("fold");const t=h.querySelector("h2");t.setAttribute("tabindex","0");t.setAttribute("role","button");
+      const apply=o=>{el.classList.toggle("closed",!o);t.dataset.c=o?"▾ ":"▸ ";t.setAttribute("aria-expanded",o?"true":"false")};
+      apply(!!st[k]);const tg=()=>{const s2=rd(),o=el.classList.contains("closed");s2[k]=o;wr(s2);apply(o)};
+      t.addEventListener("click",tg);t.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();tg()}})});
+    const fa=document.getElementById("foldAll");if(fa)fa.addEventListener("click",()=>{const els=[...document.querySelectorAll(".fold")],anyClosed=els.some(e=>e.classList.contains("closed")),o={};els.forEach(e=>{e.classList.toggle("closed",!anyClosed);const t=e.querySelector(".panel-h h2");if(t)t.dataset.c=anyClosed?"▾ ":"▸ ";o[e.dataset.fold]=anyClosed});wr(o);fa.textContent=anyClosed?"접을 수 있는 메뉴 모두 접기":"접어 둔 메뉴 모두 펼치기"})}
+  window.foldOpen=k=>{const el=document.querySelector(`.fold[data-fold="${k}"]`);if(el&&el.classList.contains("closed")){el.classList.remove("closed");const t=el.querySelector(".panel-h h2");if(t)t.dataset.c="▾ ";const o=rd();o[k]=true;wr(o)}};
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init()})();
 </script>
 </html>
