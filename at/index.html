@@ -664,7 +664,10 @@ function seg120(bars, s120) {
     if (dn && st === null) st = b.time;
     if (!dn && st !== null) { out.push({ t0: st, t1: b.time, g: 1 }); st = null; }
   });
-  if (st !== null) out.push({ t0: st, t1: null, g: 1 });
+  if (st !== null) {
+    const lb = bars[bars.length - 1], lv = m.get(lb.time);
+    out.push({ t0: st, t1: null, g: 1, c: lb.close, v: lv });
+  }
   return out;
 }
 function placeZone(p) {
@@ -683,10 +686,13 @@ function placeZone(p) {
     if (it.k === "seg") {
       const L = Math.max(0, Math.round(x0)), R = Math.min(pw, it.t1 == null ? pw : Math.round(x1));
       if (R - L < 1) { el.style.display = "none"; return; }
-      if (it.g) {      // v562i 120선 아래 = 회색 빗금(옅은 파랑 안착 구간과 헷갈리지 않게) + 위쪽 이름표 '하락 중'
-        el.style.cssText = `position:absolute;z-index:3;pointer-events:none;top:0;bottom:26px;display:block;left:${L}px;width:${R - L}px;`
-          + `background:repeating-linear-gradient(135deg,rgba(71,85,105,.16) 0 5px,rgba(71,85,105,.05) 5px 11px);border-left:1px dashed rgba(71,85,105,.45)`;
-        el.innerHTML = R - L >= 96 ? `<span style="position:absolute;top:30px;left:4px;background:rgba(51,65,85,.85);color:#fff;font:700 11px/16px sans-serif;padding:0 6px;border-radius:3px;white-space:nowrap">▼ 하락 중 · 120선 아래${it.t1 == null ? " (지금)" : ""}</span>` : "";
+      if (it.g) {      // v562i 형 "120분 60선 이탈 중처럼" — 120선 아래 구간 = 같은 진한 회색 막 + 가운데 이름표(지금 구간은 값까지)
+        el.style.cssText = `position:absolute;z-index:3;pointer-events:none;top:0;bottom:26px;display:flex;align-items:center;justify-content:center;`
+          + `left:${L}px;width:${R - L}px;background:rgba(73,80,87,.30)`;
+        const now = it.t1 == null, gp = now && it.v ? (it.c / it.v - 1) * 100 : null;
+        const box = "background:rgba(33,37,41,.86);color:#fff;border-radius:6px;padding:4px 10px;font:700 12px/1.35 sans-serif;text-align:center;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.15)";
+        el.innerHTML = now && R - L >= 150 ? `<b style="${box}">15분 120선 이탈 중<small style="display:block;font-weight:400;font-size:11px;opacity:.9">지금 ${fmt(it.c)} · 120선 ${fmt(it.v)}${gp === null ? "" : ` (${gp.toFixed(1)}%)`}</small></b>`
+          : R - L >= 80 ? `<b style="${box};font-size:11px;padding:2px 8px">120선 이탈</b>` : "";
         return;
       }
       el.style.cssText = `position:absolute;z-index:3;pointer-events:none;top:0;bottom:26px;display:block;left:${L}px;width:${R - L}px;background:rgba(24,100,171,.07)`;
