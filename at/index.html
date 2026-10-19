@@ -653,8 +653,10 @@ function placeZone(p) {
 }
 /* v534 형 "15분 차트로 매수매도 타점"(시안 1) — 주문 일지의 매수·매도를 15분 봉 위에: 가격 자리에 ▲(매수 보라)·▼(매도 마젠타) + 이름표(시각 · 매수/매도1차/2차 · 가격).
    같은 쪽 이름표가 가까우면 세로로 쌓아 안 겹치게 · 끌기·확대에 따라 다시 맞춤 · 읽기만(주문·판단 무관) · 화면만 */
+function trOnGet() { try { return localStorage.getItem("one.trOn") !== "0"; } catch (e) { return true; } }   // v558 타점 보이기(기본 켜짐 · 이 브라우저에만 기억)
+function trOnSet(v) { try { localStorage.setItem("one.trOn", v ? "1" : "0"); } catch (e) { /* 기억 못 해도 이번엔 동작 */ } }
 function placeTrades(p) {
-  const list = p.trades || [], cv = p.tagEl.parentElement, ts = p.ch.timeScale();
+  const list = trOnGet() ? (p.trades || []) : [], cv = p.tagEl.parentElement, ts = p.ch.timeScale();
   p.trEls = p.trEls || [];
   while (p.trEls.length < list.length * 2) { const e = document.createElement("div"); cv.insertBefore(e, p.tagEl); p.trEls.push(e); }
   let pw = cv.clientWidth, ph = cv.clientHeight - 26;
@@ -676,6 +678,13 @@ function placeTrades(p) {
     c.style.left = Math.round(Math.max(2, Math.min(x - 34, pw - c.offsetWidth - 2))) + "px";
   });
 }
+function trToggle() {                                      // v558 형 "15분봉 매수매도 마커 on/off" — 화면 표시만(주문·판단 무관)
+  const on = !trOnGet(); trOnSet(on);
+  document.querySelectorAll(".trtg").forEach(e => { e.style.opacity = on ? "" : ".45"; e.style.textDecoration = on ? "" : "line-through"; });
+  Object.values(S.panes || {}).forEach(p => { try { if (p && p.trEls) placeTrades(p); } catch (e) { /* 그림만 */ } });
+}
+document.addEventListener("click", e => { if (e.target.closest && e.target.closest(".trtg")) trToggle(); });
+document.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.classList && e.target.classList.contains("trtg")) { e.preventDefault(); trToggle(); } });
 function placeTags(p) {
   if (!p || p.st.gone || !p.tagEl) return;
   try { placeTw(p); } catch (e) { /* 띠는 없어도 차트는 그대로 */ }
@@ -817,7 +826,8 @@ function paintPane(tf, d) {
   const bbU = tf === 5 && d.bb && d.bb.bbu && d.bb.bbu.length ? d.bb.bbu[d.bb.bbu.length - 1].value : null, bbL = tf === 5 && d.bb && d.bb.bbl && d.bb.bbl.length ? d.bb.bbl[d.bb.bbl.length - 1].value : null;
   const bbs = bbU != null && bbL != null && d.close != null ? `<span style="color:#AE3EC9;font-size:.9em" title="볼린저밴드(150봉 · ±1표준편차) 상단 ${fmt(bbU)} · 하단 ${fmt(bbL)} · 지금 ${fmt(d.close)}\n보라색 선 2개 = 상단·하단(중심선은 안 그림) · v530 표시만">· 볼벤 ${d.close > bbU ? "상단 위" : d.close < bbL ? "하단 아래" : "밴드 안"}</span>` : "";   // v530
   const nTb = tf === 15 ? (d.trades || []).filter(t => t.side === "buy").length : 0, nTs = tf === 15 ? (d.trades || []).filter(t => t.side === "sell").length : 0;   // v534
-  const trc = nTb || nTs ? `<span style="font-size:.9em" title="주문 일지 기준(읽기만 · 체결 확정 아님) — 지금 보이는 15분봉 기간의 매수·매도 주문. 가격 자리에 ▲매수 · ▼매도 표시"><b style="color:#7048E8">▲매수${nTb}</b> <b style="color:#C2255C">▼매도${nTs}</b></span>` : "";
+  const trOn = trOnGet();
+  const trc = nTb || nTs ? `<span class="trtg" role="button" tabindex="0" style="font-size:.9em;cursor:pointer;${trOn ? "" : "opacity:.45;text-decoration:line-through"}" title="주문 일지 기준(읽기만 · 체결 확정 아님) — 지금 보이는 15분봉 기간의 매수·매도 주문. 가격 자리에 ▲매수 · ▼매도 표시\n누르면 차트의 타점 표시 끄기/켜기(${trOn ? "지금 켜짐" : "지금 꺼짐"})"><b style="color:#7048E8">▲매수${nTb}</b> <b style="color:#C2255C">▼매도${nTs}</b></span>` : "";
   head.innerHTML = `${tf}분봉 <span>${d.n}봉 · 60선 ${d.above60 === true ? "위" : d.above60 === false ? "아래" : "—"}</span>${sma60}${bbs}${trc}${tws}${ixs}`
     + `<span style="color:#2B8A3E">${s("sup")}</span><span style="color:#C2255C">${s("res")}</span>` + pinLegend(d.pins);
   // v506 형 "B안(세로 띠) + 완성된 봉은 봉색을 다른색으로" — 신호 봉이 지금 봉이면 세로 띠가 깜빡, 끝난 봉이면 옅은 띠 + 봉이 보라색으로 남음
