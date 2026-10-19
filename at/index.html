@@ -655,6 +655,18 @@ function placeTw(p) {
 }
 /* v533 형 "F로 반영" — 15분 차트: ① 안착 유지 구간(▲안착 봉 → 다음 ▼이탈 봉 · 지금 안착 중이면 오른쪽 끝까지)을 옅은 파랑으로 칠함 ② 지난 신호(가장 최근 1개 빼고)는 아래쪽 시간축 위에 ▲파랑·▼빨강 짧은 막대
    (가장 최근 신호의 진한 세로 띠·글자·화살표는 그대로). 끌기·확대에 따라 placeTw와 같이 다시 맞춤 · 신호 수·2봉 확인은 그대로 · 화면만 */
+/* v562i 형 10/20 "15분 차트 하락 중 120평 이하를 연한 회색으로" — 15분 봉 종가가 120봉 이평(보라 굵은 선) 아래인 구간 → 옅은 회색 · 화면만 */
+function seg120(bars, s120) {
+  const m = new Map((s120 || []).map(x => [x.time, x.value])), out = [];
+  let st = null;
+  (bars || []).forEach(b => {
+    const v = m.get(b.time), dn = v != null && b.close != null && b.close < v;
+    if (dn && st === null) st = b.time;
+    if (!dn && st !== null) { out.push({ t0: st, t1: b.time, g: 1 }); st = null; }
+  });
+  if (st !== null) out.push({ t0: st, t1: null, g: 1 });
+  return out;
+}
 function placeZone(p) {
   const z = p.zone || { segs: [], bars: [] }, cv = p.tagEl.parentElement, ts = p.ch.timeScale();
   p.zEls = p.zEls || [];
@@ -671,6 +683,12 @@ function placeZone(p) {
     if (it.k === "seg") {
       const L = Math.max(0, Math.round(x0)), R = Math.min(pw, it.t1 == null ? pw : Math.round(x1));
       if (R - L < 1) { el.style.display = "none"; return; }
+      if (it.g) {      // v562i 120선 아래 = 회색 빗금(옅은 파랑 안착 구간과 헷갈리지 않게) + 위쪽 이름표 '하락 중'
+        el.style.cssText = `position:absolute;z-index:3;pointer-events:none;top:0;bottom:26px;display:block;left:${L}px;width:${R - L}px;`
+          + `background:repeating-linear-gradient(135deg,rgba(71,85,105,.16) 0 5px,rgba(71,85,105,.05) 5px 11px);border-left:1px dashed rgba(71,85,105,.45)`;
+        el.innerHTML = R - L >= 96 ? `<span style="position:absolute;top:30px;left:4px;background:rgba(51,65,85,.85);color:#fff;font:700 11px/16px sans-serif;padding:0 6px;border-radius:3px;white-space:nowrap">▼ 하락 중 · 120선 아래${it.t1 == null ? " (지금)" : ""}</span>` : "";
+        return;
+      }
       el.style.cssText = `position:absolute;z-index:3;pointer-events:none;top:0;bottom:26px;display:block;left:${L}px;width:${R - L}px;background:rgba(24,100,171,.07)`;
       el.textContent = ""; return;
     }
@@ -885,6 +903,7 @@ function paintPane(tf, d) {
       evs.forEach((e, k) => { if (e.kind === "up") p.zone.segs.push({ t0: e.time, t1: evs[k + 1] ? evs[k + 1].time : null }); });   // 마지막 안착이 이어지는 중이면 t1=null(오른쪽 끝까지)
       evs.slice(0, -1).forEach(e => { const i = bi.get(e.time); p.zone.bars.push({ t0: e.time, up: e.kind === "up", prev: i > 0 ? bars[i - 1].time : null }); });
     } catch (e) { p.zone = { segs: [], bars: [] }; }
+    try { p.zone.segs = seg120(d.bars, d.s120).concat(p.zone.segs); } catch (e) { /* 회색 구간은 없어도 차트는 그대로 */ }
     try {
       p.s120 = p.s120 || p.ch.addLineSeries({ color: "#6741D9", lineWidth: 3, priceLineVisible: false, lastValueVisible: true, title: "120", crosshairMarkerVisible: false });
       p.s120.setData(d.s120 || []);
