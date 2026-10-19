@@ -575,10 +575,12 @@ const pxCss = () => {
   if (document.getElementById("pxcss")) return;
   const st = document.createElement("style"); st.id = "pxcss";
   st.textContent = `.px{display:inline-block;margin-left:4px;padding:0 5px;border-radius:9px;font-size:11px;line-height:16px;font-weight:600;white-space:nowrap;vertical-align:1px;border:1px solid transparent;font-variant-numeric:tabular-nums}
-.px-go{background:rgba(249,115,22,.22);border-color:rgba(249,115,22,.75);color:#fb923c}.px-wait{border-color:rgba(234,179,8,.6);color:#eab308}
+.px-go{background:#fff7ed;border-color:#ea580c;color:#c2410c}.px-wait{border-color:rgba(234,179,8,.6);color:#eab308}
 .px-no{border-color:rgba(148,163,184,.35);color:#94a3b8;font-weight:500}.px .pu{color:#ef4444}.px .pd{color:#3b82f6}
 @keyframes pxO{0%,100%{box-shadow:0 0 0 0 rgba(249,115,22,0);background:rgba(249,115,22,.10)}50%{box-shadow:0 0 0 3px rgba(249,115,22,.35);background:rgba(249,115,22,.45)}}
-.pxp{animation:pxO 2.6s ease-in-out infinite}@media (prefers-reduced-motion:reduce){.pxp{animation:none;background:rgba(249,115,22,.4)}}`;
+.pxp{animation:pxO 2.6s ease-in-out infinite}@media (prefers-reduced-motion:reduce){.pxp{animation:none;background:rgba(249,115,22,.4)}}
+@keyframes pxRow{0%,100%{box-shadow:inset 0 0 0 999px rgba(249,115,22,0)}50%{box-shadow:inset 0 0 0 999px rgba(249,115,22,.30)}}
+tr.pxgo>td{animation:pxRow 2.8s ease-in-out infinite}@media (prefers-reduced-motion:reduce){tr.pxgo>td{animation:none;box-shadow:inset 0 0 0 999px rgba(249,115,22,.22)}}`;
   document.head.appendChild(st);
 };
 const pxChip = c => {
@@ -586,15 +588,20 @@ const pxChip = c => {
   pxCss();
   const p = (s.chg || 0) * 100, pc = `<span class="${p > 0 ? "pu" : p < 0 ? "pd" : ""}">${p > 0 ? "+" : ""}${p.toFixed(1)}%</span>`;
   const hot = s.lv === "go" || (s.ds != null && s.ds >= (P.pulse || 5));
-  const tip = `👁 후보 노출 — 첫 노출 ${s.first} · ${s.flow || ""}\n노출 ${s.runs}회 · ${s.n}거래일 지남 · 첫 노출 이후 ${p >= 0 ? "+" : ""}${p.toFixed(1)}% · ${s.st}`
+  const ce = (s.ce || 0) * 100;
+  const tip = `👁 후보 노출 — 첫 노출 ${s.first} · ${s.flow || ""}` + (s.re ? `\n재노출 ${s.ep} · 재노출 이후 ${ce >= 0 ? "+" : ""}${ce.toFixed(1)}%` : "")
+    + `\n노출 ${s.runs}회 · ${s.re ? "재노출" : "첫 노출"} 뒤 ${s.n}거래일 · 첫 노출 이후 ${p >= 0 ? "+" : ""}${p.toFixed(1)}% · ${s.st}`
     + (s.rs ? `\n종목 레이더 ${s.rs} ${s.sc ?? ""}` + (s.ds ? ` (경계 ${s.ds > 0 ? "+" : ""}${s.ds})` : "") + (s.dr ? ` (회복 ${s.dr > 0 ? "+" : ""}${s.dr})` : "") : "")
     + `\n매수 타이밍: ${s.t} — ${s.d}\n시장 RADAR ${P.market || "—"} · ${P.at || ""} 기준${P.stale ? "(지난 기록)" : ""} · 10/20 분석 근거 · 표시만`;
-  return ` <span class="px px-${s.lv}${hot ? " pxp" : ""}" title="${esc(tip)}">${s.lv === "go" ? "▶" : ""}${s.n}일 ${pc}</span>`;
+  return ` <span class="px px-${s.lv}${hot ? " pxp" : ""}" title="${esc(tip)}">${s.lv === "go" ? "▶" : ""}${s.re ? "재" : ""}${s.n}일 ${pc}</span>`;
 };
 const nameCell = (n, c) => nameOnly(n, c) + rtChip(c) + twChip(c) + pxChip(c);
 // v497 TOP50 표는 이름 칸이 150px에서 말줄임이라 글자 칩 대신 이름 앞에 짧은 🎯/⏳만(이름이 길어도 칩은 안 잘림)
 const rtMini = c => { const t = S.rt && S.rt[c]; return t ? `<span class="${t.status === "retest" ? "tgt" : "wait"}" title="${esc(t.tip)}">${t.status === "retest" ? "🎯" : "⏳"}</span> ` : ""; };
-const trOf = (code, name, cells, cls = "") => `<tr data-c="${esc(code)}" data-n="${esc(name)}" class="${cls}${code === S.code ? " sel" : ""}">${cells.map(c => `<td>${c}</td>`).join("")}</tr>`;
+// v562h 형 "매수타점 나오면 셀 전체로 자연스럽게 색 바뀜" — 후보 노출 ▶(매수 구간) 종목은 줄 전체가 주황으로 서서히 깜빡(숨김 종목 제외) · 표시만
+const pxGo = c => { const s = S.px && S.px.rows && S.px.rows[c]; return !!(s && s.lv === "go" && !s.h); };
+const trOf = (code, name, cells, cls = "") => { const g = pxGo(code); if (g) pxCss();
+  return `<tr data-c="${esc(code)}" data-n="${esc(name)}" class="${cls}${g ? " pxgo" : ""}${code === S.code ? " sel" : ""}">${cells.map(c => `<td>${c}</td>`).join("")}</tr>`; };
 
 /* ── 차트 공통 ─────────────────────────────────────────────── */
 function autoFit(ch, el, st, custom) {
