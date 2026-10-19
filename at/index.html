@@ -569,8 +569,8 @@ const twTip = (k, s) => s.up ? `📈 ${k}분봉 상승 시도 — ${s.at} 신호
   : `↗ ${k}분봉 추세 유지 — ${s.at} 신호 뒤 ${s.rel} 봉이 기준가 ${fmt(s.ref)} 위로 마감\n형 HTS 신호검색식 · 표시만 · HTS 캡처 3건 같은 봉 확인(검증 대기)`;
 const twOne = (k, s, mini) => `<span class="tw ${s.on ? "twr" : "twg"}${s.on ? " twn" : s.up ? " twu" : ""}${mini ? " twm" : ""}" title="${esc(twTip(k, s))}">${s.on ? (mini ? "▼" : "📉") : s.up ? (mini ? "▲" : "📈") : "↗"}${k}</span>`;   // v510 📈 상승 시도(초록 깜빡)
 const twChip = (c, mini) => { const t = S.tw && S.tw[c]; return t ? ["45", "120"].filter(k => t[k]).map(k => " " + twOne(k, t[k], mini)).join("") : ""; };
-// v562b 형 "언제 후보군에 노출 · 몇 번 · 첫 노출 이후 ±% 를 목록에 약식으로" — 쌍분석 노출 칩(경과일·첫 노출 이후 %·▶ 매수 구간) · 표시만
-// ▶(매수 구간) 또는 종목 레이더 경계 점수가 직전보다 5↑ 오르면 주황으로 서서히 깜빡 · 자세한 건 마우스(또는 쌍분석_평가_보기.vbs)
+// v562c 형 "언제 후보군에 노출 · 몇 번 · 첫 노출 이후 ±% 를 목록에 약식으로" — 후보 노출 추적 칩(쌍분석과 별개)(경과일·첫 노출 이후 %·▶ 매수 구간) · 표시만
+// ▶(매수 구간) 또는 종목 레이더 경계 점수가 직전보다 5↑ 오르면 주황으로 서서히 깜빡 · 자세한 건 마우스(또는 후보노출_보기.vbs)
 const pxCss = () => {
   if (document.getElementById("pxcss")) return;
   const st = document.createElement("style"); st.id = "pxcss";
@@ -582,11 +582,11 @@ const pxCss = () => {
   document.head.appendChild(st);
 };
 const pxChip = c => {
-  const P = S.px || {}, s = P.rows && P.rows[c]; if (!s) return "";
+  const P = S.px || {}, s = P.rows && P.rows[c]; if (!s || s.h) return "";      // v562e 경계 50↑은 칩 안 띄움(형 10/20)
   pxCss();
   const p = (s.chg || 0) * 100, pc = `<span class="${p > 0 ? "pu" : p < 0 ? "pd" : ""}">${p > 0 ? "+" : ""}${p.toFixed(1)}%</span>`;
   const hot = s.lv === "go" || (s.ds != null && s.ds >= (P.pulse || 5));
-  const tip = `🧪 쌍분석 노출 — 첫 노출 ${s.first} · ${s.flow || ""}\n노출 ${s.runs}회 · ${s.n}거래일 지남 · 첫 노출 이후 ${p >= 0 ? "+" : ""}${p.toFixed(1)}% · ${s.st}`
+  const tip = `👁 후보 노출 — 첫 노출 ${s.first} · ${s.flow || ""}\n노출 ${s.runs}회 · ${s.n}거래일 지남 · 첫 노출 이후 ${p >= 0 ? "+" : ""}${p.toFixed(1)}% · ${s.st}`
     + (s.rs ? `\n종목 레이더 ${s.rs} ${s.sc ?? ""}` + (s.ds ? ` (경계 ${s.ds > 0 ? "+" : ""}${s.ds})` : "") + (s.dr ? ` (회복 ${s.dr > 0 ? "+" : ""}${s.dr})` : "") : "")
     + `\n매수 타이밍: ${s.t} — ${s.d}\n시장 RADAR ${P.market || "—"} · ${P.at || ""} 기준${P.stale ? "(지난 기록)" : ""} · 10/20 분석 근거 · 표시만`;
   return ` <span class="px px-${s.lv}${hot ? " pxp" : ""}" title="${esc(tip)}">${s.lv === "go" ? "▶" : ""}${s.n}일 ${pc}</span>`;
@@ -1537,7 +1537,7 @@ let crownSub = "main", crownData = null;
 function paintLists(d) {
   S.rt = d.retest || {};
   S.tw = d.twarn || {};
-  S.px = d.pair || {};
+  S.px = d.expo || {};
   const t = d.top10 || {};
   $("top10").innerHTML = (t.rows || []).map(r => trOf(r.ticker, r.name, [r.rank, nameCell(r.name, r.ticker), esc(r.text)],
     r.kind === "buy" ? "buy" : (r.kind === "bought" || r.kind === "pending") ? "bought" : r.muted ? "mutedrow" : "")).join("")
