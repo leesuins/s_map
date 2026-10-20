@@ -1571,6 +1571,7 @@ function paintLists(d) {
   S.rt = d.retest || {};
   S.tw = d.twarn || {};
   S.px = d.expo || {};
+  try { xpPaint(); } catch (e) { /* 팝업이 닫혀 있거나 아직 없음 */ }
   const t = d.top10 || {};
   $("top10").innerHTML = (t.rows || []).map(r => trOf(r.ticker, r.name, [r.rank, nameCell(r.name, r.ticker), esc(r.text)],
     r.kind === "buy" ? "buy" : (r.kind === "bought" || r.kind === "pending") ? "bought" : r.muted ? "mutedrow" : "")).join("")
@@ -2575,6 +2576,100 @@ document.addEventListener("click", e => {
 });
 document.querySelectorAll(".hft thead th").forEach(th => { th.tabIndex = 0; th.setAttribute("role", "button"); });
 document.addEventListener("keydown", e => { const th = e.target.closest && e.target.closest(".hft thead th"); if (th && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); th.click(); } });
+
+/* ── v562l 형 10/20 "별도로 실행하니까 관리가 힘들어 · 기존 웹에 넣어서 팝업으로" — 👁 후보 노출 추적 팝업.
+   자료 = 왼쪽 목록 칩과 같은 data_cache/expo/exposure_latest.json(/api/one/lists의 expo · 30초마다 다시 받음) · 서버 재시작 없이 동작 · 표시만(주문·매매 규칙과 무관) ── */
+const XP = { f: "see", k: 0, dir: 1 };
+const XP_RULE = { GREEN: "초록: 노출 당일 14:30↑ ▶ · 1~4일째 기준가 위면 14:30↑ ▶", YELLOW: "노랑: 당일 관찰 · 1~4일째 기준가 위면 14:30↑ ▶ · 비중½",
+  RED: "빨강: 당일 관찰 · 1~4일째 14:30↑ ▶(기준가 무관) · 비중¼", HOLD: "보류: 노출 당일~2일째 쉬기(대기) · 3~4일째 14:30↑ ▶ · 비중¼",
+  UNKNOWN: "장 자료 없음: 1~4일째 기준가 위면 14:30↑ ▶" };
+const XP_MK = { GREEN: ["초록", "#16a34a"], YELLOW: ["노랑", "#ca8a04"], RED: ["빨강", "#dc2626"], HOLD: ["보류", "#dc2626"], UNKNOWN: ["자료 없음", "#6b7280"] };
+const XP_ST = { 확인: 0, 관찰: 1, 유지: 2, 고점: 3, 눌림: 4 };
+const xpP = (v, d = 1) => v == null ? "—" : `<span class="${v > 0 ? "pu" : v < 0 ? "pd" : ""}">${v > 0 ? "+" : ""}${(v * 100).toFixed(d)}%</span>`;
+const xpN = v => (typeof v === "number" && isFinite(v)) ? Math.round(v).toLocaleString("ko-KR") : "—";
+const XP_COLS = [
+  ["우선", r => r.pr ?? 9999, r => `<span class="mut">${r.pr ?? ""}</span>`],
+  ["종목", r => r.nm || r.c, r => `<b>${esc(r.nm || r.c)}</b> <small class="mut">${esc(r.c)}</small>`, true],
+  ["단계", r => XP_ST[r.st] ?? 9, r => `<span class="xpb xpb-${XP_ST[r.st] ?? 9}">${esc(r.st || "")}</span>`],
+  ["첫 노출", r => r.first || "", r => `${esc(r.first || "")} <small class="mut">${esc(r.ff || "")}</small>${r.re ? ` <b class="xpre" title="재노출 ${esc(r.ep)} — 경과·기준가·타이밍은 이 날 기준">재${esc(String(r.ep || "").slice(0, 5))}</b>` : ""}`, true],
+  ["노출", r => r.runs || 0, r => `${r.runs ?? ""}<small class="mut">회·${r.nd ?? ""}일</small>`],
+  ["경과", r => r.n ?? 99, r => `${r.n ?? ""}일`],
+  ["첫 노출가 →기준가", r => r.fp || 0, r => `${xpN(r.fp)} <small class="mut">→${xpN(r.ref)}</small>`],
+  ["현재가", r => r.cur || 0, r => `<span title="${esc(r.ca || "")}">${xpN(r.cur)}</span>`],
+  ["첫 노출 이후", r => r.chg ?? -9, r => `<b>${xpP(r.chg)}</b>${r.re ? ` <small title="재노출 이후">재${xpP(r.ce)}</small>` : ""}`],
+  ["최고 / 최저", r => r.hi ?? -9, r => `<small>${xpP(r.hi)} / ${xpP(r.lo)}</small>`],
+  ["종목 레이더", r => r.sc ?? 999, r => r.rs ? `${esc(r.rs)} <b>${r.sc ?? ""}</b>${r.ds ? ` <small class="${r.ds > 0 ? "pu" : "pd"}">경계${r.ds > 0 ? "+" : ""}${r.ds}</small>` : ""}${r.dr ? ` <small>회복${r.dr > 0 ? "+" : ""}${r.dr}</small>` : ""}` : `<span class="mut">—</span>`],
+  ["매수 타이밍", r => r.pr ?? 9999, r => { const w = !(r.lv === "go") && (r.t === "보류" || r.h); const tail = String(r.d || "").split(" · ").slice(1).join(" · ");
+    return `<span class="xptm xptm-${w ? "warn" : r.lv}" title="${esc(r.d || "")}">${esc(r.t || "")}</span> <small class="mut xptl">${esc(tail)}</small>`; }, true],
+];
+function xpEnsure() {
+  if ($("xp")) return;
+  try { pxCss(); } catch (e) { /* 칩 색만 */ }
+  const st = document.createElement("style");
+  st.textContent = `.xpbox{width:min(1500px,97vw);height:min(900px,94vh);display:flex}
+.xprule{padding:.25rem 1rem;font-size:12px;color:#5d6675;border-bottom:1px solid #e3e7ed}.xprule b{color:#141a22}.xprule i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px;vertical-align:0}
+.xptw{flex:1;overflow:auto;padding:0 .5rem}.xpt{border-collapse:collapse;width:100%;font-size:12.5px;font-variant-numeric:tabular-nums}
+.xpt th,.xpt td{padding:2px 6px;border-bottom:1px solid #e9ecf1;white-space:nowrap;text-align:right;height:24px}
+.xpt th{position:sticky;top:0;z-index:2;background:#fff;color:#5d6675;font-weight:600;font-size:11.5px;cursor:pointer;user-select:none;box-shadow:0 1px 0 #e3e7ed}
+.xpt th.l,.xpt td.l{text-align:left}.xpt th.on{color:#141a22}.xpt th i{font-style:normal;color:#7c3aed;margin-left:3px}
+.xpt tbody tr{cursor:pointer}.xpt tbody tr:hover td{background:rgba(124,58,237,.06)}
+.xpt tr.pxgo>td{animation:pxRow 2.8s ease-in-out infinite}.xpt tr.xpdim td{opacity:.6}
+.xpb{display:inline-block;padding:0 6px;border-radius:999px;font-size:11px;font-weight:700;background:#eef0f3;color:#5d6675}
+.xpb-0{background:#dcfce7;color:#166534}.xpb-1{background:#e0e7ff;color:#3730a3}.xpb-3{background:#ffedd5;color:#9a3412}
+.xpre{color:#7c3aed;font-size:11px}.xptm{display:inline-block;padding:0 7px;border-radius:4px;font-weight:700;font-size:12px;background:#eef0f3}
+.xptm-go{background:#f5f3ff;color:#6d28d9;box-shadow:inset 0 0 0 1px #7c3aed}.xptm-no{background:none;color:#8a93a3}.xptm-warn{background:#fef2f2;color:#b91c1c;box-shadow:inset 0 0 0 1px #dc2626}
+.xpft{padding:.35rem 1rem;font-size:11px;border-top:1px solid #e3e7ed}.xpstale{color:#dc2626;font-weight:700}
+@media (max-width:1500px){.xptl{display:none}}`;
+  document.head.appendChild(st);
+  const d = document.createElement("div");
+  d.id = "xp"; d.className = "dm hide"; d.setAttribute("role", "dialog"); d.setAttribute("aria-modal", "true"); d.setAttribute("aria-label", "후보 노출 추적");
+  d.innerHTML = `<div class="dmbox xpbox"><div class="dmhd"><b class="big">👁 후보 노출 추적</b><span id="xpsub" class="mut"></span><span class="sp"></span><button class="btn" id="xpx" type="button">닫기 ✕ (Esc)</button></div>
+  <div class="xprule" id="xprule"></div>
+  <div class="t5f" role="group" aria-label="거르기"><button type="button" class="t5fb on" data-xf="see">볼 종목</button><button type="button" class="t5fb" data-xf="go">▶ 매수 구간</button><button type="button" class="t5fb" data-xf="rest">나머지(지남·눌림·보류)</button><button type="button" class="t5fb" data-xf="hid">숨김(경계50↑·600선↓)</button><button type="button" class="t5fb" data-xf="all">전체</button><span class="sp"></span><span id="xpcnt" class="mut"></span></div>
+  <div class="xptw"><table class="xpt"><thead><tr id="xph"></tr></thead><tbody id="xpb"></tbody></table></div>
+  <div class="xpft mut">행 누르면 그 종목 차트로 · 제목 눌러 정렬(다시 누르면 반대) · 보라 줄 = ▶ 매수 구간 · 빨간 테두리 = ⚠보류(레이더 악화) · 표시만(주문·매매 규칙과 무관) · 시스템 출력, 추천 아님</div></div>`;
+  document.body.appendChild(d);
+  $("xph").innerHTML = XP_COLS.map((c, i) => `<th class="${c[3] ? "l" : ""}" data-i="${i}" tabindex="0">${c[0]}<i></i></th>`).join("");
+  $("xph").addEventListener("click", e => { const th = e.target.closest("th"); if (!th) return; const i = +th.dataset.i;
+    XP.dir = XP.k === i ? -XP.dir : ((i === 0 || i === 11 || XP_COLS[i][3]) ? 1 : -1); XP.k = i; xpPaint(); });
+  $("xph").addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.closest("th")) { e.preventDefault(); e.target.click(); } });
+  d.querySelectorAll("[data-xf]").forEach(b => b.addEventListener("click", () => { XP.f = b.dataset.xf; d.querySelectorAll("[data-xf]").forEach(x => x.classList.toggle("on", x === b)); xpPaint(); }));
+  $("xpb").addEventListener("click", e => { const tr = e.target.closest("tr[data-c]"); if (!tr) return; closeXP(); try { select(tr.dataset.c, tr.dataset.n); } catch (er) { /* 차트만 */ } });
+  $("xpx").addEventListener("click", closeXP);
+  d.addEventListener("click", e => { if (e.target === d) closeXP(); });
+}
+function xpPaint() {
+  const box = $("xp"); if (!box || box.classList.contains("hide")) return;
+  const P = S.px || {}, all = Object.entries(P.rows || {}).map(([c, r]) => ({ c, ...r }));
+  const mk = P.market || "UNKNOWN", m = XP_MK[mk] || XP_MK.UNKNOWN;
+  let stale = false;
+  try { const [md, hm] = String(P.at || "").split(" "), [mo, dd] = md.split("/").map(Number), [hh, mi] = hm.split(":").map(Number), n = new Date();
+    const t = new Date(n.getFullYear(), mo - 1, dd, hh, mi); const live = n.getDay() > 0 && n.getDay() < 6 && (n.getHours() * 60 + n.getMinutes()) >= 540 && (n.getHours() * 60 + n.getMinutes()) <= 940;
+    stale = live && (n - t) > 10 * 60000; } catch (e) { /* 시각 모름 */ }
+  const ngo = all.filter(r => r.lv === "go" && !r.h).length, nwait = all.filter(r => r.lv === "wait" && !r.h).length;
+  $("xpsub").innerHTML = ` <span class="${stale ? "xpstale" : ""}" title="${stale ? "10분 넘게 갱신이 멈춤 — 후보노출_보기.vbs를 눌러 주세요" : "5분마다 다시 계산"}">${esc(P.at || "—")} 계산${stale ? " · 갱신 멈춤!" : ""}${P.stale ? " (지난 기록)" : ""}</span> · ▶ <b>${ngo}</b> · 대기 ${nwait} · 노출 ${all.length}`;
+  $("xprule").innerHTML = `<i style="background:${m[1]}"></i><b>장 ${esc(m[0])}</b> · ${esc(XP_RULE[mk] || XP_RULE.UNKNOWN)} · 다음날 시가 추격 안 함 · 3~4일째 +8%↑ = 고점 주의`;
+  const f = XP.f, rows = all.filter(r => f === "all" ? true : f === "hid" ? r.h : f === "go" ? (r.lv === "go" && !r.h) : f === "rest" ? (r.lv === "no" && !r.h) : (r.lv !== "no" && !r.h));
+  const key = XP_COLS[XP.k][1], str = XP_COLS[XP.k][3] && XP.k !== 0 && XP.k !== 11;
+  rows.sort((a, b) => { const x = key(a), y = key(b); return (str ? String(x).localeCompare(String(y), "ko") : (x - y)) * XP.dir || ((a.pr ?? 9999) - (b.pr ?? 9999)); });
+  $("xpcnt").textContent = `${rows.length}종목`;
+  [...$("xph").children].forEach((th, i) => { th.classList.toggle("on", i === XP.k); th.querySelector("i").textContent = i === XP.k ? (XP.dir > 0 ? "▲" : "▼") : ""; });
+  $("xpb").innerHTML = rows.map(r => `<tr data-c="${esc(r.c)}" data-n="${esc(r.nm || r.c)}" class="${r.lv === "go" && !r.h ? "pxgo" : (r.lv === "no" ? "xpdim" : "")}">`
+    + XP_COLS.map(c => `<td class="${c[3] ? "l" : ""}">${c[2](r)}</td>`).join("") + "</tr>").join("")
+    || `<tr><td colspan="${XP_COLS.length}" class="l mut">해당 종목 없음</td></tr>`;
+}
+function openXP() { xpEnsure(); $("xp").classList.remove("hide"); xpPaint(); }
+const closeXP = () => { const d = $("xp"); if (d) d.classList.add("hide"); };
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeXP(); });
+(function () {                                   // 위쪽 단추 줄 '📈 상승 진입' 옆에 '👁 후보 노출'
+  try {
+    const anchor = $("brs"); if (!anchor || $("bxp")) return;
+    const b = document.createElement("button");
+    b.className = "btn b50"; b.id = "bxp"; b.type = "button"; b.textContent = "👁 후보 노출";
+    b.title = "후보 노출 추적 — 언제·몇 번 노출 · 첫 노출 이후 % · 장별 매수 타이밍(보기만 · 주문 없음)";
+    anchor.after(b); b.addEventListener("click", openXP);
+  } catch (e) { /* 단추만 없음 */ }
+})();
 
 </script>
 </body></html>
