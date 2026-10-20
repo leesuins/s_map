@@ -2611,7 +2611,7 @@ const XP_COLS = [
   ["최고 / 최저", r => r.hi ?? -9, r => `<small>${xpP(r.hi)} / ${xpP(r.lo)}</small>`],
   ["초입선 5·15·45·120·전 | 600선", r => r.mf && Object.keys(r.mf).length ? (["5", "15", "45", "120"].filter(k => r.mf[k] === true).length + (r.mf.t120 === true ? 1 : 0)) : -1,
     r => r.mf && Object.keys(r.mf).length ? `${r.mf.ok ? '<b class="xpmf">◆</b> ' : ""}` + ["5", "15", "45", "120"].map(k => `<span class="${r.mf[k] === true ? "pu" : r.mf[k] === false ? "pd" : "mut"}">${k}${r.mf[k] === true ? "↑" : r.mf[k] === false ? "↓" : "?"}</span>`).join(" ")
-      + ` <span class="${r.mf.t120 === true ? "pu" : r.mf.t120 === false ? "pd" : "mut"}" title="120분 전환선(9봉)">전${r.mf.t120 === true ? "↑" : r.mf.t120 === false ? "↓" : "?"}</span>`
+      + ` <span class="${r.mf.t120 === true ? "pu" : r.mf.t120 === false ? "pd" : "mut"}" title="120분 전환선(5봉 · 형 HTS)">전${r.mf.t120 === true ? "↑" : r.mf.t120 === false ? "↓" : "?"}</span>`
       + ` <small class="mut">|</small> ` + ["5", "15", "45"].map(k => `<span class="${r.mf["e" + k] === true ? "pu" : r.mf["e" + k] === false ? "pd" : "mut"}" title="${k}분 600이평(지수)">6${k}${r.mf["e" + k] === true ? "↑" : r.mf["e" + k] === false ? "↓" : "?"}</span>`).join(" ") : `<span class="mut">—</span>`],
   ["종목 레이더", r => r.sc ?? 999, r => r.rs ? `${esc(r.rs)} <b>${r.sc ?? ""}</b>${r.ds ? ` <small class="${r.ds > 0 ? "pu" : "pd"}">경계${r.ds > 0 ? "+" : ""}${r.ds}</small>` : ""}${r.dr ? ` <small>회복${r.dr > 0 ? "+" : ""}${r.dr}</small>` : ""}` : `<span class="mut">—</span>`],
   ["매수 타이밍", r => r.pr ?? 9999, r => { const w = !(r.lv === "go") && (r.t === "보류" || r.h); const tail = String(r.d || "").split(" · ").slice(1).join(" · ");
