@@ -2585,9 +2585,9 @@ document.addEventListener("keydown", e => { const th = e.target.closest && e.tar
 /* ── v562l 형 10/20 "별도로 실행하니까 관리가 힘들어 · 기존 웹에 넣어서 팝업으로" — 👁 후보 노출 추적 팝업.
    자료 = 왼쪽 목록 칩과 같은 data_cache/expo/exposure_latest.json(/api/one/lists의 expo · 30초마다 다시 받음) · 서버 재시작 없이 동작 · 표시만(주문·매매 규칙과 무관) ── */
 const XP = { f: "see", k: 0, dir: 1 };
-const XP_RULE = { GREEN: "초록: 노출 당일 ▶ · 1~4일째 기준가 위면 ▶", YELLOW: "노랑: 당일 관찰 · 1~4일째 기준가 위면 ▶ · 비중½",
-  RED: "빨강: 당일 관찰 · 1~4일째 ▶(기준가 무관) · 비중¼", HOLD: "보류: 노출 당일~2일째 쉬기(대기) · 3~4일째 ▶ · 비중¼",
-  UNKNOWN: "장 자료 없음: 1~4일째 기준가 위면 ▶" };
+const XP_RULE = { GREEN: "초록: 노출 당일·1~4일째 기준가 위 + 레이더 정상이면 ▶", YELLOW: "노랑: 당일 관찰 · 1~4일째 기준가 위 + 레이더 정상이면 ▶ · 비중½",
+  RED: "빨강: 당일 관찰 · 1~4일째 기준가 위 + 레이더 정상이면 ▶ · 비중¼", HOLD: "보류: 당일~2일째 쉬기 · 3~4일째 기준가 위 + 레이더 정상이면 ▶ · 비중¼",
+  UNKNOWN: "장 자료 없음: 1~4일째 기준가 위 + 레이더 정상이면 ▶" };
 const XP_MK = { GREEN: ["초록", "#16a34a"], YELLOW: ["노랑", "#ca8a04"], RED: ["빨강", "#dc2626"], HOLD: ["보류", "#dc2626"], UNKNOWN: ["자료 없음", "#6b7280"] };
 const XP_ST = { 확인: 0, 관찰: 1, 유지: 2, 고점: 3, 눌림: 4 };
 const xpP = (v, d = 1) => v == null ? "—" : `<span class="${v > 0 ? "pu" : v < 0 ? "pd" : ""}">${v > 0 ? "+" : ""}${(v * 100).toFixed(d)}%</span>`;
