@@ -1663,7 +1663,10 @@ function paintLists(d) {
   $("top10").innerHTML = (t.rows || []).map(r => trOf(r.ticker, r.name, [r.rank, nameCell(r.name, r.ticker), esc(r.text)],
     r.kind === "buy" ? "buy" : (r.kind === "bought" || r.kind === "pending") ? "bought" : r.muted ? "mutedrow" : "")).join("")
     || emptyRow(3, "오늘 신호 파일이 아직 없어요");
-  $("l1info").textContent = `전체 ${t.total ?? 0} 중 · 매수 대상 ${t.buy_n ?? 0}` + (t.probe_max ? ` · 관찰 상한 ${t.probe_max}` : "") + ` · 신호 ${d.signal_date || "—"}`;
+  $("l1info").textContent = `전체 ${t.total ?? 0} 중 · 매수 대상 ${t.buy_n ?? 0}` + (t.probe_max ? ` · 관찰 상한 ${t.probe_max}` : "")
+    + ((t.skip || []).length ? ` · ⛔120 이탈 ${t.skip.length} 빼고 다음 순위` : "") + ` · 신호 ${d.signal_date || "—"}`;
+  $("l1info").title = (t.skip || []).length ? "⛔ 120분 급등보호매도 저점이탈(안착 전) — 매수 순서에서 빼고 다음 종목을 올림(SU2도 안 삼)\n"
+    + t.skip.map(x => `${x.name} — ${x.at} 봉 저가 ${Number(x.lo).toLocaleString()} 아래 · 종가 ${Number(x.ref).toLocaleString()} 위 안착 전`).join("\n") : "";
   const ov = (d.overlap || []).filter(x => !x.error);
   $("ovinfo").textContent = `${ov.length}종목 · 4곳(규칙·관심·판정·TOP10) 중 2곳↑`;
   S.ov = ov;
