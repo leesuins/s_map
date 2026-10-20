@@ -560,7 +560,15 @@ function errBox(id, e) {
   el.innerHTML = el.tagName === "TBODY" ? `<tr><td colspan="12" style="text-align:left">${m}</td></tr>` : el.tagName === "UL" ? `<li>${m}</li>` : m;
 }
 const emptyRow = (n, t) => `<tr><td colspan="${n}" class="mut" style="text-align:left">${esc(t)}</td></tr>`;
-const nameOnly = (n, c) => `<b>${esc(n || c)}</b>`;
+// v562w 형 10/20 "45·120분 신호 뜨고 아래로 이탈하면 웹 후보 목록에 취소선" — 급등보호매도(PRO15) 봉 저가 아래(그 봉 종가 위 안착 전까지) · 120분 = 빨간 취소선(⛔ 매수금지) · 45분만 = 회색 취소선(경고) · 표시만
+const twxCss = () => { if (document.getElementById("twxcss")) return; const st = document.createElement("style"); st.id = "twxcss";
+  st.textContent = `.twx{text-decoration:line-through;text-decoration-thickness:2px}.twx120{text-decoration-color:#dc2626;color:#9f1239}.twx45{text-decoration-color:#94a3b8}`; document.head.appendChild(st); };
+const twxOf = c => { const b = S.tw && S.tw[c] && S.tw[c].brk; if (!b) return null; twxCss();
+  const k = b["120"] ? "120" : "45", x = b[k], lo = v => v != null ? Number(v).toLocaleString() : "—";
+  return { cls: `twx twx${k}`, tip: (b["120"] ? `⛔ 120분 급등보호매도(${b["120"].at}) 봉 저가 ${lo(b["120"].lo)} 아래 — 그 봉 종가 ${lo(b["120"].ref)} 위로 마감(안착) 전까지 매수금지` : "")
+    + (b["45"] ? `${b["120"] ? "\n" : ""}📉 45분 급등보호매도(${b["45"].at}) 봉 저가 ${lo(b["45"].lo)} 아래 — 종가 ${lo(b["45"].ref)} 위 안착 전(경고)` : "") + "\n형 규칙 10/20 · 표시만" }; };
+const twxB = (n, c, attr) => { const x = twxOf(c); return x ? `<b class="${x.cls}" title="${esc(x.tip)}"${attr || ""}>${n}</b>` : `<b${attr || ""}>${n}</b>`; };
+const nameOnly = (n, c) => twxB(esc(n || c), c);
 // v496 형 "다른 종목 노출할 때도 타점 표기" — 5분봉 역할 전환 리테스트 칩(🎯 받친 자리 · ⏳ 돌파 후 대기)을 목록마다 이름 옆에 · 표시만
 const rtChip = c => { const t = S.rt && S.rt[c]; return t ? (t.status === "retest" ? ` <span class="tgt" title="${esc(t.tip)}">🎯타점</span>` : ` <span class="wait" title="${esc(t.tip)}">⏳</span>`) : ""; };
 // v501 형 HTS 신호검색식(FASTBASE·CountSince==1)을 45·120분봉에 — "뜨면 추세 하락 · 신호 봉 종가보다 위로 마감하면 추세 유지". 빨간 꽉 찬 칩(v504 지금 경고 중이면 깜빡) · 풀리면 초록 · 표시만
@@ -1599,7 +1607,7 @@ function paintLists(d) {
   $("wtinfo").textContent = `${w.length}종목 · 노랑 = 형 규칙 통과`;
   // 한 줄에 들어가게 칸을 줄임(자리잡음·조건식 수·추세 단계는 종목 이름에 마우스) — 화면에 늘 꺼내 놓는 칸이라 줄 높이를 아낌
   $("watch").innerHTML = w.map((r, i) => trOf(r.ticker, r.name, [i + 1,
-    `<b title="자리잡음 ${r.ichi_held ? "예" : "—"} · 조건식 ${r.n_conditions}개 · ${esc(r.stage_ko)}">${esc(r.name || r.ticker)}</b>` + rtChip(r.ticker) + twChip(r.ticker) + pxChip(r.ticker),
+    (twxOf(r.ticker) ? twxB(esc(r.name || r.ticker), r.ticker) : `<b title="자리잡음 ${r.ichi_held ? "예" : "—"} · 조건식 ${r.n_conditions}개 · ${esc(r.stage_ko)}">${esc(r.name || r.ticker)}</b>`) + rtChip(r.ticker) + twChip(r.ticker) + pxChip(r.ticker),
     f1(r.score, 0), f1(r.ichi, 0), f1(r.rsi, 0), esc(r.day), `<span class="rule">${esc(r.rule)}</span>`], r.rule_ok ? "ruleok" : "")).join("")
     || emptyRow(7, "조건을 통과한 종목이 없습니다");
   const hb = d.hub || {};
@@ -2014,7 +2022,7 @@ function t5paint() {
   $("t5cnt").textContent = `전체 ${d.rows.length} 중 ${rs.length}`;
   t5hfMark();
   $("t5tb").innerHTML = rs.map(r => `<tr tabindex="0" data-c="${esc(r.code)}" data-n="${esc(r.name)}" class="${r.code === T5.sel ? "t5sel" : ""}">
-    <td>${r.rank}</td><td class="l nm" title="${esc(r.name)}">${rtMini(r.code)}${twChip(r.code, true)}${twChip(r.code, true) ? " " : ""}${esc(r.name)}${r.held ? '<span class="t5held">보유</span>' : ""}</td>
+    <td>${r.rank}</td><td class="l nm" title="${esc(r.name)}">${rtMini(r.code)}${twChip(r.code, true)}${twChip(r.code, true) ? " " : ""}${twxOf(r.code) ? `<span class="${twxOf(r.code).cls}" title="${esc(twxOf(r.code).tip)}">${esc(r.name)}</span>` : esc(r.name)}${r.held ? '<span class="t5held">보유</span>' : ""}</td>
     <td class="l"><div class="t5sc"><b>${r.score}</b><i style="width:${r.score * 7}px"></i></div></td>
     ${t5recCell(r.code)}
     ${T5COLS.map(k => `<td>${t5dot(r.ck[k])}</td>`).join("")}<td class="mut">${r.top10 || "—"}</td>
@@ -2601,7 +2609,7 @@ const xpP = (v, d = 1) => v == null ? "—" : `<span class="${v > 0 ? "pu" : v <
 const xpN = v => (typeof v === "number" && isFinite(v)) ? Math.round(v).toLocaleString("ko-KR") : "—";
 const XP_COLS = [
   ["우선", r => r.pr ?? 9999, r => `<span class="mut">${r.pr ?? ""}</span>`],
-  ["종목", r => r.nm || r.c, r => `<b>${esc(r.nm || r.c)}</b> <small class="mut">${esc(r.c)}</small>`, true],
+  ["종목", r => r.nm || r.c, r => `${twxB(esc(r.nm || r.c), r.c)} <small class="mut">${esc(r.c)}</small>`, true],
   ["단계", r => XP_ST[r.st] ?? 9, r => `<span class="xpb xpb-${XP_ST[r.st] ?? 9}">${esc(r.st || "")}</span>`],
   ["첫 노출", r => r.first || "", r => `${esc(r.first || "")} <small class="mut">${esc(r.ff || "")}</small>${r.re ? ` <b class="xpre" title="재노출 ${esc(r.ep)} — 경과·기준가·타이밍은 이 날 기준">재${esc(String(r.ep || "").slice(0, 5))}</b>` : ""}`, true],
   ["노출", r => r.runs || 0, r => `${r.runs ?? ""}<small class="mut">회·${r.nd ?? ""}일</small>`],
