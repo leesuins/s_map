@@ -575,12 +575,15 @@ const pxCss = () => {
   if (document.getElementById("pxcss")) return;
   const st = document.createElement("style"); st.id = "pxcss";
   st.textContent = `.px{display:inline-block;margin-left:4px;padding:0 5px;border-radius:9px;font-size:11px;line-height:16px;font-weight:600;white-space:nowrap;vertical-align:1px;border:1px solid transparent;font-variant-numeric:tabular-nums}
-.px-go{background:#f5f3ff;border-color:#7c3aed;color:#6d28d9}.px-warn{background:#fef2f2;border:1.5px solid #dc2626;color:#b91c1c}.px-wait{border-color:rgba(234,179,8,.6);color:#eab308}
+.px-go{background:#f5f3ff;border-color:#7c3aed;color:#6d28d9}.px-star{background:#eff6ff;border-color:#2563eb;color:#1d4ed8}.px-warn{background:#fef2f2;border:1.5px solid #dc2626;color:#b91c1c}.px-wait{border-color:rgba(234,179,8,.6);color:#eab308}
 .px-no{border-color:rgba(148,163,184,.35);color:#94a3b8;font-weight:500}.px .pu{color:#ef4444}.px .pd{color:#3b82f6}
 @keyframes pxO{0%,100%{box-shadow:0 0 0 0 rgba(124,58,237,0)}50%{box-shadow:0 0 0 3px rgba(124,58,237,.35)}}
 .pxp{animation:pxO 2.8s ease-in-out infinite}@media (prefers-reduced-motion:reduce){.pxp{animation:none}}
 @keyframes pxRow{0%,100%{box-shadow:inset 0 0 0 999px rgba(124,58,237,0)}50%{box-shadow:inset 0 0 0 999px rgba(124,58,237,.26)}}
 tr.pxgo>td{animation:pxRow 2.8s ease-in-out infinite}@media (prefers-reduced-motion:reduce){tr.pxgo>td{animation:none;box-shadow:inset 0 0 0 999px rgba(124,58,237,.2)}}
+@keyframes pxRowB{0%,100%{box-shadow:inset 0 0 0 999px rgba(37,99,235,0)}50%{box-shadow:inset 0 0 0 999px rgba(37,99,235,.26)}}@keyframes pxB{0%,100%{box-shadow:0 0 0 0 rgba(37,99,235,0)}50%{box-shadow:0 0 0 3px rgba(37,99,235,.38)}}
+tr.pxstar>td{animation:pxRowB 2.8s ease-in-out infinite}.px.pxs{animation:pxB 2.8s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){tr.pxstar>td{animation:none;box-shadow:inset 0 0 0 999px rgba(37,99,235,.2)}.px.pxs{animation:none}}
 @keyframes pxFO{0%,100%{background-color:transparent}50%{background-color:rgba(249,115,22,.38)}}@keyframes pxFG{0%,100%{background-color:transparent}50%{background-color:rgba(34,197,94,.32)}}
 .px.pxo{animation:pxFO 2.6s ease-in-out infinite}.px.pxg{animation:pxFG 2.6s ease-in-out infinite}
 @media (prefers-reduced-motion:reduce){.px.pxo{animation:none;background:rgba(249,115,22,.3)}.px.pxg{animation:none;background:rgba(34,197,94,.25)}}`;
@@ -590,7 +593,7 @@ const pxChip = c => {
   const P = S.px || {}, s = P.rows && P.rows[c]; if (!s || s.h) return "";      // v562e 경계 50↑은 칩 안 띄움(형 10/20)
   pxCss();
   const p = (s.chg || 0) * 100, pc = `<span class="${p > 0 ? "pu" : p < 0 ? "pd" : ""}">${p > 0 ? "+" : ""}${p.toFixed(1)}%</span>`;
-  const hot = s.lv === "go";                                                     // v562j 깜빡임 = ▶ 매수 구간만(보라 · 형 10/20 B안)
+  const hot = s.lv === "go", star = hot && s.sr === "★";                        // v562q ★ = 파랑(60일 고가·거래량 2배 · 초록·노랑장)                                                     // v562j 깜빡임 = ▶ 매수 구간만(보라 · 형 10/20 B안)
   const warn = !hot && (s.t === "보류" || (s.ds != null && s.ds >= (P.pulse || 5)));   // 레이더 악화 = 빨간 테두리 ⚠보류(안 깜빡)
   const ce = (s.ce || 0) * 100;
   const tip = `👁 후보 노출 — 첫 노출 ${s.first} · ${s.flow || ""}` + (s.re ? `\n재노출 ${s.ep} · 재노출 이후 ${ce >= 0 ? "+" : ""}${ce.toFixed(1)}%` : "")
@@ -599,15 +602,16 @@ const pxChip = c => {
     + `\n매수 타이밍: ${s.t} — ${s.d}\n시장 RADAR ${P.market || "—"} · ${P.at || ""} 기준${P.stale ? "(지난 기록)" : ""} · 10/20 분석 근거 · 표시만`;
   // v562m 형 "액션·색 동일하게" — 후보노출 화면·팝업의 레이더 칸과 같은 깜빡임: 경계↑ 주황 · 회복↑ 초록(▶은 보라 그대로)
   const rk = hot ? "" : (s.ds != null && s.ds >= (P.pulse || 5)) ? " pxo" : (s.dr != null && s.dr >= (P.pulse || 5)) ? " pxg" : "";
-  return ` <span class="px ${warn ? "px-warn" : "px-" + s.lv}${hot ? " pxp" : ""}${rk}" title="${esc(tip)}">${hot ? "▶" : warn ? "⚠보류 " : ""}${s.re ? "재" : ""}${s.n}일 ${pc}</span>`;
+  return ` <span class="px ${warn ? "px-warn" : star ? "px-star" : "px-" + s.lv}${star ? " pxs" : hot ? " pxp" : ""}${rk}" title="${esc(tip)}${s.sr ? `\n${s.sr} 60일 고가 ${s.h60 != null ? (s.h60 * 100).toFixed(1) + "%" : "—"} · 거래량 ${s.vr ?? "—"}배${s.sr === "☆" ? " · 빨강·보류장 = 근거 없음(참고)" : ""}` : ""}">${s.sr ? s.sr : ""}${hot ? "▶" : warn ? "⚠보류 " : ""}${s.re ? "재" : ""}${s.n}일 ${pc}</span>`;
 };
 const nameCell = (n, c) => nameOnly(n, c) + rtChip(c) + twChip(c) + pxChip(c);
 // v497 TOP50 표는 이름 칸이 150px에서 말줄임이라 글자 칩 대신 이름 앞에 짧은 🎯/⏳만(이름이 길어도 칩은 안 잘림)
 const rtMini = c => { const t = S.rt && S.rt[c]; return t ? `<span class="${t.status === "retest" ? "tgt" : "wait"}" title="${esc(t.tip)}">${t.status === "retest" ? "🎯" : "⏳"}</span> ` : ""; };
 // v562h 형 "매수타점 나오면 셀 전체로 자연스럽게 색 바뀜" — 후보 노출 ▶(매수 구간) 종목은 줄 전체가 보라로 서서히 깜빡(v562j 주황→보라)(숨김 종목 제외) · 표시만
 const pxGo = c => { const s = S.px && S.px.rows && S.px.rows[c]; return !!(s && s.lv === "go" && !s.h); };
+const pxStar = c => { const s = S.px && S.px.rows && S.px.rows[c]; return !!(s && s.lv === "go" && !s.h && s.sr === "★"); };
 const trOf = (code, name, cells, cls = "") => { const g = pxGo(code); if (g) pxCss();
-  return `<tr data-c="${esc(code)}" data-n="${esc(name)}" class="${cls}${g ? " pxgo" : ""}${code === S.code ? " sel" : ""}">${cells.map(c => `<td>${c}</td>`).join("")}</tr>`; };
+  return `<tr data-c="${esc(code)}" data-n="${esc(name)}" class="${cls}${g ? (pxStar(code) ? " pxstar" : " pxgo") : ""}${code === S.code ? " sel" : ""}">${cells.map(c => `<td>${c}</td>`).join("")}</tr>`; };
 
 /* ── 차트 공통 ─────────────────────────────────────────────── */
 function autoFit(ch, el, st, custom) {
@@ -2605,7 +2609,8 @@ const XP_COLS = [
   ["최고 / 최저", r => r.hi ?? -9, r => `<small>${xpP(r.hi)} / ${xpP(r.lo)}</small>`],
   ["종목 레이더", r => r.sc ?? 999, r => r.rs ? `${esc(r.rs)} <b>${r.sc ?? ""}</b>${r.ds ? ` <small class="${r.ds > 0 ? "pu" : "pd"}">경계${r.ds > 0 ? "+" : ""}${r.ds}</small>` : ""}${r.dr ? ` <small>회복${r.dr > 0 ? "+" : ""}${r.dr}</small>` : ""}` : `<span class="mut">—</span>`],
   ["매수 타이밍", r => r.pr ?? 9999, r => { const w = !(r.lv === "go") && (r.t === "보류" || r.h); const tail = String(r.d || "").split(" · ").slice(1).join(" · ");
-    return `<span class="xptm xptm-${w ? "warn" : r.lv}" title="${esc(r.d || "")}">${w ? "⚠" : ""}${esc(r.t || "")}</span> <small class="mut xptl">${esc(tail)}</small>`; }, true],
+    const sx = r.sr === "★" ? `<b class="xpst" title="60일 고가 ${r.h60 != null ? (r.h60 * 100).toFixed(1) + "%" : "—"} · 거래량 ${r.vr ?? "—"}배">★</b> ` : r.sr === "☆" ? `<span class="xpst2" title="빨강·보류장 — 근거 없음(참고) · 60일 고가 ${r.h60 != null ? (r.h60 * 100).toFixed(1) + "%" : "—"} · 거래량 ${r.vr ?? "—"}배">☆</span> ` : "";
+    return `${sx}<span class="xptm xptm-${w ? "warn" : (r.sr === "★" && r.lv === "go") ? "star" : r.lv}" title="${esc(r.d || "")}">${w ? "⚠" : ""}${esc(r.t || "")}</span> <small class="mut xptl">${esc(tail)}</small>`; }, true],
 ];
 function xpEnsure() {
   if ($("xp")) return;
@@ -2623,7 +2628,8 @@ function xpEnsure() {
 .xpb-0{background:#dcfce7;color:#166534}.xpb-1{background:#e0e7ff;color:#3730a3}.xpb-3{background:#ffedd5;color:#9a3412}
 .xpt .pu{color:#d62828}.xpt .pd{color:#1d4ed8}.xpt b .pu,.xpt b .pd{font-weight:800}
 .xpre{color:#7c3aed;font-size:11px}.xptm{display:inline-block;padding:0 7px;border-radius:4px;font-weight:700;font-size:12px;background:#eef0f3}
-.xptm-go{background:#f5f3ff;color:#6d28d9;box-shadow:inset 0 0 0 1px #7c3aed}.xptm-no{background:none;color:#8a93a3}.xptm-warn{background:#fef2f2;color:#b91c1c;box-shadow:inset 0 0 0 1px #dc2626}
+.xptm-go{background:#f5f3ff;color:#6d28d9;box-shadow:inset 0 0 0 1px #7c3aed}.xptm-star{background:#eff6ff;color:#1d4ed8;box-shadow:inset 0 0 0 1px #2563eb}
+.xpt tr.pxstar>td{animation:pxRowB 2.8s ease-in-out infinite}.xpst{color:#2563eb;font-weight:800}.xpst2{color:#93a3b8}.xptm-no{background:none;color:#8a93a3}.xptm-warn{background:#fef2f2;color:#b91c1c;box-shadow:inset 0 0 0 1px #dc2626}
 .xpft{padding:.35rem 1rem;font-size:11px;border-top:1px solid #e3e7ed}
 @keyframes xpO{0%,100%{background:transparent}50%{background:rgba(249,115,22,.38)}}@keyframes xpG{0%,100%{background:transparent}50%{background:rgba(34,197,94,.30)}}
 .xpt td.xpo{animation:xpO 2.6s ease-in-out infinite}.xpt td.xpg{animation:xpG 2.6s ease-in-out infinite}
@@ -2634,9 +2640,9 @@ function xpEnsure() {
   d.id = "xp"; d.className = "dm hide"; d.setAttribute("role", "dialog"); d.setAttribute("aria-modal", "true"); d.setAttribute("aria-label", "후보 노출 추적");
   d.innerHTML = `<div class="dmbox xpbox"><div class="dmhd"><b class="big">👁 후보 노출 추적</b><span id="xpsub" class="mut"></span><span class="sp"></span><button class="btn" id="xpx" type="button">닫기 ✕ (Esc)</button></div>
   <div class="xprule" id="xprule"></div>
-  <div class="t5f" role="group" aria-label="거르기"><button type="button" class="t5fb on" data-xf="see">볼 종목</button><button type="button" class="t5fb" data-xf="go">▶ 매수 구간</button><button type="button" class="t5fb" data-xf="rest">나머지(지남·눌림·보류)</button><button type="button" class="t5fb" data-xf="hid">숨김(경계50↑·600선↓)</button><button type="button" class="t5fb" data-xf="all">전체</button><span class="sp"></span><span id="xpcnt" class="mut"></span></div>
+  <div class="t5f" role="group" aria-label="거르기"><button type="button" class="t5fb on" data-xf="see">볼 종목</button><button type="button" class="t5fb" data-xf="go">▶ 매수 구간</button><button type="button" class="t5fb" data-xf="star">★ 별</button><button type="button" class="t5fb" data-xf="rest">나머지(지남·눌림·보류)</button><button type="button" class="t5fb" data-xf="hid">숨김(경계50↑·600선↓)</button><button type="button" class="t5fb" data-xf="all">전체</button><span class="sp"></span><span id="xpcnt" class="mut"></span></div>
   <div class="xptw"><table class="xpt"><thead><tr id="xph"></tr></thead><tbody id="xpb"></tbody></table></div>
-  <div class="xpft mut">행 누르면 그 종목 차트로 · 제목 눌러 정렬(다시 누르면 반대) · 보라 줄 = ▶ 매수 구간 · 빨간 테두리 = ⚠보류(레이더 악화) · 레이더 칸 주황 깜빡 = 경계↑ · 초록 깜빡 = 회복↑ · 표시만(주문·매매 규칙과 무관) · 시스템 출력, 추천 아님</div></div>`;
+  <div class="xpft mut">행 누르면 그 종목 차트로 · 제목 눌러 정렬(다시 누르면 반대) · 보라 줄 = ▶ 매수 구간 · 파랑 줄 ★ = 60일 고가 −5% 안 + 거래량 2배↑(초록·노랑장 · ☆ = 빨강·보류장 참고) · 빨간 테두리 = ⚠보류(레이더 악화) · 레이더 칸 주황 깜빡 = 경계↑ · 초록 깜빡 = 회복↑ · 표시만(주문·매매 규칙과 무관) · 시스템 출력, 추천 아님</div></div>`;
   document.body.appendChild(d);
   $("xph").innerHTML = XP_COLS.map((c, i) => `<th class="${c[3] ? "l" : ""}" data-i="${i}" tabindex="0">${c[0]}<i></i></th>`).join("");
   $("xph").addEventListener("click", e => { const th = e.target.closest("th"); if (!th) return; const i = +th.dataset.i;
@@ -2658,12 +2664,12 @@ function xpPaint() {
   const ngo = all.filter(r => r.lv === "go" && !r.h).length, nwait = all.filter(r => r.lv === "wait" && !r.h).length;
   $("xpsub").innerHTML = ` <span class="${stale ? "xpstale" : ""}" title="${stale ? "10분 넘게 갱신이 멈춤 — 후보노출_보기.vbs를 눌러 주세요" : "5분마다 다시 계산"}">${esc(P.at || "—")} 계산${stale ? " · 갱신 멈춤!" : ""}${P.stale ? " (지난 기록)" : ""}</span> · ▶ <b>${ngo}</b> · 대기 ${nwait} · 노출 ${all.length}`;
   $("xprule").innerHTML = `<i style="background:${m[1]}"></i><b>장 ${esc(m[0])}</b> · ${esc(XP_RULE[mk] || XP_RULE.UNKNOWN)} · 장중 실시간(시간 제한 없음) · 3~4일째 +8%↑ = 고점 주의`;
-  const f = XP.f, rows = all.filter(r => f === "all" ? true : f === "hid" ? r.h : f === "go" ? (r.lv === "go" && !r.h) : f === "rest" ? (r.lv === "no" && !r.h) : (r.lv !== "no" && !r.h));
+  const f = XP.f, rows = all.filter(r => f === "all" ? true : f === "hid" ? r.h : f === "go" ? (r.lv === "go" && !r.h) : f === "star" ? (r.lv === "go" && !r.h && !!r.sr) : f === "rest" ? (r.lv === "no" && !r.h) : (r.lv !== "no" && !r.h));
   const key = XP_COLS[XP.k][1], str = XP_COLS[XP.k][3] && XP.k !== 0 && XP.k !== 11;
   rows.sort((a, b) => { const x = key(a), y = key(b); return (str ? String(x).localeCompare(String(y), "ko") : (x - y)) * XP.dir || ((a.pr ?? 9999) - (b.pr ?? 9999)); });
   $("xpcnt").textContent = `${rows.length}종목`;
   [...$("xph").children].forEach((th, i) => { th.classList.toggle("on", i === XP.k); th.querySelector("i").textContent = i === XP.k ? (XP.dir > 0 ? "▲" : "▼") : ""; });
-  $("xpb").innerHTML = rows.map(r => `<tr data-c="${esc(r.c)}" data-n="${esc(r.nm || r.c)}" class="${r.lv === "go" && !r.h ? "pxgo" : (r.lv === "no" ? "xpdim" : "")}">`
+  $("xpb").innerHTML = rows.map(r => `<tr data-c="${esc(r.c)}" data-n="${esc(r.nm || r.c)}" class="${r.lv === "go" && !r.h ? (r.sr === "★" ? "pxstar" : "pxgo") : (r.lv === "no" ? "xpdim" : "")}">`
     + XP_COLS.map((c, i) => `<td class="${c[3] ? "l" : ""}${i === 10 ? ((r.ds ?? 0) >= (P.pulse || 5) ? " xpo" : (r.dr ?? 0) >= (P.pulse || 5) ? " xpg" : "") : ""}">${c[2](r)}</td>`).join("") + "</tr>").join("")
     || `<tr><td colspan="${XP_COLS.length}" class="l mut">해당 종목 없음</td></tr>`;
 }
