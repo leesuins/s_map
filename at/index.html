@@ -594,7 +594,8 @@ const pxChip = c => {
   pxCss();
   const p = (s.chg || 0) * 100, pc = `<span class="${p > 0 ? "pu" : p < 0 ? "pd" : ""}">${p > 0 ? "+" : ""}${p.toFixed(1)}%</span>`;
   const hot = s.lv === "go", star = hot && s.sr === "★";                        // v562q ★ = 파랑(60일 고가·거래량 2배 · 초록·노랑장)                                                     // v562j 깜빡임 = ▶ 매수 구간만(보라 · 형 10/20 B안)
-  const warn = !hot && (s.t === "보류" || (s.ds != null && s.ds >= (P.pulse || 5)));   // 레이더 악화 = 빨간 테두리 ⚠보류(안 깜빡)
+  const ban = !!s.twb;                                                          // v562v 형 10/20 120분 급등보호매도 저점이탈 = ⛔ 매수금지(빨간 테두리)
+  const warn = !hot && (ban || s.t === "보류" || (s.ds != null && s.ds >= (P.pulse || 5)));   // 레이더 악화 = 빨간 테두리 ⚠보류(안 깜빡)
   const ce = (s.ce || 0) * 100;
   const ar = v => v === true ? "↑" : v === false ? "↓" : "?";
   const mft = s.mf && Object.keys(s.mf).length ? `\n초입선 ${["5", "15", "45", "120"].map(k => k + ar(s.mf[k])).join(" ")} · 120분 전환선 ${ar(s.mf.t120)} · 600선 ${["5", "15", "45"].map(k => k + ar(s.mf["e" + k])).join(" ")}${s.mf.ok ? " → ◆ 전부 위" : ""}` : "";
@@ -604,7 +605,7 @@ const pxChip = c => {
     + mft + `\n매수 타이밍: ${s.t} — ${s.d}\n시장 RADAR ${P.market || "—"} · ${P.at || ""} 기준${P.stale ? "(지난 기록)" : ""} · 10/20 분석 근거 · 표시만`;
   // v562m 형 "액션·색 동일하게" — 후보노출 화면·팝업의 레이더 칸과 같은 깜빡임: 경계↑ 주황 · 회복↑ 초록(▶은 보라 그대로)
   const rk = hot ? "" : (s.ds != null && s.ds >= (P.pulse || 5)) ? " pxo" : (s.dr != null && s.dr >= (P.pulse || 5)) ? " pxg" : "";
-  return ` <span class="px ${warn ? "px-warn" : star ? "px-star" : "px-" + s.lv}${star ? " pxs" : hot ? " pxp" : ""}${rk}" title="${esc(tip)}${s.sr ? `\n${s.sr} 60일 고가 ${s.h60 != null ? (s.h60 * 100).toFixed(1) + "%" : "—"} · 거래량 ${s.vr ?? "—"}배${s.sr === "☆" ? " · 빨강·보류장 = 근거 없음(참고)" : ""}` : ""}">${s.sr ? s.sr : ""}${hot ? "▶" : warn ? "⚠보류 " : ""}${s.mf && s.mf.ok ? '<b class="mfo">◆</b>' : ""}${s.re ? "재" : ""}${s.n}일 ${pc}</span>`;
+  return ` <span class="px ${warn ? "px-warn" : star ? "px-star" : "px-" + s.lv}${star ? " pxs" : hot ? " pxp" : ""}${rk}" title="${esc(tip)}${s.sr ? `\n${s.sr} 60일 고가 ${s.h60 != null ? (s.h60 * 100).toFixed(1) + "%" : "—"} · 거래량 ${s.vr ?? "—"}배${s.sr === "☆" ? " · 빨강·보류장 = 근거 없음(참고)" : ""}` : ""}">${s.sr ? s.sr : ""}${hot ? "▶" : ban ? "⛔120 " : warn ? "⚠보류 " : ""}${s.mf && s.mf.ok ? '<b class="mfo">◆</b>' : ""}${s.re ? "재" : ""}${s.n}일 ${pc}</span>`;
 };
 const nameCell = (n, c) => nameOnly(n, c) + rtChip(c) + twChip(c) + pxChip(c);
 // v497 TOP50 표는 이름 칸이 150px에서 말줄임이라 글자 칩 대신 이름 앞에 짧은 🎯/⏳만(이름이 길어도 칩은 안 잘림)
@@ -2614,9 +2615,9 @@ const XP_COLS = [
       + ` <span class="${r.mf.t120 === true ? "pu" : r.mf.t120 === false ? "pd" : "mut"}" title="120분 전환선(5봉 · 형 HTS)">전${r.mf.t120 === true ? "↑" : r.mf.t120 === false ? "↓" : "?"}</span>`
       + ` <small class="mut">|</small> ` + ["5", "15", "45"].map(k => `<span class="${r.mf["e" + k] === true ? "pu" : r.mf["e" + k] === false ? "pd" : "mut"}" title="${k}분 600이평(지수)">6${k}${r.mf["e" + k] === true ? "↑" : r.mf["e" + k] === false ? "↓" : "?"}</span>`).join(" ") : `<span class="mut">—</span>`],
   ["종목 레이더", r => r.sc ?? 999, r => r.rs ? `${esc(r.rs)} <b>${r.sc ?? ""}</b>${r.ds ? ` <small class="${r.ds > 0 ? "pu" : "pd"}">경계${r.ds > 0 ? "+" : ""}${r.ds}</small>` : ""}${r.dr ? ` <small>회복${r.dr > 0 ? "+" : ""}${r.dr}</small>` : ""}` : `<span class="mut">—</span>`],
-  ["매수 타이밍", r => r.pr ?? 9999, r => { const w = !(r.lv === "go") && (r.t === "보류" || r.h); const tail = String(r.d || "").split(" · ").slice(1).join(" · ");
+  ["매수 타이밍", r => r.pr ?? 9999, r => { const w = !(r.lv === "go") && (r.t === "보류" || r.h || r.twb); const tail = String(r.d || "").split(" · ").slice(1).join(" · ");
     const sx = r.sr === "★" ? `<b class="xpst" title="60일 고가 ${r.h60 != null ? (r.h60 * 100).toFixed(1) + "%" : "—"} · 거래량 ${r.vr ?? "—"}배">★</b> ` : r.sr === "☆" ? `<span class="xpst2" title="빨강·보류장 — 근거 없음(참고) · 60일 고가 ${r.h60 != null ? (r.h60 * 100).toFixed(1) + "%" : "—"} · 거래량 ${r.vr ?? "—"}배">☆</span> ` : "";
-    return `${sx}<span class="xptm xptm-${w ? "warn" : (r.sr === "★" && r.lv === "go") ? "star" : r.lv}" title="${esc(r.d || "")}">${w ? "⚠" : ""}${esc(r.t || "")}</span> <small class="mut xptl">${esc(tail)}</small>`; }, true],
+    return `${sx}<span class="xptm xptm-${w ? "warn" : (r.sr === "★" && r.lv === "go") ? "star" : r.lv}" title="${esc(r.d || "")}">${w && !r.twb ? "⚠" : ""}${esc(r.t || "")}</span>${r.tw && r.tw["45"] === "이탈" && !r.twb ? ' <small class="pd" title="45분 급등보호매도 봉 저가 아래 — 경고만">📉45</small>' : ""} <small class="mut xptl">${esc(tail)}</small>`; }, true],
 ];
 function xpEnsure() {
   if ($("xp")) return;
@@ -2669,8 +2670,8 @@ function xpPaint() {
     stale = live && (n - t) > 10 * 60000; } catch (e) { /* 시각 모름 */ }
   const ngo = all.filter(r => r.lv === "go" && !r.h).length, nwait = all.filter(r => r.lv === "wait" && !r.h).length;
   $("xpsub").innerHTML = ` <span class="${stale ? "xpstale" : ""}" title="${stale ? "10분 넘게 갱신이 멈춤 — 후보노출_보기.vbs를 눌러 주세요" : "5분마다 다시 계산"}">${esc(P.at || "—")} 계산${stale ? " · 갱신 멈춤!" : ""}${P.stale ? " (지난 기록)" : ""}</span> · ▶ <b>${ngo}</b> · 대기 ${nwait} · 노출 ${all.length}`;
-  $("xprule").innerHTML = `<i style="background:${m[1]}"></i><b>장 ${esc(m[0])}</b> · ${esc(XP_RULE[mk] || XP_RULE.UNKNOWN)} · 장중 실시간(시간 제한 없음) · 3~4일째 +8%↑ = 고점 주의`;
-  const f = XP.f, rows = all.filter(r => f === "all" ? true : f === "hid" ? r.h : f === "go" ? (r.lv === "go" && !r.h) : f === "star" ? (r.lv === "go" && !r.h && !!r.sr) : f === "rest" ? (r.lv === "no" && !r.h) : (r.lv !== "no" && !r.h));
+  $("xprule").innerHTML = `<i style="background:${m[1]}"></i><b>장 ${esc(m[0])}</b> · ${esc(XP_RULE[mk] || XP_RULE.UNKNOWN)} · 장중 실시간(시간 제한 없음) · 3~4일째 +8%↑ = 고점 주의 · <b style="color:#b91c1c">⛔120 = 120분 급등보호매도 봉 저가 이탈 → 그 봉 종가 위 안착 전 매수금지</b> · 📉45 = 45분 이탈(경고만)`;
+  const f = XP.f, rows = all.filter(r => f === "all" ? true : f === "hid" ? r.h : f === "go" ? (r.lv === "go" && !r.h) : f === "star" ? (r.lv === "go" && !r.h && !!r.sr) : f === "rest" ? (r.lv === "no" && !r.h && !r.twb) : ((r.lv !== "no" || r.twb) && !r.h));
   const key = XP_COLS[XP.k][1], str = XP_COLS[XP.k][3] && XP.k !== 0 && XP.k !== XP_COLS.length - 1;
   rows.sort((a, b) => { const x = key(a), y = key(b); return (str ? String(x).localeCompare(String(y), "ko") : (x - y)) * XP.dir || ((a.pr ?? 9999) - (b.pr ?? 9999)); });
   $("xpcnt").textContent = `${rows.length}종목`;
