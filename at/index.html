@@ -1174,6 +1174,10 @@ function d7Pred(j) {
   if (/아직 채점된 것 없음/.test(pl)) n = "0"; else { const m = /\((\d+)건\)/.exec(pl); if (m) n = m[1]; }
   return { n, line: pl };
 }
+function d7Act(j) {                                      // v565 형 "판단 칸 변동 없어?" — 같은 확률 구간이 지난번 실제로 LONG(5일 뒤 +3%↑) 된 비율 · 표시만(판단·합의 안 바뀜)
+  const m = /이 구간\(([^)]+)\) 지난 결과: 실제 LONG (\d+)%\((\d+)건\)/.exec(j.pred_line || "");
+  return m ? { lab: m[1], act: +m[2], n: +m[3], thin: /표본 부족/.test(j.pred_line) } : null;
+}
 function d7Acc(q, open) {                                // v519 형 "겁나 기네 — 항목별 펼치기" — 카드마다 제목 + 한 줄 답만 보이고 눌러서 펼침
   const m = /^<div class="d7qc([^"]*)"><div class="d7qh">([\s\S]*?)<\/div>(<p class="d7big">[\s\S]*?<\/p>)?([\s\S]*)<\/div>$/.exec(q);
   if (!m) return q;
@@ -1185,7 +1189,7 @@ function d7Html(d, panel) {
   const pos = jok ? j.position : null, col = D7_COL[pos] || "#6B7280";
   const pc = v => typeof v === "number" ? Math.round(v * 100) : null;
   const probs = jok ? [["LONG", j.p_long], ["CASH", j.p_cash], ["SHORT", j.p_short]] : [];
-  const prRows = probs.map(([k, v]) => `<div class="d7pr"><span style="color:${D7_COL[k]}">${k}</span><div class="t"><i style="width:${pc(v) ?? 0}%;background:${D7_COL[k]}"></i>${k === "LONG" ? '<u style="left:60%" title="LONG 기준 60%"></u>' : ""}</div><b>${pc(v) ?? "—"}%</b></div>`).join("");
+  const prRows = probs.map(([k, v]) => `<div class="d7pr"><span style="color:${D7_COL[k]}">${k}</span><div class="t"><i style="width:${pc(v) ?? 0}%;background:${D7_COL[k]}"></i>${k === "LONG" ? '<u style="left:60%" title="LONG 기준 60%"></u>' : ""}</div><b>${pc(v) ?? "—"}%</b></div>${k === "LONG" && d7Act(j) ? (x => `<div class="d7cap" style="margin:-2px 0 4px 62px;color:#FCD34D" title="이 확률 구간(${esc(x.lab)})에서 지난번 실제로 5거래일 뒤 +3% 넘게 오른 비율 · 채점 ${x.n}건${x.thin ? " · 표본 부족" : ""} · 표시만 — 판단·합의는 그대로">↳ 과거 이 구간 실제 ${x.act}%(${x.n}건)${pc(v) != null && x.act < pc(v) ? " — 표시 확률보다 낮게 나옴" : ""}</div>`)(d7Act(j)) : ""}`).join("");
   const sum = probs.reduce((x, [, v]) => x + (pc(v) || 0), 0);
   const prNote = jok ? `<div class="d7cap">${probs.map(([, v]) => pc(v)).join(" + ")} = ${sum}%${sum !== 100 ? " — 반올림 차이일 수 있어요" : ""} · 검은 눈금 = LONG 기준 60%${j.long_rel != null ? ` · 우리 기준 ${Math.round(j.long_rel * 100)}%` : ""}</div>` : "";
   const ins = j.conf_inputs || [], okIn = ins.filter(x => x.state === "ok").length, pr = jok ? d7Pred(j) : { n: "—", line: "" };
@@ -1282,7 +1286,7 @@ function d7HtmlModal(d) {   // v519: 더블클릭 상세정보 창은 v517 그�
   const pos = jok ? j.position : null, col = D7_COL[pos] || "#6B7280";
   const pc = v => typeof v === "number" ? Math.round(v * 100) : null;
   const probs = jok ? [["LONG", j.p_long], ["CASH", j.p_cash], ["SHORT", j.p_short]] : [];
-  const prRows = probs.map(([k, v]) => `<div class="d7pr"><span style="color:${D7_COL[k]}">${k}</span><div class="t"><i style="width:${pc(v) ?? 0}%;background:${D7_COL[k]}"></i>${k === "LONG" ? '<u style="left:60%" title="LONG 기준 60%"></u>' : ""}</div><b>${pc(v) ?? "—"}%</b></div>`).join("");
+  const prRows = probs.map(([k, v]) => `<div class="d7pr"><span style="color:${D7_COL[k]}">${k}</span><div class="t"><i style="width:${pc(v) ?? 0}%;background:${D7_COL[k]}"></i>${k === "LONG" ? '<u style="left:60%" title="LONG 기준 60%"></u>' : ""}</div><b>${pc(v) ?? "—"}%</b></div>${k === "LONG" && d7Act(j) ? (x => `<div class="d7cap" style="margin:-2px 0 4px 62px;color:#FCD34D" title="이 확률 구간(${esc(x.lab)})에서 지난번 실제로 5거래일 뒤 +3% 넘게 오른 비율 · 채점 ${x.n}건${x.thin ? " · 표본 부족" : ""} · 표시만 — 판단·합의는 그대로">↳ 과거 이 구간 실제 ${x.act}%(${x.n}건)${pc(v) != null && x.act < pc(v) ? " — 표시 확률보다 낮게 나옴" : ""}</div>`)(d7Act(j)) : ""}`).join("");
   const sum = probs.reduce((x, [, v]) => x + (pc(v) || 0), 0);
   const prNote = jok ? `<div class="d7cap">${probs.map(([, v]) => pc(v)).join(" + ")} = ${sum}%${sum !== 100 ? " — 반올림 차이일 수 있어요" : ""} · 검은 눈금 = LONG 기준 60%${j.long_rel != null ? ` · 우리 기준 ${Math.round(j.long_rel * 100)}%` : ""}</div>` : "";
   const ins = j.conf_inputs || [], okIn = ins.filter(x => x.state === "ok").length, pr = jok ? d7Pred(j) : { n: "—", line: "" };
