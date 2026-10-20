@@ -957,8 +957,13 @@ function paintPane(tf, d) {
     p.pls.push(p.cs.createPriceLine({ price: x.v, color: col, lineWidth: x.key ? 2 : 1, lineStyle: LS.Dotted, axisLabelVisible: x.key, title: "" }));
     tagOf(x, x.label, col);
   });
-  if (tw[twk]) p.pls.push(p.cs.createPriceLine({ price: tw[twk].ref, color: tw[twk].on ? "#D92D20" : "#2B8A3E", lineWidth: 2, lineStyle: LS.Dashed, axisLabelVisible: true, title: "" }));
-  if (tw[twk]) p.tags.push({ v: tw[twk].ref, col: tw[twk].on ? "#D92D20" : "#2B8A3E", raw: true, name: tw[twk].on ? "📉 하락 경고 기준가(신호 봉 종가)" : "↗ 추세 유지(기준가 위로 마감)", short: tw[twk].on ? "📉기준" : "↗기준" });
+  // v563f 형 10/20 에스엠벡셀 45분 "여기 위로 마감 못했잖아 · 추세유지선이라고 해놓았네?" — 지금 만들어지는 봉이 기준가 위일 뿐(마감 전)이면
+  //   '추세 유지'가 아니라 '상승 시도(마감 전)'로 · 주황 · 위로 마감한 끝난 봉이 있어야 초록 '추세 유지'
+  const twc = t => t.on ? "#D92D20" : t.up ? "#E8590C" : "#2B8A3E";
+  if (tw[twk]) p.pls.push(p.cs.createPriceLine({ price: tw[twk].ref, color: twc(tw[twk]), lineWidth: 2, lineStyle: LS.Dashed, axisLabelVisible: true, title: "" }));
+  if (tw[twk]) p.tags.push({ v: tw[twk].ref, col: twc(tw[twk]), raw: true,
+    name: tw[twk].on ? "📉 하락 경고 기준가(신호 봉 종가)" : tw[twk].up ? "📈 상승 시도(마감 전 · 위로 마감해야 추세 유지)" : "↗ 추세 유지(기준가 위로 마감)",
+    short: tw[twk].on ? "📉기준" : tw[twk].up ? "📈시도" : "↗기준" });
   (d.trends || []).forEach(x => { if (x.points[0].time < x.points[1].time) { const s2 = lineS(p.ch, x.key ? "#1864AB" : "#8DB4E2", x.key ? 2 : 1, LS.Dashed); s2.setData(x.points); p.trends.push(s2); } });
   const mk = (d.pins || []).map(x => ({ time: x.time, position: x.kind === "buy" ? "belowBar" : "aboveBar",
     color: x.kind === "met" ? "#D42B2B" : x.kind === "buy" ? "#7048E8" : "#868E96", shape: x.kind === "buy" ? "arrowUp" : "circle", text: "" }))
