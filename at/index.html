@@ -812,6 +812,7 @@ class CloudPrim {
 }
 // v567 형 "45분 초입선좀 15분차트처럼 그려줄수 있어?" — 초입선(검은 계단선)·구름·☁ 칩·▲안착▼이탈·시도 깜빡을 45분 칸에도(45분 봉 = 08:00 기준 · 서버가 같은 봉으로 계산) · 표시만
 const IXTF = tf => tf === 15 || tf === 45;
+const BBTF = tf => tf === 5 || tf === 45;                 // v567 형 "45분에 볼벤 150/1 그려줄수 있어? 5분 차트처럼" — 5분과 같은 보라 상단·하단 선(45분 봉 150개 · ±1σ)
 function cloudBadge(p, d) {
   const cv = p.el.querySelector(".cv");
   let el = cv.querySelector(".ixb");
@@ -899,7 +900,7 @@ function paintPane(tf, d) {
   // v524 형 "(a) 점선 SMA60의 위/아래도 같이 표시" — 굵은 청록(지수이평) 위/아래 옆에 분홍 점선(단순이평) 위/아래. 둘이 다르면 주황으로(가격이 두 선 사이)
   const sU = v => v === true ? "위" : v === false ? "아래" : "—", s60d = d.above_sma60 !== d.above60 && d.above_sma60 != null && d.above60 != null;
   const sma60 = `<span class="s60" style="font-size:.9em;opacity:.85${s60d ? ";color:#E8590C;font-weight:700" : ""}" title="굵은 청록 = 지수이평 60봉(위/아래 판정 기준) ${fmt(d.ma60)} · 분홍 점선 = 단순이평 60봉 ${fmt(d.sma60)} · 지금 ${fmt(d.close)}${s60d ? "\n⚠ 두 선이 다른 쪽 — 가격이 두 선 사이에 있어요(판정은 굵은 청록 기준)" : ""}\n표시만">· 점선 ${sU(d.above_sma60)}</span>`;
-  const bbU = tf === 5 && d.bb && d.bb.bbu && d.bb.bbu.length ? d.bb.bbu[d.bb.bbu.length - 1].value : null, bbL = tf === 5 && d.bb && d.bb.bbl && d.bb.bbl.length ? d.bb.bbl[d.bb.bbl.length - 1].value : null;
+  const bbU = BBTF(tf) && d.bb && d.bb.bbu && d.bb.bbu.length ? d.bb.bbu[d.bb.bbu.length - 1].value : null, bbL = BBTF(tf) && d.bb && d.bb.bbl && d.bb.bbl.length ? d.bb.bbl[d.bb.bbl.length - 1].value : null;
   const bbs = bbU != null && bbL != null && d.close != null ? `<span style="color:#AE3EC9;font-size:.9em" title="볼린저밴드(150봉 · ±1표준편차) 상단 ${fmt(bbU)} · 하단 ${fmt(bbL)} · 지금 ${fmt(d.close)}\n보라색 선 2개 = 상단·하단(중심선은 안 그림) · v530 표시만">· 볼벤 ${d.close > bbU ? "상단 위" : d.close < bbL ? "하단 아래" : "밴드 안"}</span>` : "";   // v530
   const nTb = tf === 15 ? (d.trades || []).filter(t => t.side === "buy").length : 0, nTs = tf === 15 ? (d.trades || []).filter(t => t.side === "sell").length : 0;   // v534
   const trOn = trOnGet();
@@ -940,7 +941,7 @@ function paintPane(tf, d) {
   }
   for (const k in p.ma) p.ma[k].setData(d.ma[k] || []);
   // v530 형 "5분봉 볼벤 150 1 · 상단 하단만(중심 빼고)" — 5분 칸에만 볼린저밴드 상단·하단(150봉 · ±1σ). 선 두께 2(이평 선 아래 묻히지 않게) · 화면만
-  if (tf === 5) try {
+  if (BBTF(tf)) try {
     p.bb = p.bb || ["bbu", "bbl"].reduce((o, k) => (o[k] = p.ch.addLineSeries({ color: "#AE3EC9", lineWidth: 2, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false }), o), {});
     p.bb.bbu.setData((d.bb && d.bb.bbu) || []); p.bb.bbl.setData((d.bb && d.bb.bbl) || []);
   } catch (e) { /* 밴드는 없어도 차트는 그대로 */ }
