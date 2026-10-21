@@ -810,6 +810,8 @@ class CloudPrim {
     }
   }
 }
+// v567 형 "45분 초입선좀 15분차트처럼 그려줄수 있어?" — 초입선(검은 계단선)·구름·☁ 칩·▲안착▼이탈·시도 깜빡을 45분 칸에도(45분 봉 = 08:00 기준 · 서버가 같은 봉으로 계산) · 표시만
+const IXTF = tf => tf === 15 || tf === 45;
 function cloudBadge(p, d) {
   const cv = p.el.querySelector(".cv");
   let el = cv.querySelector(".ixb");
@@ -818,7 +820,7 @@ function cloudBadge(p, d) {
   if (!el) { el = document.createElement("div"); el.className = "ixb"; cv.appendChild(el); }
   const st = ix.cloud === "양운" && ix.pos === "위" ? "ixg" : ix.pos === "아래" ? "ixr" : "ixy";
   el.className = "ixb " + st;
-  el.title = `15분 일목 구름(선행스팬1 ${fmt(ix.a)} · 선행스팬2 ${fmt(ix.b)}) · 지금 ${fmt(ix.close)}\n초록 구름 = 정배열(양운) · 빨강 구름 = 역배열(음운) · 표시만`;
+  el.title = `${d.tf || 15}분 일목 구름(선행스팬1 ${fmt(ix.a)} · 선행스팬2 ${fmt(ix.b)}) · 지금 ${fmt(ix.close)}\n초록 구름 = 정배열(양운) · 빨강 구름 = 역배열(음운) · 표시만`;
   el.innerHTML = `<span class="l">☁ ${ix.cloud === "양운" ? "정배열" : "역배열"} · 지금 </span>구름 ${ix.pos}`;
   p.ixbOn = true;
 }
@@ -852,7 +854,7 @@ function buildPanes() {
     const cs = candles(ch);
     const ma = { ma20: lineS(ch, "#F59F00", 2), ma60: lineS(ch, "#15AABF", 3), sma20: lineS(ch, "#1C3FD8", 1, LS.Dotted), sma60: lineS(ch, "#D6249F", 1, LS.Dotted) };
     // v484 15분 칸 — 형 HTS '정배열초입' 검은 계단선(초입가) · 화면 세로 범위는 봉 기준 그대로(선이 멀면 안 보임 · 값은 제목줄 ☁)
-    const ixl = tf === 15 ? ch.addLineSeries({ color: "#111111", lineWidth: 3, lineType: 1, priceLineVisible: false, lastValueVisible: false,
+    const ixl = IXTF(tf) ? ch.addLineSeries({ color: "#111111", lineWidth: 3, lineType: 1, priceLineVisible: false, lastValueVisible: false,
       crosshairMarkerVisible: false, autoscaleInfoProvider: () => null, title: "" }) : null;
     const st = { user: false };
     const cv = el.querySelector(".cv");
@@ -862,7 +864,7 @@ function buildPanes() {
     cv.appendChild(tagEl);
     const pane = { el, ch, cs, ma, pls: [], trends: [], tags: [], tagEl, first: true, code: S.code, st, fit: autoFit(ch, cv, st) };
     pane.ixl = ixl;
-    if (tf === 15) { pane.cloud = new CloudPrim(); cs.attachPrimitive(pane.cloud); }   // v491 구름 칠하기(봉 뒤)
+    if (IXTF(tf)) { pane.cloud = new CloudPrim(); cs.attachPrimitive(pane.cloud); }   // v491 구름 칠하기(봉 뒤) · v567 45분도
     S.panes[tf] = pane;
     ch.timeScale().subscribeVisibleLogicalRangeChange(r => { tagLater(pane); autoMore(pane, r); });
     ["wheel", "mouseup", "touchend", "dblclick"].forEach(ev => cv.addEventListener(ev, () => tagLater(pane), { passive: true }));
@@ -890,7 +892,7 @@ function paintPane(tf, d) {
   const ixs = ix ? `<span title="형 HTS 정배열초입(9·26·52) — 선행스팬1 ${fmt(ix.a)} · 선행스팬2 ${fmt(ix.b)} · 지금 ${fmt(ix.close)}${ix.line ? `\n초입(선행1이 선행2를 뚫은 봉) ${ix.line_at} 종가 ${fmt(ix.line)}` : ""}${les}\n표시만 · 형 HTS 값과 대조 전" class="ixchip ${ix.cloud === "양운" && ix.pos === "위" ? "ixg" : ix.pos === "아래" ? "ixr" : "ixy"}">`
     + `☁${ix.cloud === "양운" ? "정배열" : "역배열"}·구름 ${ix.pos}${ix.line ? ` · 초입 ${fmt(ix.line)} ${ix.above_line ? "위" : "아래"}` : ""}</span>` : "";
   const tw = tf === 120 || tf === 45 ? (d.twarn || {}) : {}, twk = String(tf);   // v507 45·120분 칸이 각자 자기 분 경고만 그림                // v501 120분 차트: 45·120분 경고(칩 + 기준가 선 + 신호 봉 표시)
-  const itry = tf === 15 ? d.ichi_try || null : null;           // v512 형 "15분 칸에도" — 지금 봉이 초입가를 막 넘었고 2봉 연속 확인 전이면 깜빡(초록 상승 시도 / 빨강 하락 경고)
+  const itry = IXTF(tf) ? d.ichi_try || null : null;           // v512 형 "15분 칸에도" — 지금 봉이 초입가를 막 넘었고 2봉 연속 확인 전이면 깜빡(초록 상승 시도 / 빨강 하락 경고)
   const itryDn = itry && itry.kind === "dn", itrySet = itry && itry.phase === "settled", itryHold = itry && itry.phase === "hold";
   const itryChip = itry ? `<span class="tw ${itryHold ? "twh" : itryDn ? "twr twn" : "twg twu"}" title="${esc(itryHold ? `${itry.at} 지금 봉 종가 ${fmt(itry.close)}가 초입가 ${fmt(itry.line)}와 0.1% 이내라 위/아래를 나눌 수 없음 — 판단 보류(회색 · 깜빡임 없음)\n선에서 벗어나 2봉 연속 마감하면 ▲안착·▼이탈로 확정해요\n표시만(검증 대기)` : itrySet ? `${itry.at} 기준 초입가 ${fmt(itry.line)} ${itryDn ? "아래" : "위"}에 2봉 연속 마감 — ${itryDn ? "▼이탈" : "▲안착"} 확정(종가 ${fmt(itry.close)})\n확정 뒤 2봉 동안은 지금 봉에 깜빡 · 그 뒤엔 화살표만 남아요\n표시만(검증 대기)` : `${itry.at} 지금 봉이 초입가 ${fmt(itry.line)} ${itryDn ? "아래로" : "위로"} 마감 중(종가 ${fmt(itry.close)})\n봉이 끝나기 전엔 확정 아님 · 다음 봉도 같은 쪽이면 ${itryDn ? "▼이탈" : "▲안착"} 확정 · 되돌아오면 사라짐\n표시만(검증 대기)`)}">${itryHold ? "⏸선붙음" : itrySet ? (itryDn ? "📉이탈" : "📈안착") : (itryDn ? "📉경고" : "📈시도")}</span>` : "";
   const tws = itryChip + [twk].filter(k => tw[k]).map(k => `<span class="tw ${tw[k].on ? "twr" : "twg"}${tw[k].on ? " twn" : tw[k].up ? " twu" : ""}" title="${esc(tw[k].tip)}">${tw[k].on ? "📉" : tw[k].up ? "📈" : "↗"}${k}</span>`).join(" ");
@@ -915,7 +917,7 @@ function paintPane(tf, d) {
   if (itry && (d.bars || []).length && itry.time === d.bars[d.bars.length - 1].time) p.tw.push({ time: itry.time, prev: itry.prev, live: !itryHold, hold: !!itryHold, on: itry.kind === "dn", up: itry.kind === "up", txt: itryHold ? "⏸ 선 붙음 · 판단 보류" : itrySet ? (itryDn ? "📉 이탈 확정" : "📈 안착 확정") : "" });   // v512 · v513 확정 직후도
   p.cs.setData(p.tw.length && !p.tw[0].live && !p.tw[0].hold ? d.bars.map((b, i) => i === twI ? { ...b, color: TW_DONE, wickColor: TW_DONE } : b) : d.bars);
   // v528 형 "안착했다고 하면 이렇게 마커 하면 되지 않을까?"(120분 차트 세로 띠 모양) — 15분 가장 최근 ▲안착(파랑)·▼이탈(빨강) 확정 봉에 같은 옅은 세로 띠 + 글자. 신호 수·2봉 확인은 그대로 · 화면만
-  if (tf === 15 && (d.ichi_ev || []).length && (d.bars || []).length) try {
+  if (IXTF(tf) && (d.ichi_ev || []).length && (d.bars || []).length) try {
     const bi = new Map(d.bars.map((b, i) => [b.time, i])), evs = d.ichi_ev.filter(e => bi.has(e.time) && !(itry && itry.time === e.time));
     evs.slice(-1).forEach(e => { const i = bi.get(e.time), up = e.kind === "up";       // 가장 최근 신호 하나만(전부 칠하면 CJ ENM처럼 3일에 10개라 정작 중요한 띠가 묻힘 — 형 절충안 취지) · 지난 신호는 화살표만
       p.tw.push({ time: e.time, prev: i > 0 ? d.bars[i - 1].time : null, live: false, on: !up, blue: up, txt: up ? "▲ 안착" : "▼ 이탈" }); });
