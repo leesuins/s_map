@@ -1805,6 +1805,10 @@ function paintSup(p, m) {
         axisLabelColor: SUP_COL, axisLabelTextColor: "#FFFFFF", title: `일봉 ${i + 1}차 지지` }));
     } catch (e) { /* 무시 */ }
   });
+  if (rb && rb.ok && rb.res1 && isFinite(Number(rb.res1.price))) {     // v574 B안 — 일봉 1차 저항 빨간 점선(화면 범위 안일 때만 보임 · 범위는 안 늘림)
+    try { p.sl.push(p.cs.createPriceLine({ price: Number(rb.res1.price), color: "#D92D20", lineWidth: 2, lineStyle: 2, axisLabelVisible: true,
+      axisLabelColor: "#D92D20", axisLabelTextColor: "#FFFFFF", title: "일봉 1차 저항" })); } catch (e) { /* 무시 */ }
+  }
   if (!p.supProv) {
     p.supProv = true;
     p.cs.applyOptions({ autoscaleInfoProvider: orig => {
@@ -1824,6 +1828,52 @@ function dtnPaint(el, t) {
   const col = t.kind === "broken" ? "#1565C0" : t.kind === "pending" ? "#7048E8" : "#C92A3A";
   x.style.display = ""; x.style.whiteSpace = "normal"; x.style.color = col; x.style.fontWeight = "700";
   x.title = t.tip || ""; x.textContent = t.line;
+}
+/* ── v574 형 "지수 경계 칸 시인성 개선 · 차트에 반영" → B안(차트 우선) ─────────────────────────────────────
+   차트 크게 · 오늘 시가 대비 %는 차트 왼쪽 위 · 일봉 1차 저항은 차트에 빨간 점선(지지는 원래 검은 선) · 5분선 상태는 차트 선 색 범례(✓ 위 / ✗ 아래 + 회복까지 %)
+   · 위 '이탈 칩'과 '🔄 회복' 줄은 범례 하나로(같은 내용 두 번이던 것) · 영어 단계 이름은 한국어로 · 표시만 */
+const IX_COL = { "전환5": "#E03131", "기준13": "#E8590C", "느린26": "#2B8A3E", "EMA20": "#2F6FED", "VWAP": "#9C36B5", "일봉20일": "#495057", "일봉60일": "#495057" };
+const ixKo = t => String(t || "").replace(/MAJOR_TREND_BREAK/g, "주요 이탈").replace(/TREND_BREAK/g, "이탈").replace(/WARNING/g, "경계").replace(/WATCH/g, "관찰").replace(/NORMAL/g, "정상");
+function ixTurnBadge(t) {
+  if (!t || !t.line) return '<span class="ixtb" style="color:#6B7280;background:#F1F3F5;border-color:#DEE2E6" title="일봉 기술적 반등구간(형 RSI 수식)">반등 구간 밖</span>';
+  const dd = (t.line.match(/D\+\d\/\d/) || [""])[0];
+  const [txt, c, bg, bd] = t.kind === "broken" ? [`📉 반등 깨짐 ${dd}`, "#1565C0", "#E7F0FF", "#A5C3F5"] : t.kind === "pending" ? ["⏳ 반등 잠정", "#7048E8", "#F3F0FF", "#D0BFFF"]
+    : [`📈 반등 ${dd || "구간"}`, "#8F6B00", "#FFF9DB", "#FFE066"];
+  return `<span class="ixtb" style="color:${c};background:${bg};border-color:${bd}" title="${esc(t.line)}">${esc(txt)}</span>`;
+}
+function ixCss() {
+  if ($("ixcss")) return;
+  const st = document.createElement("style"); st.id = "ixcss";
+  st.textContent = `
+.ixpane .ixhead{display:flex;align-items:center;gap:6px;flex-wrap:nowrap}
+.ixpane .ixhead .ixt.dn,.ixpane>.l1,.ixpane>.l2,.ixpane>.rcv,.ixpane>.dtn,.ixpane .rbl .r2{display:none!important}
+.ixtb{font-size:10.5px;font-weight:700;border:1px solid;border-radius:5px;padding:0 6px;white-space:nowrap;line-height:17px}
+.ixpane .cv{position:relative;min-height:190px}
+.ixov{position:absolute;left:6px;top:4px;z-index:3;background:rgba(255,255,255,.88);border-radius:6px;padding:2px 8px;pointer-events:none;line-height:1.15}
+.ixov small{display:block;color:#7A8597;font-size:10.5px}.ixov b{font-size:17px;font-weight:800}
+.ixleg{display:flex;flex-wrap:wrap;gap:3px;padding:3px 8px 0}
+.ixleg span{font-size:10.5px;border:1px solid;border-left-width:3px;border-radius:4px;padding:0 5px;line-height:17px;white-space:nowrap}
+.ixleg .ok{color:#2B8A3E;background:#EBFBEE;border-color:#B2F2BB}.ixleg .no{color:#C92A2A;background:#FFF0F0;border-color:#FFC9C9}
+.ixft{display:flex;gap:6px;align-items:center;padding:2px 8px 5px;font-size:11px;color:#6B7280;white-space:nowrap;overflow:hidden}
+.ixft .fb{color:#111;font-weight:700}`;
+  document.head.appendChild(st);
+}
+function ixB(p, m) {
+  ixCss();
+  const cv = p.el.querySelector(".cv");
+  let ov = cv.querySelector(".ixov");
+  if (!ov) { ov = document.createElement("div"); ov.className = "ixov"; cv.appendChild(ov); }
+  ov.innerHTML = typeof m.day_pct === "number" ? `<small>${m.day === todayStr() ? "오늘" : esc(String(m.day).slice(5).replace("-", "/"))} 시가 대비</small><b style="color:${m.day_pct > 0 ? UP : m.day_pct < 0 ? DOWN : "#495057"}">${m.day_pct > 0 ? "+" : ""}${m.day_pct.toFixed(2)}%</b>` : "";
+  ov.style.display = typeof m.day_pct === "number" ? "" : "none";
+  let lg = p.el.querySelector(".ixleg");
+  if (!lg) { lg = document.createElement("div"); lg.className = "ixleg"; cv.after(lg); }
+  const it = (m.rec_view && m.rec_view.items) || [];
+  lg.innerHTML = it.map(x => { const col = IX_COL[x.label] || "#868E96";
+    return `<span class="${x.ok ? "ok" : "no"}" style="border-left-color:${col}" title="${esc(x.label)} ${x.ok ? "위" : "아래 — 올라가야 할 거리"}">${esc(x.label)} ${x.ok ? "✓" : "✗ +" + Number(x.need).toFixed(1) + "%"}</span>`; }).join("")
+    || (m.signals || []).slice(0, 5).map(s => `<span class="no" style="border-left-color:#868E96">${esc(s)}</span>`).join("");
+  let ft = p.el.querySelector(".ixft");
+  if (!ft) { ft = document.createElement("div"); ft.className = "ixft"; lg.after(ft); }
+  ft.innerHTML = `<span title="${esc(ixKo(m.line1))}">${esc(ixKo(m.line1))}</span>` + (m.line2 ? `<span style="flex:1"></span><span class="${m.full_break ? "fb" : ""}" title="${esc(ixKo(m.line2))}">${esc(ixKo(m.line2))}</span>` : "");
 }
 function paintMarket(d) {
   S.market = d;
@@ -1847,8 +1897,10 @@ function paintMarket(d) {
     }
     p.el.style.borderColor = m.fg || "#CBD5E1";
     p.el.querySelector(".ixhead").innerHTML = `<b>${esc(m.name || k)}</b><span class="pill" style="background:${esc(m.fg)};">${esc(m.label)}</span><b class="num">${esc(m.score)}점</b>`
-      + (typeof m.day_pct === "number" ? `<span class="daypct" title="${esc(m.day)} 시가 대비(정규장 5분봉 · 마지막 봉 종가)">${m.day === todayStr() ? "오늘" : esc(String(m.day).slice(5).replace("-", "/"))} 시가 대비 ${pctS(m.day_pct)}</span>` : "")
-      + (m.signals || []).slice(0, 4).map(s => `<span class="ixt dn">${esc(s)}</span>`).join("") + (m.why ? `<span class="mut">${esc(m.why)}</span>` : "");
+      + (m.rec_view && m.rec_view.score != null ? `<span class="mut" style="font-size:11px" title="회복 점수(0~100)">회복 ${esc(m.rec_view.score)}</span>` : "")
+      + (m.why ? `<span class="mut">${esc(m.why)}</span>` : "") + '<span style="flex:1"></span>' + ixTurnBadge(m.dturn)
+      + (m.signals || []).slice(0, 4).map(s => `<span class="ixt dn">${esc(s)}</span>`).join("");
+    ixB(p, m);                                                            // v574 형 "지수 칸 시인성" B안 — 오늘%·저항선은 차트 위 · 선 상태 범례 · 아래 한 줄
     p.el.querySelector(".l1").textContent = m.line1 || "";
     const l2 = p.el.querySelector(".l2"); l2.textContent = m.line2 || ""; l2.style.color = m.full_break ? "#111" : (m.state && m.state !== "NORMAL" ? m.fg : "#6B7280");
     p.el.querySelector(".rcv").innerHTML = recRow(m.rec_view);                // v556 회복 표시
