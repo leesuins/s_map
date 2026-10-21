@@ -1585,6 +1585,7 @@ function decorateDots() {
       });
     });
   });
+  try { decorateZones(); } catch (e) { /* 자리 칸은 없어도 됨 */ }
 }
 let dotTry = 0;
 async function loadDots() {
@@ -1826,6 +1827,7 @@ function dtnPaint(el, t) {
 }
 function paintMarket(d) {
   S.market = d;
+  try { d1Bar(); } catch (e) { /* v573 시장 5칸은 없어도 됨 */ }
   const host = $("ipanes");
   ["KOSPI", "KOSDAQ"].forEach(k => {
     const m = (d.index || {})[k] || {};
@@ -2018,16 +2020,124 @@ function favPaint() {
     if (x) { ev.stopPropagation(); favSet(favGet().filter(f => f.c !== x.dataset.x)); favBtnPaint(); favPaint(); return; }
     const f = favGet().find(z => z.c === tr.dataset.c); select(tr.dataset.c, (f && f.n) || ""); favBtnPaint();
   });
+  favPaintHook();
 }
+function favPaintHook() { try { decorateZones(); } catch (e) { /* 무시 */ } }
 async function favLoad() {
   favEnsure();
   const v = favGet();
   if (v.length) { try { const d = await api(`/api/one/favs?codes=${v.map(x => x.c).join(",")}`); FAV.rows = d.rows || {}; } catch (e) { /* 지난 값 그대로 */ } }
-  favPaint(); favBtnPaint();
+  favPaint(); favBtnPaint(); favPaintHook();
+}
+/* ── v573 형 "시안 D1로 부탁해" — 분할 보기(왼쪽 넓게 · 2×2 + 아래 탭 3개) + 시장 5칸 + 목록 줄마다 '자리' 칸 ──────────────────
+   자리(형 실매매 방식 · 15분 끝난 봉) 🟢 매수 자리 = 초입 ▲안착 + 볼벤 위에서 들어와 2봉 안착 + 20/60선 위 · 🟡 대기 · 🔴 피함(⛔120 · 초입 아래 · 20/60선 아래)
+   볼벤 막대 = 밴드 안 위치(초록 안 · 빨강 상단 위 · 파랑 하단 아래) · 초입% = 15분 초입가까지 · 대금 = 오늘 거래대금(억) · 배 = 같은 시각까지 평소 대비 거래량
+   서버(/api/one/zones)가 뒤에서 60초마다 계산 · 표시만(주문·매수 규칙과 무관) · ▦ 버튼으로 예전 보기와 바꿈(이 브라우저에 기억) */
+const D1 = { on: true, z: {}, su2: {}, mkt: null, t: "" };
+try { D1.on = localStorage.getItem("one.d1") !== "0"; } catch (e) { /* 기본 켜짐 */ }
+const D1_TABLES = ["favs", "top10", "overlap", "watch", "hub", "pick", "crown"];
+function d1Css() {
+  if ($("d1css")) return;
+  const st = document.createElement("style"); st.id = "d1css";
+  st.textContent = `
+body.d1 .main{grid-template-columns:clamp(760px,38%,1320px) minmax(0,1fr)!important}
+body.d1 .leftcol{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;grid-template-rows:auto minmax(0,1fr) minmax(0,1fr) minmax(0,1.7fr)!important}
+body.d1 .leftcol>#d1bar{grid-column:1/-1}
+body.d1 .leftcol>.card:last-child{grid-column:1/-1}
+body:not(.d1) .leftcol{grid-template-rows:auto auto auto minmax(0,.8fr) minmax(0,1fr) minmax(0,1.5fr)!important}
+body:not(.d1) #favcard .body{max-height:170px}
+body:not(.d1) #d1bar .d1m{display:none}
+#d1bar{display:flex;gap:6px;align-items:stretch}
+#d1bar .d1m{flex:1;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+#d1bar .d1b{background:#fff;border:1px solid #DDE2EA;border-radius:8px;padding:3px 8px;font-size:11.5px;line-height:1.35;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+#d1bar .d1b small{color:#7A8597;font-size:10.5px}
+#d1tog{border:1px solid #DDE2EA;border-radius:8px;background:#fff;padding:2px 10px;font-weight:700;cursor:pointer;white-space:nowrap}
+.ztd,.zth{white-space:nowrap}
+.zc{display:inline-grid;grid-template-columns:74px 56px 50px 50px 38px 58px;gap:4px;align-items:center;font-size:11px}
+.zc>*{text-align:right}.zc>.zp,.zc>.zg,.zc>.zs{text-align:left}
+.zp{font-size:10.5px;font-weight:800;border-radius:999px;padding:0 6px;border:1px solid;text-align:center!important;line-height:16px}
+.zp.buy{color:#2B8A3E;background:#EBFBEE;border-color:#B2F2BB}.zp.wait{color:#B35C00;background:#FFF9DB;border-color:#FFE066}.zp.avoid{color:#C92A2A;background:#FFF0F0;border-color:#FFC9C9}
+.zg{position:relative;width:54px;height:8px;border-radius:4px;border:1px solid #DEE2E6;background:linear-gradient(90deg,#F1F3F5 16.6%,#E6FCF5 16.6% 83.3%,#F1F3F5 83.3%)}
+.zg i{position:absolute;top:-2px;width:6px;height:10px;border-radius:2px}
+body.d1 tr.zr-buy>td{background:#F3FBF5}body.d1 tr.zr-wait>td{background:#FFFCEB}body.d1 tr.zr-avoid>td{background:#FFF7F7}
+body.d1 tr.sel>td{background:#FFF3BF!important}
+body:not(.d1) .ztd,body:not(.d1) .zth{display:none}`;
+  document.head.appendChild(st);
+}
+const d1Gauge = b => { if (typeof b !== "number") return '<span class="zg" title="볼벤 계산에 15분봉 부족"></span>';
+  const x = Math.max(-0.25, Math.min(1.25, b)), left = (x + 0.25) / 1.5 * 100, col = b > 1 ? "#D92D20" : b < 0 ? "#1565C0" : "#2B8A3E";
+  return `<span class="zg" title="볼벤(150·1σ) 안 위치 ${(b * 100).toFixed(0)}% — 0 하단 · 100 상단 · 100 넘으면 상단 위(고가)"><i style="left:calc(${left.toFixed(0)}% - 3px);background:${col}"></i></span>`; };
+function d1Spark(a, chg) {
+  if (!a || a.length < 2) return '<span class="zs mut">—</span>';
+  const w = 56, h = 16, lo = Math.min(...a), hi = Math.max(...a), rg = (hi - lo) || 1;
+  const pts = a.map((v, i) => `${(i * (w - 2) / (a.length - 1) + 1).toFixed(1)},${(h - 2 - (v - lo) / rg * (h - 4)).toFixed(1)}`).join(" ");
+  const col = (chg ?? 0) >= 0 ? UP : DOWN, ly = (h - 2 - (a[a.length - 1] - lo) / rg * (h - 4)).toFixed(1);
+  return `<svg class="zs" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><polyline points="${pts}" fill="none" stroke="${col}" stroke-width="1.3"/><circle cx="${w - 1}" cy="${ly}" r="1.8" fill="${col}"/></svg>`;
+}
+const D1_ST = { buy: "🟢 매수 자리", wait: "🟡 대기", avoid: "🔴 피함" };
+function d1Cell(z) {
+  if (!z) return '<span class="zc"><span class="mut" style="grid-column:1/-1;text-align:left">계산 중…</span></span>';
+  const lab = z.st === "wait" && typeof z.bb === "number" && z.bb > 1 ? "🟡 눌림 대기" : (D1_ST[z.st] || "—");
+  const pill = z.st ? `<span class="zp ${z.st}" title="${esc(z.why || "")}">${lab}</span>` : `<span class="mut" title="${esc(z.why || "")}">—</span>`;
+  const ln = typeof z.line === "number" ? `<span title="15분 초입가까지 거리">${pctS(z.line * 100, 1)}</span>` : '<span class="mut">—</span>';
+  const amt = typeof z.amt === "number" ? `<span class="num" title="오늘 거래대금">${z.amt >= 100 ? Math.round(z.amt).toLocaleString("ko-KR") : z.amt.toFixed(1)}억</span>` : '<span class="mut">—</span>';
+  const vr = typeof z.vr === "number" ? `<span class="num" title="같은 시각까지 평소(20일 중앙) 대비 거래량" style="${z.vr >= 3 ? "color:#D92D20;font-weight:700" : ""}">${z.vr.toFixed(1)}배</span>` : '<span class="mut">—</span>';
+  return `<span class="zc">${pill}${d1Gauge(z.bb)}${ln}${amt}${vr}${d1Spark(z.spark, z.chg)}</span>`;
+}
+const D1_TH = '<span class="zc" style="font-weight:600"><span class="zp" style="border-color:transparent;text-align:left!important;padding:0">자리</span><span style="text-align:left">볼벤</span><span>초입%</span><span>대금</span><span>배</span><span style="text-align:left">오늘 흐름</span></span>';
+function decorateZones() {
+  if (!D1.on) return;
+  D1_TABLES.forEach(id => {
+    const tb = $(id); if (!tb) return;
+    const tbl = tb.closest("table"); if (!tbl) return;
+    const hr = tbl.tHead && tbl.tHead.rows[0];
+    if (hr && !hr.querySelector(".zth")) { const th = document.createElement("th"); th.className = "zth"; th.innerHTML = D1_TH; th.title = "v573 자리 = 형 방식(초입 안착 → 볼벤 안 2봉 안착 + 20/60선 위) · 표시만"; hr.appendChild(th); }
+    tb.querySelectorAll("tr[data-c]").forEach(tr => {
+      const z = D1.z[tr.dataset.c];
+      let td = tr.querySelector("td.ztd");
+      if (!td) { td = document.createElement("td"); td.className = "ztd"; tr.appendChild(td); }
+      const html = d1Cell(z);
+      if (td.dataset.h !== html) { td.innerHTML = html; td.dataset.h = html; }
+      tr.classList.toggle("zr-buy", !!z && z.st === "buy"); tr.classList.toggle("zr-wait", !!z && z.st === "wait"); tr.classList.toggle("zr-avoid", !!z && z.st === "avoid");
+    });
+  });
+}
+function d1Bar() {
+  const lc = document.querySelector(".leftcol"); if (!lc) return;
+  let bar = $("d1bar");
+  if (!bar) { bar = document.createElement("div"); bar.id = "d1bar"; lc.insertBefore(bar, lc.firstChild);
+    bar.innerHTML = '<div class="d1m" id="d1m"></div><button type="button" id="d1tog"></button>';
+    $("d1tog").onclick = () => { D1.on = !D1.on; try { localStorage.setItem("one.d1", D1.on ? "1" : "0"); } catch (e) { /* 무시 */ } d1Apply(); }; }
+  $("d1tog").textContent = D1.on ? "☰ 예전 보기" : "▦ 분할 보기";
+  $("d1tog").title = D1.on ? "왼쪽 목록을 예전처럼 한 줄로(차트 칸 넓게)" : "시안 D1 — 왼쪽 목록 넓게 2×2 + 자리 칸";
+  const M = S.market || {}, ix = M.index || {};
+  const box = k => { const m = ix[k] || {}; const dt = m.dturn && m.dturn.line ? m.dturn.line.replace(/^.\s*/, "").split(" · ").slice(0, 2).join(" · ") : "일봉 반등구간 밖";
+    return `<div class="d1b" title="${esc((m.dturn && m.dturn.line) || "")}"><small>${esc(m.name || k)} · 레이더</small><div><b style="color:${esc(m.fg || "#495057")}">${esc(m.label || "—")}</b> <b class="num">${esc(m.score ?? "—")}점</b> ${typeof m.day_pct === "number" ? pctS(m.day_pct, 2) : ""}</div><small>${esc(dt)}</small></div>`; };
+  const fl = ((M.flow || {}).markets || {}).KOSPI;
+  const eok = v => typeof v === "number" ? `<b style="color:${v > 0 ? UP : v < 0 ? DOWN : "#495057"}">${v > 0 ? "+" : ""}${Math.round(v).toLocaleString("ko-KR")}</b>` : "—";
+  const mk = { GREEN: ["🟢 초록", "신규 정상"], YELLOW: ["🟡 노랑", "신규 비중 ½"], RED: ["🔴 빨강", "신규 보류"] }[D1.mkt] || ["—", "장 판정 없음"];
+  const su = D1.su2 || {};
+  $("d1m").innerHTML = box("KOSPI") + box("KOSDAQ")
+    + `<div class="d1b"><small>수급 코스피(억)</small><div>외국인 ${fl ? eok(fl.foreign) : "—"} · 기관 ${fl ? eok(fl.institution) : "—"}</div><small>프로그램 ${fl ? eok(fl.program) : "—"}</small></div>`
+    + `<div class="d1b"><small>장 판정(후보 노출)</small><div><b>${mk[0]}</b></div><small>${mk[1]}</small></div>`
+    + `<div class="d1b" title="오늘 SU2 주문 일지(제출 기준)"><small>SU2 오늘 · ${esc(D1.t || "—")}</small><div>매수 <b>${su.buys ?? "—"}</b> · 매도 <b>${su.sells ?? "—"}</b> · 손절 <b style="color:${DOWN}">${su.stops ?? "—"}</b></div><small>자리: 🟢 ${Object.values(D1.z).filter(z => z.st === "buy").length} · 🟡 ${Object.values(D1.z).filter(z => z.st === "wait").length} · 🔴 ${Object.values(D1.z).filter(z => z.st === "avoid").length}</small></div>`;
+}
+function d1Apply() {
+  d1Css(); document.body.classList.toggle("d1", D1.on); d1Bar(); decorateZones();
+  try { Object.values(S.panes || {}).forEach(p => p.fit && requestAnimationFrame(p.fit)); } catch (e) { /* 차트 크기 맞춤 실패해도 됨 */ }
+}
+let d1Try = 0;
+async function loadZones() {
+  let d; const ex = favGet().map(x => x.c).join(",");
+  try { d = await api("/api/one/zones" + (ex ? `?extra=${ex}` : "")); } catch (e) { return; }
+  D1.z = d.rows || {}; D1.su2 = d.su2 || {}; D1.mkt = d.mkt; D1.t = d.t || "";
+  d1Bar(); decorateZones();
+  if ((d.busy || !d.n) && d1Try++ < 20) setTimeout(loadZones, 3000); else if (!d.busy) d1Try = 0;
 }
 const visible = () => document.visibilityState !== "hidden";
 setInterval(() => { if (visible()) { refreshLists(); refreshMarket(); refreshBottom(); } }, 30000);
 favLoad(); setInterval(() => { if (visible()) favLoad(); }, 30000);   // v572 ⭐ 즐겨찾기
+d1Apply(); loadZones(); setInterval(() => { if (visible()) loadZones(); }, 30000);   // v573 D1 분할 보기 · 자리 칸
 setInterval(() => { if (visible()) { refreshCrown(); loadCharts(); loadStock(); loadRadar(); loadDots(); } }, 60000);
 document.addEventListener("visibilitychange", () => {
   if (visible()) { refreshLists(); refreshMarket(); refreshBottom(); refreshCrown(); loadCharts(); loadStock(); }
