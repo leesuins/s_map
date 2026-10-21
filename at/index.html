@@ -1687,7 +1687,7 @@ function paintLists(d) {
   // 한 줄에 들어가게 칸을 줄임(자리잡음·조건식 수·추세 단계는 종목 이름에 마우스) — 화면에 늘 꺼내 놓는 칸이라 줄 높이를 아낌
   $("watch").innerHTML = w.map((r, i) => trOf(r.ticker, r.name, [i + 1,
     (twxOf(r.ticker) ? twxB(esc(r.name || r.ticker), r.ticker) : `<b title="자리잡음 ${r.ichi_held ? "예" : "—"} · 조건식 ${r.n_conditions}개 · ${esc(r.stage_ko)}">${esc(r.name || r.ticker)}</b>`) + rtChip(r.ticker) + twChip(r.ticker) + pxChip(r.ticker),
-    f1(r.score, 0), f1(r.ichi, 0), f1(r.rsi, 0), esc(r.day), `<span class="rule">${esc(r.rule)}</span>`], r.rule_ok ? "ruleok" : "")).join("")
+    f1(r.score, 0), f1(r.ichi, 0), f1(r.rsi, 0), esc(r.day), `<span class="rule" title="${esc(r.rule)}">${esc(r.rule)}</span>`], r.rule_ok ? "ruleok" : "")).join("")
     || emptyRow(7, "조건을 통과한 종목이 없습니다");
   const hb = d.hub || {};
   $("hub").innerHTML = (hb.rows || []).map((r, i) => {
@@ -1959,7 +1959,7 @@ function favEnsure() {
     if (lc) {
       const card = document.createElement("div");
       card.className = "card"; card.id = "favcard";
-      card.innerHTML = '<h3>⭐ 즐겨찾기 <small id="favinfo" class="hmeta"></small></h3><div class="body"><table><thead><tr><th>종목</th><th>지금</th><th>오늘</th><th title="즐겨찾기에 넣은 날 · 그때 가격 대비 지금">넣은 뒤</th><th>신호</th><th></th></tr></thead><tbody id="favs"></tbody></table></div>';
+      card.innerHTML = '<h3>⭐ 즐겨찾기 <small id="favinfo" class="hmeta"></small></h3><div class="body"><table><thead><tr><th style="text-align:left">종목</th><th>지금</th><th>오늘</th><th title="즐겨찾기에 넣은 날 · 그때 가격 대비 지금">넣은 뒤</th><th style="text-align:left">신호(경고·관문·판정·15/45 초입)</th><th></th></tr></thead><tbody id="favs"></tbody></table></div>';
       lc.insertBefore(card, lc.firstChild);
     }
   }
@@ -1991,14 +1991,12 @@ async function favToggle(code, name) {
   favBtnPaint(); favLoad();
 }
 const favChip = (t, col, tip) => `<span class="ixt" style="color:${col};border-color:${col}" title="${esc(tip)}">${esc(t)}</span>`;
-function favChips(r) {
-  const out = [];
-  if (r.tw120) out.push(favChip("⛔120", "#D92D20", "120분 급등보호 저점이탈(안착 전)"));
-  if (r.flow) out.push(favChip(r.flow.replace("·조건식", "").replace("조건식", "조건"), "#7048E8", `오늘 후보 관문: ${r.flow}`));
-  if (r.lv) out.push(favChip(r.lv, "#495057", "👁 후보 노출 판정"));
-  [["15", r.l15], ["45", r.l45]].forEach(([tf, v]) => { if (v != null) out.push(favChip(`${tf}분 초입${v ? "↑" : "↓"}`, v ? UP : DOWN, `${tf}분 초입선(정배열초입 검은 선) ${v ? "위" : "아래"}`)); });
-  if (r.rs && r.rs !== "정상") out.push(favChip(`레이더 ${r.rs}`, "#E8590C", "종목 경계 레이더"));
-  return out.join(" ") || '<span class="mut">—</span>';
+function favChips(r) {                                   // v573b 형 "1줄로 다른 종목처럼" — 칩 대신 한 줄: 경고 하나 · 관문 · 판정(짧게) · 15/45 초입 점
+  const dot = (v, tf) => v == null ? "" : `<span title="${tf}분 초입선 ${v ? "위" : "아래"}" style="display:inline-block;width:8px;height:8px;border-radius:50%;margin:0 1px;vertical-align:middle;${v ? `background:${UP}` : `background:#BAC8FF;border:1px solid ${DOWN}`}"></span>`;
+  const warn = r.tw120 ? `<b style="color:#D92D20" title="120분 급등보호 저점이탈(안착 전)">⛔120</b>` : (r.rs && r.rs !== "정상" ? `<span style="color:#E8590C" title="종목 경계 레이더">${esc(r.rs)}</span>` : "");
+  const gate = r.flow ? `<b style="color:#7048E8" title="오늘 후보 관문: ${esc(r.flow)}">${esc(r.flow.replace("·조건식", "").replace("조건식", "조건"))}</b>` : "";
+  const lv = r.lv ? `<span class="mut" title="👁 후보 노출 판정: ${esc(r.lv)}">${esc(String(r.lv).replace(/^⛔\s*/, "").split(" · ")[0])}</span>` : "";
+  return [warn, gate, lv, dot(r.l15, 15) + dot(r.l45, 45)].filter(Boolean).join(" ") || '<span class="mut">—</span>';
 }
 function favPaint() {
   const tb = $("favs"); if (!tb) return;
@@ -2008,12 +2006,12 @@ function favPaint() {
   tb.innerHTML = v.map(f => {
     const r = FAV.rows[f.c] || {}, nm = f.n || r.name || f.c;
     const since = (typeof r.cur === "number" && typeof f.px === "number" && f.px > 0) ? (r.cur / f.px - 1) * 100 : null;
-    return `<tr data-c="${f.c}" class="${f.c === S.code ? "sel" : ""}" style="cursor:pointer"><td title="${esc(f.c)}">${esc(nm)}</td>`
+    return `<tr data-c="${f.c}" class="${f.c === S.code ? "sel" : ""}" style="cursor:pointer;white-space:nowrap"><td title="${esc(f.c)}" style="text-align:left"><span style="color:#E8A400">★</span> ${esc(nm)}</td>`
       + `<td class="num">${typeof r.cur === "number" ? fmt(r.cur) : '<span class="mut">—</span>'}</td>`
       + `<td class="num">${typeof r.chg === "number" ? pctS(r.chg * 100) : '<span class="mut">—</span>'}</td>`
       + `<td class="num" title="${esc(f.at || "")} 넣을 때 ${typeof f.px === "number" ? fmt(f.px) : "가격 모름"}">${esc((f.at || "").slice(5).replace("-", "/"))} ${since == null ? '<span class="mut">—</span>' : pctS(since)}</td>`
-      + `<td style="white-space:normal">${favChips(r)}</td>`
-      + `<td><button type="button" class="btn favx" data-x="${f.c}" title="즐겨찾기에서 빼기">✕</button></td></tr>`;
+      + `<td style="white-space:nowrap;text-align:left">${favChips(r)}</td>`
+      + `<td style="text-align:center"><span class="favx" data-x="${f.c}" title="즐겨찾기에서 빼기" style="cursor:pointer;color:#AEB6C2;font-size:12px;padding:0 4px">✕</span></td></tr>`;
   }).join("");
   tb.querySelectorAll("tr[data-c]").forEach(tr => tr.onclick = ev => {
     const x = ev.target.closest(".favx");
@@ -2053,6 +2051,8 @@ body:not(.d1) #d1bar .d1m{display:none}
 #d1bar .d1b small{color:#7A8597;font-size:10.5px}
 #d1tog{border:1px solid #DDE2EA;border-radius:8px;background:#fff;padding:2px 10px;font-weight:700;cursor:pointer;white-space:nowrap}
 .ztd,.zth{white-space:nowrap}
+.leftcol tbody td{white-space:nowrap}
+.leftcol .rule{display:inline-block;max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle}
 .zc{display:inline-grid;grid-template-columns:74px 56px 50px 50px 38px 58px;gap:4px;align-items:center;font-size:11px}
 .zc>*{text-align:right}.zc>.zp,.zc>.zg,.zc>.zs{text-align:left}
 .zp{font-size:10.5px;font-weight:800;border-radius:999px;padding:0 6px;border:1px solid;text-align:center!important;line-height:16px}
