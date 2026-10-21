@@ -2185,8 +2185,39 @@ function d1Bar() {
     + `<div class="d1b"><small>장 판정(후보 노출)</small><div><b>${mk[0]}</b></div><small>${mk[1]}</small></div>`
     + `<div class="d1b" title="오늘 SU2 주문 일지(제출 기준)"><small>SU2 오늘 · ${esc(D1.t || "—")}</small><div>매수 <b>${su.buys ?? "—"}</b> · 매도 <b>${su.sells ?? "—"}</b> · 손절 <b style="color:${DOWN}">${su.stops ?? "—"}</b></div><small>자리: 🟢 ${Object.values(D1.z).filter(z => z.st === "buy").length} · 🟡 ${Object.values(D1.z).filter(z => z.st === "wait").length} · 🔴 ${Object.values(D1.z).filter(z => z.st === "avoid").length}</small></div>`;
 }
+/* v576 형 "4가지 색상(노랑·연노랑·주황·크림) 후보 타이틀 옆에 색상 on/off" → v576b "각각 개별로 온오프" — 목록마다 · 색마다 따로 · 이 브라우저에 기억 · 표시만
+   끄면 그 목록에서 그 색 줄 배경만 흰색 — 깜빡임(▶·★)·선택 표시·자리 칸은 그대로 */
+const COLK = { y: ["#FFE066", ["buy", "ruleok"]], ly: ["#FFF3BF", ["bought", "n3"]], o: ["#FFE8CC", ["n4"]], c: ["#FFF8E1", ["crownrow"]] };
+const COLTOG = [["top10", "h3", [["y", "매수 대상"], ["ly", "매수됨"]]], ["overlap", "h3", [["o", "4곳"], ["ly", "3곳"]]], ["watch", "h3", [["y", "규칙 통과"]]],
+  ["hub", ".tabs", [["y", "규칙 TOP"], ["ly", "기타 TOP"], ["c", "왕관"]]]];
+function colTogInit() {
+  if (!$("coltogcss")) { const st = document.createElement("style"); st.id = "coltogcss";
+    st.textContent = Object.entries(COLK).map(([k, [, cls]]) => cls.map(c => `.card.nc-${k} tr.${c} td`).join(",") + "{background:transparent!important}").join("\n") + `
+.coltogs{display:inline-flex;gap:3px;margin-left:8px;vertical-align:middle}
+.coltog{display:inline-flex;align-items:center;gap:3px;font-size:10.5px;font-weight:700;border:1px solid #DDE2EA;border-radius:999px;padding:0 7px 0 4px;line-height:17px;background:#fff;color:#1F2430;cursor:pointer;white-space:nowrap}
+.coltog i{display:inline-block;width:10px;height:10px;border-radius:2px;border:1px solid rgba(0,0,0,.12)}
+.coltog.off{color:#9AA3B2;background:#F4F6FA;text-decoration:line-through}.coltog.off i{opacity:.25}
+.coltog:focus-visible{outline:2px solid #1864ab;outline-offset:1px}`;
+    document.head.appendChild(st); }
+  COLTOG.forEach(([id, sel, ks]) => {
+    const tb = $(id); const card = tb && tb.closest(".card"); if (!card || card.querySelector(".coltogs")) return;
+    const host = card.querySelector(sel); if (!host) return;
+    const wrap = document.createElement("span"); wrap.className = "coltogs";
+    ks.forEach(([k, lab]) => {
+      const key = `one.col.${id}.${k}`; let on = true;
+      try { on = localStorage.getItem(key) !== "0"; } catch (e) { /* 기억 못 해도 켜짐 */ }
+      const b = document.createElement("button"); b.type = "button"; b.className = "coltog";
+      const paint = () => { card.classList.toggle("nc-" + k, !on); b.classList.toggle("off", !on); b.setAttribute("aria-pressed", on ? "true" : "false");
+        b.innerHTML = `<i style="background:${COLK[k][0]}"></i>${esc(lab)}`;
+        b.title = `${lab} 줄 배경 ${on ? "켜짐 — 누르면 끔" : "꺼짐 — 누르면 켬"} (깜빡임·선택·자리 칸은 그대로)`; };
+      b.onclick = e => { e.stopPropagation(); on = !on; try { localStorage.setItem(key, on ? "1" : "0"); } catch (er) { /* 무시 */ } paint(); };
+      paint(); wrap.appendChild(b);
+    });
+    if (sel === "h3") { const sm = host.querySelector("small"); sm ? host.insertBefore(wrap, sm) : host.appendChild(wrap); } else host.appendChild(wrap);
+  });
+}
 function d1Apply() {
-  d1Css(); document.body.classList.toggle("d1", D1.on); d1Bar(); decorateZones();
+  colTogInit(); d1Css(); document.body.classList.toggle("d1", D1.on); d1Bar(); decorateZones();
   try { Object.values(S.panes || {}).forEach(p => p.fit && requestAnimationFrame(p.fit)); } catch (e) { /* 차트 크기 맞춤 실패해도 됨 */ }
 }
 let d1Try = 0;
