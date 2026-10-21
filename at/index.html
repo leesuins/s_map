@@ -1811,6 +1811,15 @@ function paintSup(p, m) {
   }
 }
 const IX_LINES = [["conv", "#E03131", 1, 0], ["base", "#E8590C", 2, 0], ["slow", "#2B8A3E", 2, LS.Dashed], ["ema20", "#2F6FED", 1, 0], ["vwap", "#9C36B5", 2, LS.Dotted]];
+// v566 형 "일봉으로 적용하자 레이더에 반영해줄래" — 형 RSI 반등 수식(일봉) · 📈 구간 안(D+1~5) · 📉 깨짐 · ⏳ 오늘 종가 이대로면 신호(잠정) · 표시만
+function dtnPaint(el, t) {
+  let x = el.querySelector(".dtn");
+  if (!x) { x = document.createElement("div"); x.className = "ixline dtn"; const rc = el.querySelector(".rcv"); rc ? rc.after(x) : el.appendChild(x); }
+  if (!t || !t.line) { x.style.display = "none"; x.innerHTML = ""; return; }
+  const col = t.kind === "broken" ? "#1565C0" : t.kind === "pending" ? "#7048E8" : "#C92A3A";
+  x.style.display = ""; x.style.whiteSpace = "normal"; x.style.color = col; x.style.fontWeight = "700";
+  x.title = t.tip || ""; x.textContent = t.line;
+}
 function paintMarket(d) {
   S.market = d;
   const host = $("ipanes");
@@ -1839,6 +1848,7 @@ function paintMarket(d) {
     p.el.querySelector(".rcv").innerHTML = recRow(m.rec_view);                // v556 회복 표시
     const rbEl = p.el.querySelector(".rbl"); rbEl.dataset.rb = k; rbEl.innerHTML = rbSum(m.rebound);     // v547 ⑬ 반등 관찰 요약 두 줄(누르면 차트)
     rbEl.title = rbTip(m.rebound);
+    dtnPaint(p.el, m.dturn);                                              // v566 📈 일봉 기술적 반등구간(표시만)
     p.cs.setData(dayAxis(m.bars || []));
     paintSup(p, m);                                                       // v554 일봉 지지 1~3차 굵은 선
     IX_LINES.forEach(([n]) => p.ls[n].setData((m.lines || {})[n] || []));
