@@ -2111,8 +2111,9 @@ body:not(.d1) #d1bar .d1m{display:none}
 .zp.buy{color:#2B8A3E;background:#EBFBEE;border-color:#B2F2BB}.zp.wait{color:#B35C00;background:#FFF9DB;border-color:#FFE066}.zp.avoid{color:#C92A2A;background:#FFF0F0;border-color:#FFC9C9}
 .zg{position:relative;width:54px;height:8px;border-radius:4px;border:1px solid #DEE2E6;background:linear-gradient(90deg,#F1F3F5 16.6%,#E6FCF5 16.6% 83.3%,#F1F3F5 83.3%)}
 .zg i{position:absolute;top:-2px;width:6px;height:10px;border-radius:2px}
-body.d1 tr.zr-buy>td{background:#F3FBF5}body.d1 tr.zr-wait>td{background:#FFFCEB}body.d1 tr.zr-avoid>td{background:#FFF7F7}
-body.d1 tr.sel>td{background:#FFF3BF!important}
+#d1bar{flex-wrap:wrap}
+#d1leg{flex-basis:100%;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;font-size:11px;color:#5B6576;padding:0 2px}
+#d1leg i{display:inline-block;width:14px;height:10px;border-radius:2px;border:1px solid #D0D5DD;vertical-align:-1px;margin-right:3px}
 body:not(.d1) .ztd,body:not(.d1) .zth{display:none}`;
   document.head.appendChild(st);
 }
@@ -2150,7 +2151,7 @@ function decorateZones() {
       if (!td) { td = document.createElement("td"); td.className = "ztd"; tr.appendChild(td); }
       const html = d1Cell(z);
       if (td.dataset.h !== html) { td.innerHTML = html; td.dataset.h = html; }
-      tr.classList.toggle("zr-buy", !!z && z.st === "buy"); tr.classList.toggle("zr-wait", !!z && z.st === "wait"); tr.classList.toggle("zr-avoid", !!z && z.st === "avoid");
+      tr.classList.remove("zr-buy", "zr-wait", "zr-avoid");                // v575 형 "배경색 정리해야지" — 줄 배경은 원래 목록 뜻만 · 자리(🟢🟡🔴)는 자리 칸에만
     });
   });
 }
@@ -2159,6 +2160,16 @@ function d1Bar() {
   let bar = $("d1bar");
   if (!bar) { bar = document.createElement("div"); bar.id = "d1bar"; lc.insertBefore(bar, lc.firstChild);
     bar.innerHTML = '<div class="d1m" id="d1m"></div><button type="button" id="d1tog"></button>';
+    const lg = document.createElement("div"); lg.id = "d1leg"; bar.appendChild(lg);
+    lg.innerHTML = '<b style="color:#1B2433">줄 색</b>'                      // v575 줄 배경 뜻 한 곳에 — 같은 색은 한 뜻만
+      + '<span><i style="background:#FFE066"></i>매수 대상(TOP10) · 형 규칙 통과(관심)</span>'
+      + '<span><i style="background:#FFF3BF"></i>매수됨 · 3곳 겹침</span>'
+      + '<span><i style="background:#FFE8CC"></i>4곳 겹침</span>'
+      + '<span><i style="background:#FFF8E1"></i>왕관</span>'
+      + '<span><i style="background:rgba(124,58,237,.3)"></i>깜빡 ▶ 매수 구간</span>'
+      + '<span><i style="background:rgba(37,99,235,.3)"></i>깜빡 ★ 매수 구간+고가 근처</span>'
+      + '<span><i style="background:#EFF6FF;box-shadow:inset 3px 0 0 #1864ab"></i>선택 종목</span>'
+      + '<span style="color:#7A8597">· 자리 🟢🟡🔴는 자리 칸에만</span>';
     $("d1tog").onclick = () => { D1.on = !D1.on; try { localStorage.setItem("one.d1", D1.on ? "1" : "0"); } catch (e) { /* 무시 */ } d1Apply(); }; }
   $("d1tog").textContent = D1.on ? "☰ 예전 보기" : "▦ 분할 보기";
   $("d1tog").title = D1.on ? "왼쪽 목록을 예전처럼 한 줄로(차트 칸 넓게)" : "시안 D1 — 왼쪽 목록 넓게 2×2 + 자리 칸";
