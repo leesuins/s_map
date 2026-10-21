@@ -1465,6 +1465,7 @@ function select(code, name) {
   document.querySelectorAll("tbody tr[data-c]").forEach(r => r.classList.toggle("sel", r.dataset.c === code));
   if (!same) { buildPanes(); $("judge").innerHTML = '<div class="empty">불러오는 중…</div>'; $("why").innerHTML = '<div class="empty">불러오는 중…</div>'; }
   loadCharts(); loadStock(); loadRadar();
+  try { favBtnPaint(); document.querySelectorAll("#favs tr[data-c]").forEach(r => r.classList.toggle("sel", r.dataset.c === code)); } catch (e) { /* 즐겨찾기 없어도 됨 */ }
 }
 /* v458 — 열어 둔 한화면에서 주소의 #code=만 바꿔도 그 종목으로 바뀐다(예전엔 처음 열 때만 읽어 새로고침해야 했음) · 보기만 */
 window.addEventListener("hashchange", () => { const h = location.hash.match(/code=([0-9A-Z]{6})/); if (h && h[1] !== S.code) select(h[1], ""); });
@@ -1943,8 +1944,90 @@ buildPanes();
 if (S.code) select(S.code, "");
 refreshLists(); refreshCrown(); refreshMarket(); refreshBottom(); clock(); setTimeout(loadDots, 1500);
 // v392 형 10/8 "PC가 다시 버벅" — 창이 안 보일 때(다른 탭·최소화)는 새로고침을 쉬고, 다시 보이면 바로 한 번
+/* ── v572 ⭐ 즐겨찾기 — 형 "종목 즐겨찾기 기능 · 관심종목 추가 삭제" ─────────────────────────────────────────
+   목록은 이 브라우저에만 저장(localStorage "one.favs" · 서버는 읽기만 — 웹 대시보드는 쓰기 없는 화면) · 종목 이름 옆 ☆ = 추가 / ★ = 빼기
+   칸 = 지금가 · 오늘(전일 대비) · 추가한 날·그때 가격 대비 · 신호 칩(F1·2·3 · 노출 판정 · 레이더 · 15/45분 초입선 · ⛔120) · 줄 누르면 그 종목 차트 · ✕ = 빼기 · 표시만(주문 무관) */
+const FAV = { rows: {} };
+const favGet = () => { try { const v = JSON.parse(localStorage.getItem("one.favs") || "[]"); return Array.isArray(v) ? v.filter(x => x && /^[0-9A-Z]{6}$/.test(x.c)) : []; } catch (e) { return []; } };
+const favSet = v => { try { localStorage.setItem("one.favs", JSON.stringify(v)); } catch (e) { /* 저장 못 해도 화면은 됨 */ } };
+const favHas = c => favGet().some(x => x.c === c);
+function favEnsure() {
+  if (!$("favcard")) {
+    const lc = document.querySelector(".leftcol");
+    if (lc) {
+      const card = document.createElement("div");
+      card.className = "card"; card.id = "favcard";
+      card.innerHTML = '<h3>⭐ 즐겨찾기 <small id="favinfo" class="hmeta"></small></h3><div class="body"><table><thead><tr><th>종목</th><th>지금</th><th>오늘</th><th title="즐겨찾기에 넣은 날 · 그때 가격 대비 지금">넣은 뒤</th><th>신호</th><th></th></tr></thead><tbody id="favs"></tbody></table></div>';
+      lc.insertBefore(card, lc.firstChild);
+    }
+  }
+  if (!$("favbtn") && $("cname")) {
+    const b = document.createElement("button");
+    b.type = "button"; b.id = "favbtn"; b.className = "btn"; b.style.marginLeft = "6px";
+    b.onclick = () => favToggle(S.code, S.name);
+    $("cname").after(b);
+  }
+}
+function favBtnPaint() {
+  const b = $("favbtn"); if (!b) return;
+  const on = !!S.code && favHas(S.code);
+  b.textContent = on ? "★ 즐겨찾기" : "☆ 즐겨찾기";
+  b.style.color = on ? "#E8A400" : ""; b.style.fontWeight = on ? "700" : "";
+  b.disabled = !S.code;
+  b.title = on ? "즐겨찾기에서 빼기" : "즐겨찾기에 넣기(이 브라우저에 저장)";
+}
+async function favToggle(code, name) {
+  if (!/^[0-9A-Z]{6}$/.test(code || "")) return;
+  let v = favGet();
+  if (v.some(x => x.c === code)) { v = v.filter(x => x.c !== code); favSet(v); }
+  else {
+    let px = null, nm = name || "";
+    try { const d = await api(`/api/one/favs?codes=${code}`); const r = (d.rows || {})[code] || {}; px = r.cur ?? null; nm = nm || r.name || ""; } catch (e) { /* 가격 몰라도 넣음 */ }
+    const now = new Date(), day = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    v.unshift({ c: code, n: nm, at: day, px }); favSet(v);
+  }
+  favBtnPaint(); favLoad();
+}
+const favChip = (t, col, tip) => `<span class="ixt" style="color:${col};border-color:${col}" title="${esc(tip)}">${esc(t)}</span>`;
+function favChips(r) {
+  const out = [];
+  if (r.tw120) out.push(favChip("⛔120", "#D92D20", "120분 급등보호 저점이탈(안착 전)"));
+  if (r.flow) out.push(favChip(r.flow.replace("·조건식", "").replace("조건식", "조건"), "#7048E8", `오늘 후보 관문: ${r.flow}`));
+  if (r.lv) out.push(favChip(r.lv, "#495057", "👁 후보 노출 판정"));
+  [["15", r.l15], ["45", r.l45]].forEach(([tf, v]) => { if (v != null) out.push(favChip(`${tf}분 초입${v ? "↑" : "↓"}`, v ? UP : DOWN, `${tf}분 초입선(정배열초입 검은 선) ${v ? "위" : "아래"}`)); });
+  if (r.rs && r.rs !== "정상") out.push(favChip(`레이더 ${r.rs}`, "#E8590C", "종목 경계 레이더"));
+  return out.join(" ") || '<span class="mut">—</span>';
+}
+function favPaint() {
+  const tb = $("favs"); if (!tb) return;
+  const v = favGet();
+  $("favinfo").textContent = v.length ? `${v.length}종목 · 이 브라우저에 저장 · ☆로 넣고 ✕로 빼기` : "";
+  if (!v.length) { tb.innerHTML = '<tr><td colspan="6" class="mut">종목 차트 위 이름 옆 ☆ 를 누르면 여기에 넣어져요</td></tr>'; return; }
+  tb.innerHTML = v.map(f => {
+    const r = FAV.rows[f.c] || {}, nm = f.n || r.name || f.c;
+    const since = (typeof r.cur === "number" && typeof f.px === "number" && f.px > 0) ? (r.cur / f.px - 1) * 100 : null;
+    return `<tr data-c="${f.c}" class="${f.c === S.code ? "sel" : ""}" style="cursor:pointer"><td title="${esc(f.c)}">${esc(nm)}</td>`
+      + `<td class="num">${typeof r.cur === "number" ? fmt(r.cur) : '<span class="mut">—</span>'}</td>`
+      + `<td class="num">${typeof r.chg === "number" ? pctS(r.chg * 100) : '<span class="mut">—</span>'}</td>`
+      + `<td class="num" title="${esc(f.at || "")} 넣을 때 ${typeof f.px === "number" ? fmt(f.px) : "가격 모름"}">${esc((f.at || "").slice(5).replace("-", "/"))} ${since == null ? '<span class="mut">—</span>' : pctS(since)}</td>`
+      + `<td style="white-space:normal">${favChips(r)}</td>`
+      + `<td><button type="button" class="btn favx" data-x="${f.c}" title="즐겨찾기에서 빼기">✕</button></td></tr>`;
+  }).join("");
+  tb.querySelectorAll("tr[data-c]").forEach(tr => tr.onclick = ev => {
+    const x = ev.target.closest(".favx");
+    if (x) { ev.stopPropagation(); favSet(favGet().filter(f => f.c !== x.dataset.x)); favBtnPaint(); favPaint(); return; }
+    const f = favGet().find(z => z.c === tr.dataset.c); select(tr.dataset.c, (f && f.n) || ""); favBtnPaint();
+  });
+}
+async function favLoad() {
+  favEnsure();
+  const v = favGet();
+  if (v.length) { try { const d = await api(`/api/one/favs?codes=${v.map(x => x.c).join(",")}`); FAV.rows = d.rows || {}; } catch (e) { /* 지난 값 그대로 */ } }
+  favPaint(); favBtnPaint();
+}
 const visible = () => document.visibilityState !== "hidden";
 setInterval(() => { if (visible()) { refreshLists(); refreshMarket(); refreshBottom(); } }, 30000);
+favLoad(); setInterval(() => { if (visible()) favLoad(); }, 30000);   // v572 ⭐ 즐겨찾기
 setInterval(() => { if (visible()) { refreshCrown(); loadCharts(); loadStock(); loadRadar(); loadDots(); } }, 60000);
 document.addEventListener("visibilitychange", () => {
   if (visible()) { refreshLists(); refreshMarket(); refreshBottom(); refreshCrown(); loadCharts(); loadStock(); }
