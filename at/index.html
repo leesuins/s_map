@@ -1690,12 +1690,18 @@ function paintLists(d) {
     f1(r.score, 0), f1(r.ichi, 0), f1(r.rsi, 0), esc(r.day), `<span class="rule" title="${esc(r.rule)}">${esc(r.rule)}</span>`], r.rule_ok ? "ruleok" : "")).join("")
     || emptyRow(7, "조건을 통과한 종목이 없습니다");
   const hb = d.hub || {};
+  // v588b 형 10/22 "지금 바로 반영하자" — 10/22 분석(635건) 손실 억제 필터 배지 + 업종 쏠림 경고(표시만 · 인라인 스타일, Tailwind 새 클래스 없음)
+  const fokB = r => r.filter_ok ? ` <span style="color:#2E9E5B;font-weight:700" title="손실 억제 필터 통과(10/22 분석) — RSI 60 미만·볼밴 1.5 미만·수급 50 이상
+그 구간 635건 기준 평균 -1.8%·승률 41%(전체 -5.1%·28%) — 수익 보장 아님">🛡</span>` : "";
+  const swB = r => r.sector_warn ? ` <span style="color:#D99A1E;font-weight:700" title="업종 쏠림 — '${esc(r.sector || "")}' 업종이 오늘 허브 종목의 30% 넘게 차지(표시만)">⚠${esc(r.sector || "")}</span>` : "";
   $("hub").innerHTML = (hb.rows || []).map((r, i) => {
     const fl = [1, 2, 3].map(k => r.chips && r.chips[k] ? `<span class="fl f${k}" title="Flow-${k}">${esc(r.chips[k])}</span>` : '<span class="fl off">·</span>').join("");
     const tg = r.retest ? (r.retest.status === "retest" ? `<span class="tgt" title="${esc(r.retest.tip)}">🎯타점</span>` : `<span class="wait" title="${esc(r.retest.tip)}">⏳</span>`) : "";
-    return trOf(r.code, r.name, [i + 1, nameOnly(r.name, r.code) + (r.status && r.status !== "후보" ? ` <span class="mut">${esc(r.status)}</span>` : "") + twChip(r.code) + pxChip(r.code), tg, fl,
+    return trOf(r.code, r.name, [i + 1, nameOnly(r.name, r.code) + (r.status && r.status !== "후보" ? ` <span class="mut">${esc(r.status)}</span>` : "") + twChip(r.code) + pxChip(r.code) + fokB(r) + swB(r), tg, fl,
       f1(r.total, 0), r.gap == null ? "—" : pctS(r.gap * 100, 1), fmt(r.price), r.vs_open == null ? "—" : pctS(r.vs_open * 100)]);
   }).join("") || emptyRow(8, hb.err || "허브 기록 없음");
+  const crowd = [...new Set((hb.rows || []).filter(r => r.sector_warn).map(r => r.sector))];
+  const hubCrowdTxt = crowd.length ? ` · ⚠ 업종 쏠림: ${crowd.map(esc).join(", ")}` : "";
   const run = hb.run || {};
   const ds = d.discovery || {};
   const dr = (ds.rows || []).slice().sort((a, b) => (a.top ?? 99) - (b.top ?? 99) || a.final_rank - b.final_rank).slice(0, 40);
@@ -1703,7 +1709,7 @@ function paintLists(d) {
     nameCell(r.name, r.code), esc(r.status), esc(r.track || "—"), `${r.intersection_count ?? "—"}/${ds.den ?? "—"}`, f1(r.final_score, 0),
     f1(r.trend, 0), f1(r.momentum, 0), f1(r.supply, 0), esc(r.overlap_tags || "—")], r.top ? (r.lane_label && r.lane_label.startsWith("규칙") ? "buy" : "bought") : (r.status !== "후보" ? "mutedrow" : ""))).join("")
     || emptyRow(10, ds.err || "선발 기록 없음");
-  $("l2info").textContent = run.run_at ? `회차 #${run.run_id} · ${hm(run.run_at)}${hb.run_ok === false ? " · ⚠️성적 제외 회차" : ""}` : "";
+  $("l2info").innerHTML = run.run_at ? `회차 #${run.run_id} · ${hm(run.run_at)}${hb.run_ok === false ? " · ⚠️성적 제외 회차" : ""}${hubCrowdTxt}` : "";
   decorateDots();
 }
 const GSHOW = { "○": ["●", "g1"], "△": ["▲", "g2"], "✕": ["✕", "g3"], "?": ["?", "mut"] };
