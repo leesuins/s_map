@@ -3075,5 +3075,44 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") closeXP(); }
   } catch (e) { /* 단추만 없음 */ }
 })();
 
+/* ── v587 형 10/22 "검색이 안되는데" — 🔎 종목 찾기(이름·코드) · 위 줄 브랜드 옆 · 고르면 그 종목 차트·☆ 즐겨찾기 ─────────── */
+(function findBox() {
+  try {
+    const top = document.querySelector(".top"); if (!top || document.getElementById("qfind")) return;
+    const st = document.createElement("style"); st.id = "qfcss";
+    st.textContent = `#qfwrap{position:relative;display:inline-flex;align-items:center;margin-left:6px}
+#qfind{width:150px;border:1px solid #DDE2EA;border-radius:8px;padding:2px 8px;font-size:12px;background:#fff;color:#1F2430}
+#qfind:focus{outline:2px solid #1864ab;outline-offset:0}
+#qflist{position:absolute;top:100%;left:0;z-index:60;min-width:230px;background:#fff;border:1px solid #DDE2EA;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.12);margin-top:3px;padding:3px 0;display:none}
+#qflist div{padding:4px 10px;font-size:12px;cursor:pointer;display:flex;gap:8px;white-space:nowrap}
+#qflist div.on,#qflist div:hover{background:#EFF6FF}#qflist small{color:#7A8597}`;
+    document.head.appendChild(st);
+    const w = document.createElement("span"); w.id = "qfwrap";
+    w.innerHTML = '<input id="qfind" type="search" placeholder="🔎 종목 찾기 (이름·코드)" autocomplete="off"><div id="qflist" role="listbox"></div>';
+    const tag = top.querySelector(".tag"); tag ? tag.after(w) : top.prepend(w);
+    const inp = document.getElementById("qfind"), lst = document.getElementById("qflist");
+    let rows = [], on = 0, tmr = 0, seq = 0;
+    const paint = () => {
+      lst.innerHTML = rows.map((r, i) => `<div data-i="${i}" class="${i === on ? "on" : ""}"><b>${esc(r.name)}</b><small>${esc(r.code)} · ${esc(r.market || "")}</small></div>`).join("")
+        || '<div><small>맞는 종목 없음</small></div>';
+      lst.style.display = inp.value.trim() ? "block" : "none";
+    };
+    const pick = r => { if (!r) return; lst.style.display = "none"; inp.value = ""; inp.blur(); select(r.code, r.name); };
+    inp.addEventListener("input", () => {
+      clearTimeout(tmr);
+      const q = inp.value.trim(); if (!q) { rows = []; lst.style.display = "none"; return; }
+      tmr = setTimeout(async () => { const my = ++seq; try { const d = await api(`/api/one/find?q=${encodeURIComponent(q)}`); if (my !== seq) return; rows = d.rows || []; on = 0; paint(); } catch (e) { /* 못 찾아도 화면은 그대로 */ } }, 150);
+    });
+    inp.addEventListener("keydown", e => {
+      if (e.key === "ArrowDown") { on = Math.min(on + 1, rows.length - 1); paint(); e.preventDefault(); }
+      else if (e.key === "ArrowUp") { on = Math.max(on - 1, 0); paint(); e.preventDefault(); }
+      else if (e.key === "Enter") { pick(rows[on]); e.preventDefault(); }
+      else if (e.key === "Escape") { lst.style.display = "none"; inp.blur(); }
+    });
+    lst.addEventListener("mousedown", e => { const d = e.target.closest("[data-i]"); if (d) { e.preventDefault(); pick(rows[+d.dataset.i]); } });
+    inp.addEventListener("blur", () => setTimeout(() => { lst.style.display = "none"; }, 150));
+  } catch (e) { /* 찾기 칸만 없음 */ }
+})();
+
 </script>
 </body></html>
