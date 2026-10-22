@@ -2081,7 +2081,7 @@ async function favLoad() {
 }
 /* ── v573 형 "시안 D1로 부탁해" — 분할 보기(왼쪽 넓게 · 2×2 + 아래 탭 3개) + 시장 5칸 + 목록 줄마다 '자리' 칸 ──────────────────
    자리(형 실매매 방식 · 15분 끝난 봉) 🟢 매수 자리 = 초입 ▲안착 + 볼벤 위에서 들어와 2봉 안착 + 20/60선 위 · 🟡 대기 · 🔴 피함(⛔120 · 초입 아래 · 20/60선 아래)
-   볼벤 막대 = 밴드 안 위치(초록 안 · 빨강 상단 위 · 파랑 하단 아래) · 초입% = 15분 초입가까지 · 대금 = 오늘 거래대금(억) · 배 = 같은 시각까지 평소 대비 거래량
+   볼벤 막대 = 밴드 안 위치(초록 안 · 빨강 상단 위 · 파랑 하단 아래 · 눈금 보라=하단/상단선 회색=중심 · ↗↘ = 약 30분 전 대비 올라오는/내려오는 중) · 초입% = 15분 초입가까지 · 대금 = 오늘 거래대금(억) · 배 = 같은 시각까지 평소 대비 거래량
    서버(/api/one/zones)가 뒤에서 60초마다 계산 · 표시만(주문·매수 규칙과 무관) · ▦ 버튼으로 예전 보기와 바꿈(이 브라우저에 기억) */
 const D1 = { on: true, z: {}, su2: {}, mkt: null, t: "" };
 try { D1.on = localStorage.getItem("one.d1") !== "0"; } catch (e) { /* 기본 켜짐 */ }
@@ -2105,11 +2105,12 @@ body:not(.d1) #d1bar .d1m{display:none}
 .ztd,.zth{white-space:nowrap}
 .leftcol tbody td{white-space:nowrap}
 .leftcol .rule{display:inline-block;max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle}
-.zc{display:inline-grid;grid-template-columns:74px 56px 50px 50px 38px 58px;gap:4px;align-items:center;font-size:11px}
-.zc>*{text-align:right}.zc>.zp,.zc>.zg,.zc>.zs{text-align:left}
+.zc{display:inline-grid;grid-template-columns:74px 70px 50px 50px 38px 58px;gap:4px;align-items:center;font-size:11px}
+.zc>*{text-align:right}.zc>.zp,.zc>.zgw,.zc>.zs{text-align:left}
 .zp{font-size:10.5px;font-weight:800;border-radius:999px;padding:0 6px;border:1px solid;text-align:center!important;line-height:16px}
 .zp.buy{color:#2B8A3E;background:#EBFBEE;border-color:#B2F2BB}.zp.wait{color:#B35C00;background:#FFF9DB;border-color:#FFE066}.zp.avoid{color:#C92A2A;background:#FFF0F0;border-color:#FFC9C9}
-.zg{position:relative;width:54px;height:8px;border-radius:4px;border:1px solid #DEE2E6;background:linear-gradient(90deg,#F1F3F5 16.6%,#E6FCF5 16.6% 83.3%,#F1F3F5 83.3%)}
+.zgw{display:inline-flex;align-items:center;gap:2px}.zgw .za{width:11px;font-size:11px;line-height:8px;text-align:center}.za.up{color:#D92D20}.za.dn{color:#1565C0}
+.zg{position:relative;width:54px;height:8px;border-radius:4px;border:1px solid #DEE2E6;background:linear-gradient(90deg,transparent calc(16.67% - .5px),#AE3EC9 0 calc(16.67% + .5px),transparent 0 calc(50% - .5px),#ADB5BD 0 calc(50% + .5px),transparent 0 calc(83.33% - .5px),#AE3EC9 0 calc(83.33% + .5px),transparent 0),linear-gradient(90deg,#F1F3F5 16.6%,#E6FCF5 16.6% 83.3%,#F1F3F5 83.3%)}
 .zg i{position:absolute;top:-2px;width:6px;height:10px;border-radius:2px}
 #d1bar{flex-wrap:wrap}
 #d1leg{flex-basis:100%;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;font-size:11px;color:#5B6576;padding:0 2px}
@@ -2117,9 +2118,15 @@ body:not(.d1) #d1bar .d1m{display:none}
 body:not(.d1) .ztd,body:not(.d1) .zth{display:none}`;
   document.head.appendChild(st);
 }
-const d1Gauge = b => { if (typeof b !== "number") return '<span class="zg" title="볼벤 계산에 15분봉 부족"></span>';
+// v588 형 10/22 "볼벤 단계가 헷갈려 · 아래에서 위로 진입인지" — 눈금(하단·중심·상단) + 단계 이름(마우스) + 약 30분 전 대비 ↗/↘ (표시만)
+const D1_BBD = 0.15;     // 밴드 폭의 15% 넘게 움직였을 때만 화살표
+const d1BbStage = b => b < 0 ? "하단 아래" : b < 0.1 ? "하단 터치" : b < 0.4 ? "하단~중심 (중심 아래)" : b < 0.6 ? "중심 근처" : b < 0.9 ? "중심 위 · 상단 아래" : b <= 1 ? "상단 터치" : "상단 위";
+const d1Gauge = (b, dlt) => { if (typeof b !== "number") return '<span class="zgw"><span class="zg" title="볼벤 계산에 15분봉 부족"></span></span>';
   const x = Math.max(-0.25, Math.min(1.25, b)), left = (x + 0.25) / 1.5 * 100, col = b > 1 ? "#D92D20" : b < 0 ? "#1565C0" : "#2B8A3E";
-  return `<span class="zg" title="볼벤(150·1σ) 안 위치 ${(b * 100).toFixed(0)}% — 0 하단 · 100 상단 · 100 넘으면 상단 위(고가)"><i style="left:calc(${left.toFixed(0)}% - 3px);background:${col}"></i></span>`; };
+  const mv = typeof dlt === "number" && Math.abs(dlt) >= D1_BBD ? (dlt > 0 ? "up" : "dn") : "";
+  const ar = mv ? `<b class="za ${mv}" title="약 30분 전보다 밴드 안 위치 ${dlt > 0 ? "+" : ""}${(dlt * 100).toFixed(0)}%p">${mv === "up" ? "↗" : "↘"}</b>` : '<b class="za"></b>';
+  const mvt = mv ? (mv === "up" ? " · 올라오는 중 ↗" : " · 내려오는 중 ↘") : "";
+  return `<span class="zgw"><span class="zg" title="볼벤(150·1σ) ${d1BbStage(b)}${mvt}\n위치 ${(b * 100).toFixed(0)}% — 0 하단선 · 50 중심 · 100 상단선 · 100 넘으면 상단 위"><i style="left:calc(${left.toFixed(0)}% - 3px);background:${col}"></i></span>${ar}</span>`; };
 function d1Spark(a, chg) {
   if (!a || a.length < 2) return '<span class="zs mut">—</span>';
   const w = 56, h = 16, lo = Math.min(...a), hi = Math.max(...a), rg = (hi - lo) || 1;
@@ -2135,7 +2142,7 @@ function d1Cell(z) {
   const ln = typeof z.line === "number" ? `<span title="15분 초입가까지 거리">${pctS(z.line * 100, 1)}</span>` : '<span class="mut">—</span>';
   const amt = typeof z.amt === "number" ? `<span class="num" title="오늘 거래대금">${z.amt >= 100 ? Math.round(z.amt).toLocaleString("ko-KR") : z.amt.toFixed(1)}억</span>` : '<span class="mut">—</span>';
   const vr = typeof z.vr === "number" ? `<span class="num" title="같은 시각까지 평소(20일 중앙) 대비 거래량" style="${z.vr >= 3 ? "color:#D92D20;font-weight:700" : ""}">${z.vr.toFixed(1)}배</span>` : '<span class="mut">—</span>';
-  return `<span class="zc">${pill}${d1Gauge(z.bb)}${ln}${amt}${vr}${d1Spark(z.spark, z.chg)}</span>`;
+  return `<span class="zc">${pill}${d1Gauge(z.bb, z.bbd)}${ln}${amt}${vr}${d1Spark(z.spark, z.chg)}</span>`;
 }
 const D1_TH = '<span class="zc" style="font-weight:600"><span class="zp" style="border-color:transparent;text-align:left!important;padding:0">자리</span><span style="text-align:left">볼벤</span><span>초입%</span><span>대금</span><span>배</span><span style="text-align:left">오늘 흐름</span></span>';
 function decorateZones() {
