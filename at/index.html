@@ -1699,10 +1699,12 @@ function paintLists(d) {
     return `<span style="display:inline-block;min-width:22px;padding:1px 3px;border-radius:4px;background:${bg};color:#fff;font-weight:700;text-align:center" title="${esc(tip)}">${i + 1}</span>`;
   };
   const swB = r => r.sector_warn ? ` <span style="color:#D99A1E;font-weight:700;font-size:11px">${esc(r.sector || "")}</span>` : "";
+  // v590 📊 종목별 프로그램매매(표시만) — 빨강 = 순매수(양) · 파랑 = 순매도(음) · 단위·누적 여부는 확인 전
+  const pgB = r => r.prog ? ` <span style="color:${r.prog.tone === "pos" ? "#D32F2F" : r.prog.tone === "neg" ? "#1565C0" : "#8A93A3"};font-weight:700;font-size:11px" title="${esc(r.prog.tip)}">${esc(r.prog.txt)}</span>` : "";
   $("hub").innerHTML = (hb.rows || []).map((r, i) => {
     const fl = [1, 2, 3].map(k => r.chips && r.chips[k] ? `<span class="fl f${k}" title="Flow-${k}">${esc(r.chips[k])}</span>` : '<span class="fl off">·</span>').join("");
     const tg = r.retest ? (r.retest.status === "retest" ? `<span class="tgt" title="${esc(r.retest.tip)}">🎯타점</span>` : `<span class="wait" title="${esc(r.retest.tip)}">⏳</span>`) : "";
-    return trOf(r.code, r.name, [rkT(r, i), nameOnly(r.name, r.code) + (r.status && r.status !== "후보" ? ` <span class="mut">${esc(r.status)}</span>` : "") + twChip(r.code) + pxChip(r.code) + swB(r), tg, fl,
+    return trOf(r.code, r.name, [rkT(r, i), nameOnly(r.name, r.code) + (r.status && r.status !== "후보" ? ` <span class="mut">${esc(r.status)}</span>` : "") + twChip(r.code) + pxChip(r.code) + swB(r) + pgB(r), tg, fl,
       f1(r.total, 0), r.gap == null ? "—" : pctS(r.gap * 100, 1), fmt(r.price), r.vs_open == null ? "—" : pctS(r.vs_open * 100)]);
   }).join("") || emptyRow(8, hb.err || "허브 기록 없음");
   const crowd = [...new Set((hb.rows || []).filter(r => r.sector_warn).map(r => r.sector))];
