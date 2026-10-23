@@ -1690,14 +1690,19 @@ function paintLists(d) {
     f1(r.score, 0), f1(r.ichi, 0), f1(r.rsi, 0), esc(r.day), `<span class="rule" title="${esc(r.rule)}">${esc(r.rule)}</span>`], r.rule_ok ? "ruleok" : "")).join("")
     || emptyRow(7, "조건을 통과한 종목이 없습니다");
   const hb = d.hub || {};
-  // v588b 형 10/22 "지금 바로 반영하자" — 10/22 분석(635건) 손실 억제 필터 배지 + 업종 쏠림 경고(표시만 · 인라인 스타일, Tailwind 새 클래스 없음)
-  const fokB = r => r.filter_ok ? ` <span style="color:#2E9E5B;font-weight:700" title="손실 억제 필터 통과(10/22 분석) — RSI 60 미만·볼밴 1.5 미만·수급 50 이상
-그 구간 635건 기준 평균 -1.8%·승률 41%(전체 -5.1%·28%) — 수익 보장 아님">🛡</span>` : "";
-  const swB = r => r.sector_warn ? ` <span style="color:#D99A1E;font-weight:700" title="업종 쏠림 — '${esc(r.sector || "")}' 업종이 오늘 허브 종목의 30% 넘게 차지(표시만)">⚠${esc(r.sector || "")}</span>` : "";
+  // v588c 형 10/23 "J로 가자" — 순위 칸을 색 타일로(초록 = 손실 억제 필터 통과 · 주황 = 업종 쏠림 · 둘 다 = 사선 반반) + 쏠림일 때만 이름 뒤 업종명. 표시만 · 인라인 스타일(Tailwind 새 클래스 없음)
+  const rkT = (r, i) => {
+    if (!r.filter_ok && !r.sector_warn) return String(i + 1);
+    const bg = r.filter_ok && r.sector_warn ? "linear-gradient(135deg,#D99A1E 50%,#2E9E5B 50%)" : (r.filter_ok ? "#2E9E5B" : "#D99A1E");
+    const tip = (r.filter_ok ? "초록 = 손실 억제 필터 통과(10/22 분석) — RSI 60 미만·볼밴 1.5 미만·수급 50 이상\n그 구간 635건 평균 -1.8%·승률 41%(전체 -5.1%·28%) — 수익 보장 아님" : "")
+      + (r.filter_ok && r.sector_warn ? "\n" : "") + (r.sector_warn ? `주황 = 업종 쏠림 — '${r.sector || ""}' 업종이 오늘 허브 종목의 30% 넘게 차지(표시만)` : "");
+    return `<span style="display:inline-block;min-width:22px;padding:1px 3px;border-radius:4px;background:${bg};color:#fff;font-weight:700;text-align:center" title="${esc(tip)}">${i + 1}</span>`;
+  };
+  const swB = r => r.sector_warn ? ` <span style="color:#D99A1E;font-weight:700;font-size:11px">${esc(r.sector || "")}</span>` : "";
   $("hub").innerHTML = (hb.rows || []).map((r, i) => {
     const fl = [1, 2, 3].map(k => r.chips && r.chips[k] ? `<span class="fl f${k}" title="Flow-${k}">${esc(r.chips[k])}</span>` : '<span class="fl off">·</span>').join("");
     const tg = r.retest ? (r.retest.status === "retest" ? `<span class="tgt" title="${esc(r.retest.tip)}">🎯타점</span>` : `<span class="wait" title="${esc(r.retest.tip)}">⏳</span>`) : "";
-    return trOf(r.code, r.name, [i + 1, nameOnly(r.name, r.code) + (r.status && r.status !== "후보" ? ` <span class="mut">${esc(r.status)}</span>` : "") + twChip(r.code) + pxChip(r.code) + fokB(r) + swB(r), tg, fl,
+    return trOf(r.code, r.name, [rkT(r, i), nameOnly(r.name, r.code) + (r.status && r.status !== "후보" ? ` <span class="mut">${esc(r.status)}</span>` : "") + twChip(r.code) + pxChip(r.code) + swB(r), tg, fl,
       f1(r.total, 0), r.gap == null ? "—" : pctS(r.gap * 100, 1), fmt(r.price), r.vs_open == null ? "—" : pctS(r.vs_open * 100)]);
   }).join("") || emptyRow(8, hb.err || "허브 기록 없음");
   const crowd = [...new Set((hb.rows || []).filter(r => r.sector_warn).map(r => r.sector))];
