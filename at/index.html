@@ -615,6 +615,15 @@ const pxChip = c => {
   const rk = hot ? "" : (s.ds != null && s.ds >= (P.pulse || 5)) ? " pxo" : (s.dr != null && s.dr >= (P.pulse || 5)) ? " pxg" : "";
   return ` <span class="px ${warn ? "px-warn" : star ? "px-star" : "px-" + s.lv}${star ? " pxs" : hot ? " pxp" : ""}${rk}" title="${esc(tip)}${s.sr ? `\n${s.sr} 60일 고가 ${s.h60 != null ? (s.h60 * 100).toFixed(1) + "%" : "—"} · 거래량 ${s.vr ?? "—"}배${s.sr === "☆" ? " · 빨강·보류장 = 근거 없음(참고)" : ""}` : ""}">${s.sr ? s.sr : ""}${hot ? "▶" : ban ? "⛔120 " : warn ? "⚠보류 " : ""}${s.mf && s.mf.ok ? '<b class="mfo">◆</b>' : ""}${s.re ? "재" : ""}${s.n}일 ${pc}</span>`;
 };
+// v593 형 10/23 "관심후보에도 표시" — 초록 = 손실 억제 필터 통과 · 주황 = 업종 쏠림 · 둘 다 = 사선 반반(허브와 같은 색 · 표시만 · 매수 신호 아님)
+const bdgTile = (code, label, css = "") => {
+  const b = (S.bd || {})[code];
+  if (!b || (!b.f && !b.s)) return label;
+  const bg = b.f && b.s ? "linear-gradient(135deg,#D99A1E 50%,#2E9E5B 50%)" : (b.f ? "#2E9E5B" : "#D99A1E");
+  const tip = (b.f ? "초록 = 손실 억제 필터 통과(10/22 분석) — RSI 60 미만·볼밴 1.5 미만·수급 50 이상\n그 구간 635건 평균 -1.8%·승률 41%(전체 -5.1%·28%) — 수익 보장 아님·매수 신호 아님" : "")
+    + (b.f && b.s ? "\n" : "") + (b.s ? `주황 = 업종 쏠림 — '${b.sec || ""}' 업종이 오늘 허브 종목의 30% 넘게 차지(표시만)` : "");
+  return `<span style="display:inline-block;min-width:22px;padding:1px 3px;border-radius:4px;background:${bg};color:#fff;font-weight:700;text-align:center;${css}" title="${esc(tip)}">${label}</span>`;
+};
 const nameCell = (n, c) => nameOnly(n, c) + rtChip(c) + twChip(c) + pxChip(c);
 // v497 TOP50 표는 이름 칸이 150px에서 말줄임이라 글자 칩 대신 이름 앞에 짧은 🎯/⏳만(이름이 길어도 칩은 안 잘림)
 const rtMini = c => { const t = S.rt && S.rt[c]; return t ? `<span class="${t.status === "retest" ? "tgt" : "wait"}" title="${esc(t.tip)}">${t.status === "retest" ? "🎯" : "⏳"}</span> ` : ""; };
@@ -1666,10 +1675,11 @@ function paintLists(d) {
   try { msPaint(); } catch (e) { console.error("📶 다중 분봉 칸", e); }
   S.rt = d.retest || {};
   S.tw = d.twarn || {};
+  S.bd = d.badges || {};          // v593 초록(손실 억제 필터 통과)·주황(업종 쏠림) 타일 재료 — 허브 밖 목록에도(표시만)
   S.px = d.expo || {};
   try { xpPaint(); } catch (e) { /* 팝업이 닫혀 있거나 아직 없음 */ }
   const t = d.top10 || {};
-  $("top10").innerHTML = (t.rows || []).map(r => trOf(r.ticker, r.name, [r.rank, nameCell(r.name, r.ticker), esc(r.text)],
+  $("top10").innerHTML = (t.rows || []).map(r => trOf(r.ticker, r.name, [bdgTile(r.ticker, r.rank), nameCell(r.name, r.ticker), esc(r.text)],
     r.kind === "buy" ? "buy" : (r.kind === "bought" || r.kind === "pending") ? "bought" : r.muted ? "mutedrow" : "")).join("")
     || emptyRow(3, "오늘 신호 파일이 아직 없어요");
   $("l1info").textContent = `전체 ${t.total ?? 0} 중 · 매수 대상 ${t.buy_n ?? 0}` + (t.probe_max ? ` · 관찰 상한 ${t.probe_max}` : "")
@@ -1679,13 +1689,13 @@ function paintLists(d) {
   const ov = (d.overlap || []).filter(x => !x.error);
   $("ovinfo").textContent = `${ov.length}종목 · 4곳(규칙·관심·판정·TOP10) 중 2곳↑`;
   S.ov = ov;
-  $("overlap").innerHTML = ov.map((r, i) => trOf(r.ticker, r.name, [ctBars(r.traits) + (i + 1), nameCell(r.name, r.ticker) + ctChips(r.traits), agBadge(r.agree), esc(r.where), `<b>${r.n}/4</b>`, esc(r.evid), esc(r.flow5), esc(r.against)],
+  $("overlap").innerHTML = ov.map((r, i) => trOf(r.ticker, r.name, [ctBars(r.traits) + bdgTile(r.ticker, i + 1), nameCell(r.name, r.ticker) + ctChips(r.traits), agBadge(r.agree), esc(r.where), `<b>${r.n}/4</b>`, esc(r.evid), esc(r.flow5), esc(r.against)],
     (r.n >= 4 ? "n4" : r.n === 3 ? "n3" : "") + (r.held ? " mutedrow" : ""))).join("")
     || emptyRow(8, (d.overlap || []).find(x => x.error) ? "겹치는 종목 계산 실패" : "겹치는 종목 없음");
   const w = (d.watch || {}).rows || [];
   $("wtinfo").textContent = `${w.length}종목 · 노랑 = 형 규칙 통과`;
   // 한 줄에 들어가게 칸을 줄임(자리잡음·조건식 수·추세 단계는 종목 이름에 마우스) — 화면에 늘 꺼내 놓는 칸이라 줄 높이를 아낌
-  $("watch").innerHTML = w.map((r, i) => trOf(r.ticker, r.name, [i + 1,
+  $("watch").innerHTML = w.map((r, i) => trOf(r.ticker, r.name, [bdgTile(r.ticker, i + 1),
     (twxOf(r.ticker) ? twxB(esc(r.name || r.ticker), r.ticker) : `<b title="자리잡음 ${r.ichi_held ? "예" : "—"} · 조건식 ${r.n_conditions}개 · ${esc(r.stage_ko)}">${esc(r.name || r.ticker)}</b>`) + rtChip(r.ticker) + twChip(r.ticker) + pxChip(r.ticker),
     f1(r.score, 0), f1(r.ichi, 0), f1(r.rsi, 0), esc(r.day), `<span class="rule" title="${esc(r.rule)}">${esc(r.rule)}</span>`], r.rule_ok ? "ruleok" : "")).join("")
     || emptyRow(7, "조건을 통과한 종목이 없습니다");
@@ -1723,6 +1733,7 @@ function paintLists(d) {
   const hubSurgeTxt = sgT ? `<br>급등 감지(알림만): ${sgT}` : "";
   $("l2info").innerHTML = run.run_at ? `회차 #${run.run_id} · ${hm(run.run_at)}${hb.run_ok === false ? " · ⚠️성적 제외 회차" : ""}${hubCrowdTxt}${hubSurgeTxt}` : (sgT ? `급등 감지(알림만): ${sgT}` : "");
   decorateDots();
+  try { favPaint(); } catch (e) { /* 즐겨찾기 칸이 아직 없으면 건너뜀 — 초록·주황 타일은 목록을 받은 뒤 다시 그림 */ }
 }
 const GSHOW = { "○": ["●", "g1"], "△": ["▲", "g2"], "✕": ["✕", "g3"], "?": ["?", "mut"] };
 const gates = g => `<span class="gate">${[...(g || "???????").slice(0, 7)].map(c => `<span class="${(GSHOW[c] || [c, "mut"])[1]}">${(GSHOW[c] || [c])[0]}</span>`).join("")}</span>`;
@@ -2076,7 +2087,7 @@ function favPaint() {
   tb.innerHTML = v.map(f => {
     const r = FAV.rows[f.c] || {}, nm = f.n || r.name || f.c;
     const since = (typeof r.cur === "number" && typeof f.px === "number" && f.px > 0) ? (r.cur / f.px - 1) * 100 : null;
-    return `<tr data-c="${f.c}" class="${f.c === S.code ? "sel" : ""}" style="cursor:pointer;white-space:nowrap"><td title="${esc(f.c)}" style="text-align:left"><span style="color:#E8A400">★</span> ${esc(nm)}</td>`
+    return `<tr data-c="${f.c}" class="${f.c === S.code ? "sel" : ""}" style="cursor:pointer;white-space:nowrap"><td title="${esc(f.c)}" style="text-align:left"><span style="color:#E8A400">★</span> ${esc(nm)}${bdgTile(f.c, "●", "margin-left:4px;min-width:14px;font-size:9px;line-height:12px")}</td>`
       + `<td class="num">${typeof r.cur === "number" ? fmt(r.cur) : '<span class="mut">—</span>'}</td>`
       + `<td class="num">${typeof r.chg === "number" ? pctS(r.chg * 100) : '<span class="mut">—</span>'}</td>`
       + `<td class="num" title="${esc(f.at || "")} 넣을 때 ${typeof f.px === "number" ? fmt(f.px) : "가격 모름"}">${esc((f.at || "").slice(5).replace("-", "/"))} ${since == null ? '<span class="mut">—</span>' : pctS(since)}</td>`
