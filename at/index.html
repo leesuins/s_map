@@ -616,13 +616,13 @@ const pxChip = c => {
   return ` <span class="px ${warn ? "px-warn" : star ? "px-star" : "px-" + s.lv}${star ? " pxs" : hot ? " pxp" : ""}${rk}" title="${esc(tip)}${s.sr ? `\n${s.sr} 60일 고가 ${s.h60 != null ? (s.h60 * 100).toFixed(1) + "%" : "—"} · 거래량 ${s.vr ?? "—"}배${s.sr === "☆" ? " · 빨강·보류장 = 근거 없음(참고)" : ""}` : ""}">${s.sr ? s.sr : ""}${hot ? "▶" : ban ? "⛔120 " : warn ? "⚠보류 " : ""}${s.mf && s.mf.ok ? '<b class="mfo">◆</b>' : ""}${s.re ? "재" : ""}${s.n}일 ${pc}</span>`;
 };
 // v593 형 10/23 "관심후보에도 표시" — 초록 = 손실 억제 필터 통과 · 주황 = 업종 쏠림 · 둘 다 = 사선 반반(허브와 같은 색 · 표시만 · 매수 신호 아님)
-const bdgTile = (code, label, css = "") => {
+const bdgTile = (code, label, css = "", hideNone = false, plain = null) => {
   const b = (S.bd || {})[code];
-  if (!b || (!b.f && !b.s)) return label;
+  if (!b || (!b.f && !b.s)) return hideNone ? "" : label;
   const bg = b.f && b.s ? "linear-gradient(135deg,#D99A1E 50%,#2E9E5B 50%)" : (b.f ? "#2E9E5B" : "#D99A1E");
   const tip = (b.f ? "초록 = 손실 억제 필터 통과(10/22 분석) — RSI 60 미만·볼밴 1.5 미만·수급 50 이상\n그 구간 635건 평균 -1.8%·승률 41%(전체 -5.1%·28%) — 수익 보장 아님·매수 신호 아님" : "")
     + (b.f && b.s ? "\n" : "") + (b.s ? `주황 = 업종 쏠림 — '${b.sec || ""}' 업종이 오늘 허브 종목의 30% 넘게 차지(표시만)` : "");
-  return `<span style="display:inline-block;min-width:22px;padding:1px 3px;border-radius:4px;background:${bg};color:#fff;font-weight:700;text-align:center;${css}" title="${esc(tip)}">${label}</span>`;
+  return `<span style="display:inline-block;min-width:22px;padding:1px 3px;border-radius:4px;background:${bg};color:#fff;font-weight:700;text-align:center;${css}" title="${esc(tip)}">${plain ?? label}</span>`;
 };
 const nameCell = (n, c) => nameOnly(n, c) + rtChip(c) + twChip(c) + pxChip(c);
 // v497 TOP50 표는 이름 칸이 150px에서 말줄임이라 글자 칩 대신 이름 앞에 짧은 🎯/⏳만(이름이 길어도 칩은 안 잘림)
@@ -1724,7 +1724,7 @@ function paintLists(d) {
   const run = hb.run || {};
   const ds = d.discovery || {};
   const dr = (ds.rows || []).slice().sort((a, b) => (a.top ?? 99) - (b.top ?? 99) || a.final_rank - b.final_rank).slice(0, 40);
-  $("pick").innerHTML = dr.map(r => trOf(r.code, r.name, [r.top ? `<b>${esc(r.lane_label || "TOP" + r.top)}</b>` : `<span class="mut">#${r.final_rank}</span>`,
+  $("pick").innerHTML = dr.map(r => trOf(r.code, r.name, [bdgTile(r.code, r.top ? `<b>${esc(r.lane_label || "TOP" + r.top)}</b>` : `<span class="mut">#${r.final_rank}</span>`, "", false, r.top ? `<b>${esc(r.lane_label || "TOP" + r.top)}</b>` : `#${r.final_rank}`),
     nameCell(r.name, r.code), esc(r.status), esc(r.track || "—"), `${r.intersection_count ?? "—"}/${ds.den ?? "—"}`, f1(r.final_score, 0),
     f1(r.trend, 0), f1(r.momentum, 0), f1(r.supply, 0), esc(r.overlap_tags || "—")], r.top ? (r.lane_label && r.lane_label.startsWith("규칙") ? "buy" : "bought") : (r.status !== "후보" ? "mutedrow" : ""))).join("")
     || emptyRow(10, ds.err || "선발 기록 없음");
@@ -1734,6 +1734,7 @@ function paintLists(d) {
   $("l2info").innerHTML = run.run_at ? `회차 #${run.run_id} · ${hm(run.run_at)}${hb.run_ok === false ? " · ⚠️성적 제외 회차" : ""}${hubCrowdTxt}${hubSurgeTxt}` : (sgT ? `급등 감지(알림만): ${sgT}` : "");
   decorateDots();
   try { favPaint(); } catch (e) { /* 즐겨찾기 칸이 아직 없으면 건너뜀 — 초록·주황 타일은 목록을 받은 뒤 다시 그림 */ }
+  try { paintCrown(); } catch (e) { /* 왕관 칸이 아직 없으면 건너뜀 */ }
 }
 const GSHOW = { "○": ["●", "g1"], "△": ["▲", "g2"], "✕": ["✕", "g3"], "?": ["?", "mut"] };
 const gates = g => `<span class="gate">${[...(g || "???????").slice(0, 7)].map(c => `<span class="${(GSHOW[c] || [c, "mut"])[1]}">${(GSHOW[c] || [c])[0]}</span>`).join("")}</span>`;
@@ -1748,7 +1749,7 @@ function paintCrown() {
   $("crownbar").querySelectorAll(".subbtn").forEach(b => b.onclick = () => { crownSub = b.dataset.s; paintCrown(); decorateDots(); });
   if (crownSub === "intra") {
     $("crownhead").innerHTML = "<tr><th>시각</th><th>종목</th><th>왕관</th><th>첫 가격</th><th>점수</th><th>구조</th><th>관문</th><th>→종가</th><th>→+1일</th></tr>";
-    $("crown").innerHTML = (d.intra || []).map(r => trOf(r.code, r.name, [hm(r.first_at), nameCell(r.name, r.code), r.crown7 ? "👑" : "", fmt(r.price), f1(r.score),
+    $("crown").innerHTML = (d.intra || []).map(r => trOf(r.code, r.name, [bdgTile(r.code, hm(r.first_at)), nameCell(r.name, r.code), r.crown7 ? "👑" : "", fmt(r.price), f1(r.score),
       SETUP[r.setup] || "—", gates(r.gates), r.d0 == null ? "—" : pctS(r.d0 * 100), r.d1 == null ? "—" : pctS(r.d1 * 100)], r.crown7 ? "crownrow" : "")).join("") || emptyRow(9, "오늘 장중 첫 통과 없음");
     return;
   }
@@ -1757,7 +1758,7 @@ function paintCrown() {
   $("crown").innerHTML = rows.map((r, i) => {
     const tag = r.crown_rank ? `<b style="color:#B8860B">👑${r.crown_rank}</b>` : (crownSub === "cond" ? '<span style="color:#D99A1E">조건부</span>' : esc(r.qual_ko === "자격" ? "자격" : "75↓"));
     const st = crownSub === "cond" ? r.streak_cond : r.streak_elig;
-    return trOf(r.code, r.name, [i + 1, nameCell(r.name, r.code), tag, gates(r.gates), f1(r.score), SETUP[r.setup] || "—", r.vr == null ? "—" : f1(r.vr) + "배",
+    return trOf(r.code, r.name, [bdgTile(r.code, i + 1), nameCell(r.name, r.code), tag, gates(r.gates), f1(r.score), SETUP[r.setup] || "—", r.vr == null ? "—" : f1(r.vr) + "배",
       r.ret5 == null ? "—" : (r.ret5 > 0 ? "+" : "") + Math.round(r.ret5) + "%", fmt(r.close), st ? st + "일째" : "—"], r.crown_rank ? "crownrow" : "");
   }).join("") || emptyRow(10, d.err || "없음");
 }
@@ -2087,7 +2088,7 @@ function favPaint() {
   tb.innerHTML = v.map(f => {
     const r = FAV.rows[f.c] || {}, nm = f.n || r.name || f.c;
     const since = (typeof r.cur === "number" && typeof f.px === "number" && f.px > 0) ? (r.cur / f.px - 1) * 100 : null;
-    return `<tr data-c="${f.c}" class="${f.c === S.code ? "sel" : ""}" style="cursor:pointer;white-space:nowrap"><td title="${esc(f.c)}" style="text-align:left"><span style="color:#E8A400">★</span> ${esc(nm)}${bdgTile(f.c, "●", "margin-left:4px;min-width:14px;font-size:9px;line-height:12px")}</td>`
+    return `<tr data-c="${f.c}" class="${f.c === S.code ? "sel" : ""}" style="cursor:pointer;white-space:nowrap"><td title="${esc(f.c)}" style="text-align:left"><span style="color:#E8A400">★</span> ${esc(nm)}${bdgTile(f.c, "●", "margin-left:4px;min-width:14px;font-size:9px;line-height:12px", true)}</td>`
       + `<td class="num">${typeof r.cur === "number" ? fmt(r.cur) : '<span class="mut">—</span>'}</td>`
       + `<td class="num">${typeof r.chg === "number" ? pctS(r.chg * 100) : '<span class="mut">—</span>'}</td>`
       + `<td class="num" title="${esc(f.at || "")} 넣을 때 ${typeof f.px === "number" ? fmt(f.px) : "가격 모름"}">${esc((f.at || "").slice(5).replace("-", "/"))} ${since == null ? '<span class="mut">—</span>' : pctS(since)}</td>`
