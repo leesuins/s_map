@@ -373,7 +373,7 @@ td.hcw:focus-visible{ outline:2px solid #1864AB; outline-offset:-2px; }
    </div>
    <div class="card">
     <div class="tabs" data-g="L2"><span class="tab on" data-t="hub">🧺 후보군 허브</span><span class="tab" data-t="crown">👑 왕관 후보</span><span class="tab" data-t="pick">🏆 매수 후보 선발</span></div>
-    <div class="body" data-p="hub"><table><thead><tr><th>#</th><th>종목</th><th>타점</th><th>Flow 1·2·3</th><th>점수</th><th>갭</th><th>지금</th><th>시가 대비</th></tr></thead><tbody id="hub"></tbody></table></div>
+    <div class="body" data-p="hub"><table><thead><tr><th>#</th><th>종목</th><th>타점</th><th>Flow 1·2·3</th><th>점수</th><th title="종목별 프로그램 순매수(억 원 · 그날 누적)">프매(억)</th><th>갭</th><th>지금</th><th>시가 대비</th></tr></thead><tbody id="hub"></tbody></table></div>
     <div class="body hide" data-p="crown">
      <div class="subbar" id="crownbar"></div>
      <table><thead id="crownhead"></thead><tbody id="crown"></tbody></table>
@@ -1701,12 +1701,14 @@ function paintLists(d) {
   const swB = r => r.sector_warn ? ` <span style="color:#D99A1E;font-weight:700;font-size:11px">${esc(r.sector || "")}</span>` : "";
   // v590 📊 종목별 프로그램매매(표시만) — 빨강 = 순매수(양) · 파랑 = 순매도(음) · 단위·누적 여부는 확인 전
   const pgB = r => r.prog ? ` <span style="color:${r.prog.tone === "pos" ? "#D32F2F" : r.prog.tone === "neg" ? "#1565C0" : "#8A93A3"};font-weight:700;font-size:11px" title="${esc(r.prog.tip)}">${esc(r.prog.txt)}</span>` : "";
+  // v592 형 "점수·갭처럼" — 프매(억) 숫자 열: 제목 누르면 큰 순/작은 순 · ▾ = 이상·이하 거르기(열 제목 필터가 숫자 열이면 자동) · 빨강 = 순매수 · 파랑 = 순매도 · 보기만
+  const pgC = r => r.prog && r.prog.num ? `<span style="color:${r.prog.tone === "pos" ? "#D32F2F" : r.prog.tone === "neg" ? "#1565C0" : "#8A93A3"};font-weight:700" title="${esc(r.prog.tip)}">${esc(r.prog.num)}</span>` : "—";
   $("hub").innerHTML = (hb.rows || []).map((r, i) => {
     const fl = [1, 2, 3].map(k => r.chips && r.chips[k] ? `<span class="fl f${k}" title="Flow-${k}">${esc(r.chips[k])}</span>` : '<span class="fl off">·</span>').join("");
     const tg = r.retest ? (r.retest.status === "retest" ? `<span class="tgt" title="${esc(r.retest.tip)}">🎯타점</span>` : `<span class="wait" title="${esc(r.retest.tip)}">⏳</span>`) : "";
     return trOf(r.code, r.name, [rkT(r, i), nameOnly(r.name, r.code) + (r.status && r.status !== "후보" ? ` <span class="mut">${esc(r.status)}</span>` : "") + twChip(r.code) + pxChip(r.code) + swB(r) + pgB(r), tg, fl,
-      f1(r.total, 0), r.gap == null ? "—" : pctS(r.gap * 100, 1), fmt(r.price), r.vs_open == null ? "—" : pctS(r.vs_open * 100)]);
-  }).join("") || emptyRow(8, hb.err || "허브 기록 없음");
+      f1(r.total, 0), pgC(r), r.gap == null ? "—" : pctS(r.gap * 100, 1), fmt(r.price), r.vs_open == null ? "—" : pctS(r.vs_open * 100)]);
+  }).join("") || emptyRow(9, hb.err || "허브 기록 없음");
   const crowd = [...new Set((hb.rows || []).filter(r => r.sector_warn).map(r => r.sector))];
   const hubCrowdTxt = crowd.length ? ` · ⚠ 업종 쏠림: ${crowd.map(esc).join(", ")}` : "";
   const run = hb.run || {};
