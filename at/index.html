@@ -465,11 +465,12 @@ td.hcw:focus-visible{ outline:2px solid #1864AB; outline-offset:-2px; }
   <div class="dmhd"><b class="big">🎯 선별 10종목 · 120분 60선 위 45종목</b><span id="spksub" class="mut"></span><span class="sp"></span>
    <button class="btn" id="spkx" type="button">닫기 ✕ (Esc)</button></div>
   <div class="t5band calm" id="spkband"></div>
+  <div class="t5f" id="spktabs" role="group" aria-label="보는 날짜"></div>
   <div class="rsmb">
    <div class="t5f"><b>⭐ 선별 10종목</b><span class="mut">어제 오른 종목과 120분 차트 숫자가 가까운 순서 · 어제 이미 오른 종목은 뺌 · 기준일에 고정</span></div>
-   <table class="t5t rst"><thead><tr><th>#</th><th class="l">종목</th><th title="기준일 정규장 종가(15:30)">기준일 종가</th><th>지금</th><th title="지금 ÷ 기준일 종가 − 1">기준일 대비</th><th title="지금 ÷ 직전 거래일 종가 − 1">오늘</th><th title="120분봉 종가와 60선(지수이평 60봉) 위치">120분 60선</th><th title="마지막 5분봉">기준 봉</th></tr></thead><tbody id="spktb1"></tbody></table>
+   <table class="t5t rst"><thead><tr><th>#</th><th class="l">종목</th><th title="기준일 정규장 종가(15:30)">기준일 종가</th><th id="spkp1">지금</th><th title="그날 종가 ÷ 기준일 종가 − 1">기준일 대비</th><th id="spkd1" title="그날 종가 ÷ 직전 거래일 종가 − 1">오늘</th><th title="120분봉 종가와 60선(지수이평 60봉) 위치">120분 60선</th><th title="마지막 5분봉">기준 봉</th></tr></thead><tbody id="spktb1"></tbody></table>
    <div class="t5f" style="margin-top:10px"><b>120분 60선 위 45종목 전체</b><span class="mut">★ = 선별 10 · 기준일 대비 높은 순</span></div>
-   <table class="t5t rst"><thead><tr><th>#</th><th class="l">종목</th><th>기준일 종가</th><th>지금</th><th>기준일 대비</th><th>오늘</th><th>120분 60선</th><th>기준 봉</th></tr></thead><tbody id="spktb2"></tbody></table>
+   <table class="t5t rst"><thead><tr><th>#</th><th class="l">종목</th><th>기준일 종가</th><th id="spkp2">지금</th><th>기준일 대비</th><th id="spkd2">오늘</th><th>120분 60선</th><th>기준 봉</th></tr></thead><tbody id="spktb2"></tbody></table>
   </div>
   <div class="dmft t5ft"><span id="spkmeth"></span><span>줄 더블클릭 → 한화면에서 이 종목 · 흐린 줄 = 기준일 뒤 5분봉이 아직 없거나 파일이 멈춘 종목 · 숫자가 닮은 종목을 모아 둔 표시일 뿐 오른다는 뜻 아님 · 시스템 출력이며 매수 추천 아님</span></div>
  </div>
@@ -2765,7 +2766,7 @@ $("rs").addEventListener("keydown", e => { const tr = e.target.closest("#rstb tr
 document.addEventListener("keydown", e => { if (e.key === "Escape") closeRS(); });
 
 // ── v594 🎯 선별 10종목 · 120분 60선 위 45종목 — 10/23에 고정해 둔 목록의 지금 상태(표시만 · 주문·매매 규칙과 무관 · /api/one/simpick) ──
-const SPK = { d: null, timer: null };
+const SPK = { d: null, timer: null, v: "now" };
 const spkTr = (r, i, star) => {
   const ab = r.above == null ? '<span class="mut">모름</span>'
     : `<b style="color:${r.above ? UP : DOWN}">${r.above ? "위" : "아래"}</b> <span class="mut">${r.gap == null ? "" : (r.gap > 0 ? "+" : "") + r.gap.toFixed(1) + "%"}${r.above === false && r.base_above ? " · 기준일엔 위" : ""}</span>`;
@@ -2774,17 +2775,32 @@ const spkTr = (r, i, star) => {
     <td>${fmt(r.base)}</td><td>${fmt(r.price)}</td><td>${r.chg == null ? "—" : pctS(r.chg)}</td><td>${r.day_chg == null ? "—" : pctS(r.day_chg)}</td><td class="l">${ab}</td>
     <td class="mut">${esc((r.t || "").slice(5, 16))}</td></tr>`;
 };
+const SPK_TABS = [["now", "지금"], ["1", "+1일"], ["2", "+2일"], ["5", "+5일"], ["10", "+10일"]];
 function spkPaint() {
   const d = SPK.d;
   if (!d || !d.ok) { const w = (d && d.why) || "자료 없음"; $("spksub").textContent = ""; $("spkband").textContent = w; $("spktb1").innerHTML = emptyRow(8, w); $("spktb2").innerHTML = ""; return; }
-  const g = d.groups, st = s => s.n ? `평균 ${pctS(s.avg, 1)} · 중앙값 ${pctS(s.med, 1)} · 오른 ${s.up} / 내린 ${s.dn}` : "아직 비교할 봉이 없어요";
-  $("spksub").textContent = `기준일 ${d.day.slice(4, 6)}/${d.day.slice(6)} 종가 · ${d.asof ? "마지막 봉 " + d.asof.slice(5, 16) : ""}`;
-  $("spkband").innerHTML = (d.waiting ? '<b>아직 기준일 뒤 봉이 없어요</b> — 다음 거래일 장이 열리면 숫자가 바뀌어요 · ' : "")
-    + `<b>선별 10</b> ${st(g.pick)} · 60선 위 유지 ${g.pick.keep}/${g.pick.total}<span class="mut"> │ </span><b>나머지 ${g.rest.total}</b> ${st(g.rest)} · 유지 ${g.rest.keep}/${g.rest.total}`;
-  const picks = d.rows.filter(r => r.pick).sort((a, b) => (a.rank || 99) - (b.rank || 99));
-  const all = d.rows.slice().sort((a, b) => d.waiting ? (b.base_gap ?? -999) - (a.base_gap ?? -999) : (b.chg ?? -999) - (a.chg ?? -999));
-  $("spktb1").innerHTML = picks.map((r, i) => spkTr(r, i, false)).join("") || emptyRow(8, "선별 종목 없음");
-  $("spktb2").innerHTML = all.map((r, i) => spkTr(r, i, r.pick)).join("");
+  const md = s => s ? s.slice(5, 7) + "/" + s.slice(8, 10) : "";
+  $("spktabs").innerHTML = SPK_TABS.map(([k, lb]) => {
+    const vw = k === "now" ? null : (d.views || {})[k], off = vw && !vw.reached;
+    return `<button type="button" class="t5fb${SPK.v === k ? " on" : ""}" data-v="${k}"${off ? ' style="opacity:.45" title="아직 그 거래일이 안 왔어요"' : ""}>${lb}${vw && vw.reached ? ` <span class="mut">${md(vw.date)}</span>` : ""}</button>`;
+  }).join("") + '<span class="mut" style="margin-left:6px">기준일 뒤 거래일 · 그날 종가 기준</span>';
+  const vw = SPK.v === "now" ? null : (d.views || {})[SPK.v];
+  const cur = vw ? (vw.reached ? vw : null) : { rows: d.rows, groups: d.groups, waiting: d.waiting };
+  const k = SPK.v === "now" ? "지금" : "+" + SPK.v + "일";
+  ["1", "2"].forEach(i => { $("spkp" + i).textContent = k === "지금" ? "지금" : k + " 종가"; $("spkd" + i).textContent = k === "지금" ? "오늘" : "그날 등락"; });
+  $("spksub").textContent = `기준일 ${md(d.day.slice(0, 4) + "-" + d.day.slice(4, 6) + "-" + d.day.slice(6))} 종가 · ${vw ? (vw.reached ? k + " " + md(vw.date) : "") : (d.asof ? "마지막 봉 " + d.asof.slice(5, 16) : "")}`;
+  if (!cur) {
+    $("spkband").innerHTML = `<b>${k} 날짜는 아직 안 왔어요</b> — 기준일 뒤 거래일이 ${SPK.v}일 쌓이면 볼 수 있어요`;
+    $("spktb1").innerHTML = emptyRow(8, "아직 그 거래일이 안 왔어요"); $("spktb2").innerHTML = "";
+  } else {
+    const g = cur.groups, st = s => s.n ? `평균 ${pctS(s.avg, 1)} · 중앙값 ${pctS(s.med, 1)} · 오른 ${s.up} / 내린 ${s.dn}` : "아직 비교할 봉이 없어요";
+    $("spkband").innerHTML = (cur.waiting ? '<b>아직 기준일 뒤 봉이 없어요</b> — 다음 거래일 장이 열리면 숫자가 바뀌어요 · ' : "")
+      + `<b>선별 10</b> ${st(g.pick)} · 60선 위 유지 ${g.pick.keep}/${g.pick.total}<span class="mut"> │ </span><b>나머지 ${g.rest.total}</b> ${st(g.rest)} · 유지 ${g.rest.keep}/${g.rest.total}`;
+    const picks = cur.rows.filter(r => r.pick).sort((a, b) => (a.rank || 99) - (b.rank || 99));
+    const all = cur.rows.slice().sort((a, b) => cur.waiting ? (b.base_gap ?? -999) - (a.base_gap ?? -999) : (b.chg ?? -999) - (a.chg ?? -999));
+    $("spktb1").innerHTML = picks.map((r, i) => spkTr(r, i, false)).join("") || emptyRow(8, "선별 종목 없음");
+    $("spktb2").innerHTML = all.map((r, i) => spkTr(r, i, r.pick)).join("");
+  }
   $("spkmeth").textContent = d.method ? "선별 방식: " + d.method : "";
   $("spkmeth").title = (d.risers || []).map(x => `${x.name} ${x.ret > 0 ? "+" : ""}${x.ret}%`).join(" · ");
 }
@@ -2801,7 +2817,11 @@ async function openSPK() {
 const closeSPK = () => { $("spk").classList.add("hide"); clearInterval(SPK.timer); };
 $("bspk").addEventListener("click", openSPK);
 $("spkx").addEventListener("click", closeSPK);
-$("spk").addEventListener("click", e => { if (e.target === $("spk")) closeSPK(); });
+$("spk").addEventListener("click", e => {
+  if (e.target === $("spk")) { closeSPK(); return; }
+  const tb = e.target.closest("#spktabs .t5fb[data-v]");
+  if (tb) { SPK.v = tb.dataset.v; spkPaint(); }
+});
 $("spk").addEventListener("dblclick", e => { const tr = e.target.closest("tr[data-c]"); if (tr) { closeSPK(); select(tr.dataset.c, tr.dataset.n); } });
 $("spk").addEventListener("keydown", e => { const tr = e.target.closest("tr[data-c]"); if (tr && e.key === "Enter") { closeSPK(); select(tr.dataset.c, tr.dataset.n); } });
 document.addEventListener("keydown", e => { if (e.key === "Escape") closeSPK(); });
