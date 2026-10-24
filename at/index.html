@@ -413,7 +413,7 @@ td.hcw:focus-visible{ outline:2px solid #1864AB; outline-offset:-2px; }
 <div id="ea" class="dm hide" role="dialog" aria-modal="true" aria-label="분석">
  <div class="dmbox t5box">
   <div class="dmhd"><b class="big">🔬 분석 — 상위 수익 공통분모 · TOP50 적중률</b><span id="easub" class="mut"></span><span class="sp"></span><button class="btn" id="eax" type="button">닫기 ✕ (Esc)</button></div>
-  <div class="eatabs" role="tablist"><button type="button" class="on" data-t="A" role="tab">🧬 공통분모(기간별)</button><button type="button" data-t="B" role="tab">🎯 TOP50 적중률 AS-IS ↔ TO-BE</button><button type="button" data-t="C" role="tab">⑬ 반등 채점</button></div>
+  <div class="eatabs" role="tablist"><button type="button" class="on" data-t="A" role="tab">🧬 공통분모(기간별)</button><button type="button" data-t="B" role="tab">🎯 TOP50 적중률 AS-IS ↔ TO-BE</button><button type="button" data-t="C" role="tab">⑬ 반등 채점</button><button type="button" data-t="D" role="tab">📐 메타 주간</button></div>
   <section id="eaA" class="easec">
    <div class="t5f"><span>상위 기준</span><span class="easeg" data-k="tk"><button type="button" class="on" data-v="p10">기간 수익 상위 10%</button><button type="button" data-v="p20">상위 20%</button><button type="button" data-v="abs3">+3%↑ 전부</button></span>
     <span>대상</span><span class="easeg" data-k="u"><button type="button" class="on" data-v="all">예측 기록 전 종목</button><button type="button" data-v="cond">조건검색 걸린 종목</button><button type="button" data-v="top50">TOP50만</button></span>
@@ -430,6 +430,11 @@ td.hcw:focus-visible{ outline:2px solid #1864AB; outline-offset:-2px; }
    <div class="t5tw eabody"><div class="eacards" id="eacards"></div>
     <table class="t5t eat"><thead><tr><th class="l">묶음</th><th>1일</th><th>2일</th><th>3일</th><th>1주</th><th>2주</th><th>1개월</th></tr></thead><tbody id="eatbB"></tbody></table></div>
    <div class="dmft t5ft"><span>칸 = 적중률 · 평균 수익 · 건수 · 'TO-BE 이긴 날' = 날짜별로 TOP50 위 10의 적중률이 AS-IS TOP10보다 높았던 날 수</span><span>30건 넘기 전엔 기록 · 결론 아님 · 시스템 출력이며 매수 추천 아님</span></div>
+  </section>
+  <section id="eaD" class="easec hide">
+   <div class="t5f"><span class="mut">확신 메타모델 섀도 주간 성적표(금요일 마감 뒤 자동 · 그 전엔 기록된 마지막 날 기준 즉석) — 등급별 BIG15 · SC-A↔SC-B · 정책 E0/E1/E2 · 대사</span><span class="sp"></span><span id="eadD" class="easeg"></span></div>
+   <div class="t5tw eabody" id="eadB"><div class="mut">탭을 누르면 불러와요</div></div>
+   <div class="dmft t5ft"><span>표시·기록만 — 등급은 연구 순위(확률 미보정 U) · 실제 승인 0 · 매수·매도 규칙·점수·주문 코드 무관 · 표본 20건 전엔 결론 아님 · 시스템 출력이며 추천 아님</span></div>
   </section>
   <section id="eaC" class="easec hide">
    <div class="t5f"><span class="mut">주간 채점표(월요일 08:07 자동) — 숫자 표만 · 통과/보류 판정은 형이 함</span><span class="sp"></span><span id="eacD" class="easeg"></span></div>
@@ -2708,6 +2713,17 @@ async function eaLoadC(day) {
   $("eacD").innerHTML = (d.others || []).map(x => `<button type="button" data-d="${esc(x)}" class="${x === d.day ? "on" : ""}">${esc(x.slice(4, 6) + "/" + x.slice(6, 8))}</button>`).join("");
   box.innerHTML = eaBlocks(d.blocks);
 }
+// v602 📐 메타 주간 탭 — 확신 메타모델 섀도 주간 성적표(서버가 md 를 블록으로 나눠 줌 · 계산 없음 · 글 그대로)
+async function eaLoadD(day) {
+  const box = $("eadB"); box.classList.add("eacB");
+  if (!day && EA.m && EA.m.ok) return;
+  box.innerHTML = '<div class="mut">불러오는 중…</div>';
+  try { EA.m = await api("/api/one/metaweekly" + (day ? `?d=${day}` : "")); } catch (e) { EA.m = { ok: false, why: `불러오기 실패: ${e.message}` }; }
+  const d = EA.m;
+  if (!d.ok) { $("eadD").innerHTML = ""; box.innerHTML = `<div class="mut">${esc(d.why || "자료 없음")}</div>`; return; }
+  $("eadD").innerHTML = (d.others || []).map(x => `<button type="button" data-d="${esc(x)}" class="${x === d.day ? "on" : ""}">${esc(x.slice(4, 6) + "/" + x.slice(6, 8))}</button>`).join("");
+  box.innerHTML = eaBlocks(d.blocks) + `<p class="mut" style="font-size:10.5px">${esc(d.file || "")} · ${esc(String(d.at || "").slice(5, 16).replace("T", " "))} 저장</p>`;
+}
 async function openEA() {
   $("ea").classList.remove("hide");
   if (!EA.d) $("eatbA").innerHTML = '<tr><td class="l mut">불러오는 중…</td></tr>';
@@ -2720,9 +2736,11 @@ $("eax").addEventListener("click", closeEA);
 $("ea").addEventListener("click", e => {
   if (e.target === $("ea")) { closeEA(); return; }
   const tb = e.target.closest(".eatabs button");
-  if (tb) { document.querySelectorAll(".eatabs button").forEach(x => x.classList.toggle("on", x === tb)); ["A", "B", "C"].forEach(t => $("ea" + t).classList.toggle("hide", tb.dataset.t !== t)); if (tb.dataset.t === "C") eaLoadC(""); return; }
+  if (tb) { document.querySelectorAll(".eatabs button").forEach(x => x.classList.toggle("on", x === tb)); ["A", "B", "C", "D"].forEach(t => $("ea" + t).classList.toggle("hide", tb.dataset.t !== t)); if (tb.dataset.t === "C") eaLoadC(""); if (tb.dataset.t === "D") eaLoadD(""); return; }
   const db = e.target.closest("#eacD button");
   if (db) { eaLoadC(db.dataset.d); return; }
+  const dbm = e.target.closest("#eadD button");
+  if (dbm) { eaLoadD(dbm.dataset.d); return; }
   const sb = e.target.closest(".easeg button");
   if (sb) { const g = sb.parentElement; g.querySelectorAll("button").forEach(x => x.classList.toggle("on", x === sb)); EA[g.dataset.k] = sb.dataset.v; eaPaint(); }
 });
