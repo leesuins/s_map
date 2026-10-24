@@ -351,6 +351,7 @@ td.hcw:focus-visible{ outline:2px solid #1864AB; outline-offset:-2px; }
   <button class="btn b50" id="bspk" type="button" title="10/23에 고른 선별 10종목 · 120분 60선 위 45종목 — 기준일 종가 대비 지금 상태(보기만 · 주문 없음)">🎯 선별 10</button>
   <span id="tflow" class="chip num hide"></span>
   <span id="tglobal" class="chip hide"></span>
+  <span class="v2seg" role="group" aria-label="왼쪽 목록 보기"><button class="btn on" id="v2old" type="button" title="지금까지의 TOP10 · 겹침 · 관심 · 허브 목록">예전 보기</button><button class="btn" id="v2new" type="button" title="날짜별 후보 노출 종목 · 상승·하락 수 · 노출 후 누적 (보기만 · 주문 없음)">V2 보기</button></span>
   <span class="sp"></span>
   <span id="tclock" class="mut num"></span>
  </div>
@@ -2282,6 +2283,30 @@ async function loadZones() {
   if ((d.busy || !d.n) && d1Try++ < 20) setTimeout(loadZones, 3000); else if (!d.busy) d1Try = 0;
 }
 const visible = () => document.visibilityState !== "hidden";
+/* ── v598 📅 V2 보기 — 왼쪽 목록 자리를 '날짜별 주간 띠 + 긴 목록'(시안 F)으로 바꿔 봄 · 처음 누를 때만 /one_v2.js 를 내려받음 · 읽기만(주문·매매 규칙과 무관) ── */
+const V2S = { loading: false };
+function v2Apply(on) {
+  try { localStorage.setItem("one.v2", on ? "1" : "0"); } catch (e) { /* 기억 못 해도 이번엔 동작 */ }
+  $("v2old").classList.toggle("on", !on); $("v2new").classList.toggle("on", on);
+  const lc = document.querySelector(".leftcol"); if (!lc) return;
+  if (!document.getElementById("v2base")) {
+    const st = document.createElement("style"); st.id = "v2base";
+    st.textContent = ".leftcol.v2on{display:flex;flex-direction:column;overflow:hidden}.leftcol.v2on>.card{display:none}.leftcol.v2on>#v2root{flex:1 1 auto}";
+    document.head.appendChild(st);
+  }
+  let root = $("v2root"); if (!root) { root = document.createElement("div"); root.id = "v2root"; lc.appendChild(root); }
+  lc.classList.toggle("v2on", on);
+  if (!on) { if (window.OneV2) window.OneV2.hide(); return; }
+  if (window.OneV2) { window.OneV2.show(); return; }
+  if (V2S.loading) return;
+  V2S.loading = true; root.innerHTML = '<div class="empty">V2 화면 불러오는 중…</div>';
+  const sc = document.createElement("script"); sc.src = "/one_v2.js?" + Date.now();
+  sc.onload = () => { V2S.loading = false; window.OneV2.mount(root); };
+  sc.onerror = () => { V2S.loading = false; root.innerHTML = '<div class="empty">V2 화면 파일을 못 받았어요 — 웹 대시보드(서버)가 켜져 있는지 확인</div>'; };
+  document.head.appendChild(sc);
+}
+$("v2old").onclick = () => v2Apply(false); $("v2new").onclick = () => v2Apply(true);
+try { if (localStorage.getItem("one.v2") === "1") v2Apply(true); } catch (e) { /* 기본 예전 보기 */ }
 setInterval(() => { if (visible()) { refreshLists(); refreshMarket(); refreshBottom(); } }, 30000);
 favLoad(); setInterval(() => { if (visible()) favLoad(); }, 30000);   // v572 ⭐ 즐겨찾기
 d1Apply(); loadZones(); setInterval(() => { if (visible()) loadZones(); }, 30000);   // v573 D1 분할 보기 · 자리 칸
