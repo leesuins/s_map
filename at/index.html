@@ -468,9 +468,9 @@ td.hcw:focus-visible{ outline:2px solid #1864AB; outline-offset:-2px; }
   <div class="t5f" id="spktabs" role="group" aria-label="보는 날짜"></div>
   <div class="rsmb">
    <div class="t5f"><b>⭐ 선별 10종목</b><span class="mut">어제 오른 종목과 120분 차트 숫자가 가까운 순서 · 어제 이미 오른 종목은 뺌 · 기준일에 고정</span></div>
-   <table class="t5t rst"><thead><tr><th>#</th><th class="l">종목</th><th title="기준일 정규장 종가(15:30)">기준일 종가</th><th id="spkp1">지금</th><th title="그날 종가 ÷ 기준일 종가 − 1">기준일 대비</th><th id="spkd1" title="그날 종가 ÷ 직전 거래일 종가 − 1">오늘</th><th title="120분봉 종가와 60선(지수이평 60봉) 위치">120분 60선</th><th title="마지막 5분봉">기준 봉</th></tr></thead><tbody id="spktb1"></tbody></table>
+   <table class="t5t rst" style="table-layout:fixed;width:100%"><colgroup><col style="width:4%"><col style="width:25%"><col style="width:12%"><col style="width:12%"><col style="width:12%"><col style="width:10%"><col style="width:14%"><col style="width:11%"></colgroup><thead><tr><th>#</th><th class="l">종목</th><th title="기준일 정규장 종가(15:30)">기준일 종가</th><th id="spkp1">지금</th><th title="그날 종가 ÷ 기준일 종가 − 1">기준일 대비</th><th id="spkd1" title="그날 종가 ÷ 직전 거래일 종가 − 1">오늘</th><th title="120분봉 종가와 60선(지수이평 60봉) 위치">120분 60선</th><th title="마지막 5분봉">기준 봉</th></tr></thead><tbody id="spktb1"></tbody></table>
    <div class="t5f" style="margin-top:10px"><b>120분 60선 위 45종목 전체</b><span class="mut">★ = 선별 10 · 기준일 대비 높은 순</span></div>
-   <table class="t5t rst"><thead><tr><th>#</th><th class="l">종목</th><th>기준일 종가</th><th id="spkp2">지금</th><th>기준일 대비</th><th id="spkd2">오늘</th><th>120분 60선</th><th>기준 봉</th></tr></thead><tbody id="spktb2"></tbody></table>
+   <table class="t5t rst" style="table-layout:fixed;width:100%"><colgroup><col style="width:4%"><col style="width:25%"><col style="width:12%"><col style="width:12%"><col style="width:12%"><col style="width:10%"><col style="width:14%"><col style="width:11%"></colgroup><thead><tr><th>#</th><th class="l">종목</th><th>기준일 종가</th><th id="spkp2">지금</th><th>기준일 대비</th><th id="spkd2">오늘</th><th>120분 60선</th><th>기준 봉</th></tr></thead><tbody id="spktb2"></tbody></table>
   </div>
   <div class="dmft t5ft"><span id="spkmeth"></span><span>줄 더블클릭 → 한화면에서 이 종목 · 흐린 줄 = 기준일 뒤 5분봉이 아직 없거나 파일이 멈춘 종목 · 숫자가 닮은 종목을 모아 둔 표시일 뿐 오른다는 뜻 아님 · 시스템 출력이며 매수 추천 아님</span></div>
  </div>
@@ -2766,11 +2766,11 @@ $("rs").addEventListener("keydown", e => { const tr = e.target.closest("#rstb tr
 document.addEventListener("keydown", e => { if (e.key === "Escape") closeRS(); });
 
 // ── v594 🎯 선별 10종목 · 120분 60선 위 45종목 — 10/23에 고정해 둔 목록의 지금 상태(표시만 · 주문·매매 규칙과 무관 · /api/one/simpick) ──
-const SPK = { d: null, timer: null, v: "now" };
+const SPK = { d: null, timer: null, v: "now", wait: false };
 const spkTr = (r, i, star) => {
   const ab = r.above == null ? '<span class="mut">모름</span>'
     : `<b style="color:${r.above ? UP : DOWN}">${r.above ? "위" : "아래"}</b> <span class="mut">${r.gap == null ? "" : (r.gap > 0 ? "+" : "") + r.gap.toFixed(1) + "%"}${r.above === false && r.base_above ? " · 기준일엔 위" : ""}</span>`;
-  return `<tr data-c="${esc(r.code)}" data-n="${esc(r.name)}" tabindex="0" class="${r.stale || r.lag ? "rsold" : ""}"${r.lag ? ' title="이 종목 5분봉 파일이 다른 종목보다 하루 이상 뒤처져 있어요(옛 값)"' : ""}>
+  return `<tr data-c="${esc(r.code)}" data-n="${esc(r.name)}" tabindex="0" class="${(r.stale && !SPK.wait) || r.lag ? "rsold" : ""}"${r.lag ? ' title="이 종목 5분봉 파일이 다른 종목보다 하루 이상 뒤처져 있어요(옛 값)"' : ""}>
     <td class="mut">${star ? "★" : ""}${i + 1}</td><td class="l nm" title="${esc(r.code)}">${nameOnly(r.name, r.code)} <span class="mut" style="font-weight:400">${esc(r.code)}</span></td>
     <td>${fmt(r.base)}</td><td>${fmt(r.price)}</td><td>${r.chg == null ? "—" : pctS(r.chg)}</td><td>${r.day_chg == null ? "—" : pctS(r.day_chg)}</td><td class="l">${ab}</td>
     <td class="mut">${esc((r.t || "").slice(5, 16))}</td></tr>`;
@@ -2793,6 +2793,7 @@ function spkPaint() {
     $("spkband").innerHTML = `<b>${k} 날짜는 아직 안 왔어요</b> — 기준일 뒤 거래일이 ${SPK.v}일 쌓이면 볼 수 있어요`;
     $("spktb1").innerHTML = emptyRow(8, "아직 그 거래일이 안 왔어요"); $("spktb2").innerHTML = "";
   } else {
+    SPK.wait = !!cur.waiting;                       // 전부 기준일 그대로(다음 거래일 전)이면 줄을 흐리게 안 함 — 일부만 멈췄을 때만 흐림
     const g = cur.groups, st = s => s.n ? `평균 ${pctS(s.avg, 1)} · 중앙값 ${pctS(s.med, 1)} · 오른 ${s.up} / 내린 ${s.dn}` : "아직 비교할 봉이 없어요";
     $("spkband").innerHTML = (cur.waiting ? '<b>아직 기준일 뒤 봉이 없어요</b> — 다음 거래일 장이 열리면 숫자가 바뀌어요 · ' : "")
       + `<b>선별 10</b> ${st(g.pick)} · 60선 위 유지 ${g.pick.keep}/${g.pick.total}<span class="mut"> │ </span><b>나머지 ${g.rest.total}</b> ${st(g.rest)} · 유지 ${g.rest.keep}/${g.rest.total}`;
