@@ -674,7 +674,7 @@ function mkChart(el) {
   });
 }
 const TW_DONE = "#9C36B5";                                       // v506 끝난 신호 봉 색(보라 · 주황·파랑 봉과 구분)
-const candles = (ch, up = "#E8590C", dn = "#5C7CFA") => ch.addCandlestickSeries({ upColor: up, downColor: dn, borderVisible: false, upBorderColor: up, downBorderColor: dn, wickUpColor: up, wickDownColor: dn, priceLineVisible: false });
+const candles = (ch, up = "#E8590C", dn = "#5C7CFA") => ch.addCandlestickSeries({ upColor: up, downColor: dn, borderVisible: false, borderUpColor: up, borderDownColor: dn, wickUpColor: up, wickDownColor: dn, priceLineVisible: false });
 const lineS = (ch, c, w, st) => ch.addLineSeries({ color: c, lineWidth: w, lineStyle: st || 0, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
 
 /* ── v472 형 "차트에서 겹침 이런 표현들이 진행중이 봉을 가리고 있어" — 가격선 이름표(★저항 3번 · ★겹침 전고점 …)를
@@ -846,7 +846,7 @@ class CloudPrim {
    지수선은 교차 뒤 구간만 흐림(교차 전 구간은 원래 색 그대로) · 교차 뒤 봉 진한 초록 테두리 · 교차 봉 고리 + "골든 20/60" 이름표 · 제목줄 "▲ 골든 유지 · N봉째" 알약.
    그 뒤(오래된 골든)는 알약만 옅게. 20선이 60선 아래로 내려가면 전부 원래 모양으로 복귀. 서버·주문 무관 ── */
 const GCTF = tf => tf === 45 || tf === 120;
-const GC_FULL_BARS = 30;                                   // 교차 뒤 이 봉 수까지만 풀 효과(그 뒤는 알약만)
+const GC_FULL_BARS = Infinity;                             // v617 골든 상태가 이어지는 동안은 계속 풀 효과(예전 30봉 제한은 45분이 안 보여서 뺌)
 function gcState(d) {
   const a = d && d.ma && d.ma.sma20, b = d && d.ma && d.ma.sma60;
   if (!a || !b || !a.length || !b.length) return null;
@@ -856,7 +856,7 @@ function gcState(d) {
   if (last < 1 || !(pts[last].a > pts[last].b)) return null;          // 지금 20선이 60선 위가 아니면 골든 상태 아님
   let i = last;
   while (i > 0 && pts[i - 1].a > pts[i - 1].b) i--;                    // 위쪽 구간이 시작된 봉 = 교차 봉
-  if (i === 0) return null;                                             // 보이는 구간 앞에서 이미 위였던 것 = 교차를 본 적 없음
+  if (i === 0) return { pts, cross: pts[0].time, n: last, pre: true };    // v619 보이는 구간 앞에서 이미 위 = 교차는 구간 앞(알멕 120분) → 20선이 60선 위인 첫 봉부터 골든 유지로 칠함
   return { pts: pts.slice(i), cross: pts[i].time, n: last - i };
 }
 class GcPrim {
@@ -889,8 +889,8 @@ class GcPrim {
   paintTop(c, m) {
     if (!this.g || this.cx === null || !this.pts.length || this.cx < 0 || this.cx > m.width) return;
     const y = this.pts[0].ya;
-    c.beginPath(); c.arc(this.cx, y, 6, 0, Math.PI * 2); c.fillStyle = "#fff"; c.fill(); c.lineWidth = 2.5; c.strokeStyle = "#087F5B"; c.stroke();
-    c.font = "800 11px sans-serif"; const t = "골든 20/60", w = c.measureText(t).width + 14, x = Math.max(2, Math.min(this.cx - w / 2, m.width - w - 2));
+    if (!this.g.pre) { c.beginPath(); c.arc(this.cx, y, 6, 0, Math.PI * 2); c.fillStyle = "#fff"; c.fill(); c.lineWidth = 2.5; c.strokeStyle = "#087F5B"; c.stroke(); }   // 교차 고리는 교차를 본 때만
+    c.font = "800 11px sans-serif"; const t = this.g.pre ? "골든 20/60 유지 · 교차는 구간 앞" : "골든 20/60", w = c.measureText(t).width + 14, x = Math.max(2, Math.min(this.cx - w / 2, m.width - w - 2));
     c.fillStyle = "#2B8A3E"; c.beginPath();
     if (c.roundRect) c.roundRect(x, 4, w, 18, 9); else c.rect(x, 4, w, 18);
     c.fill(); c.fillStyle = "#fff"; c.textBaseline = "middle"; c.fillText(t, x + 7, 13.5);
@@ -1015,7 +1015,7 @@ function paintPane(tf, d) {
   const trOn = trOnGet();
   const trc = nTb || nTs ? `<span class="trtg" role="button" tabindex="0" style="font-size:.9em;cursor:pointer;${trOn ? "" : "opacity:.45;text-decoration:line-through"}" title="주문 일지 기준(읽기만 · 체결 확정 아님) — 지금 보이는 15분봉 기간의 매수·매도 주문. 가격 자리에 ▲매수 · ▼매도 표시\n누르면 차트의 타점 표시 끄기/켜기(${trOn ? "지금 켜짐" : "지금 꺼짐"})"><b style="color:#7048E8">▲매수${nTb}</b> <b style="color:#C2255C">▼매도${nTs}</b></span>` : "";
   const gcs = GCTF(tf) ? gcState(d) : null;                    // v615 골든 크로스(단순 Avg20 > Avg60) — 교차 뒤 봉 수
-  const gcc = gcs ? `<span class="gcc${gcs.n > GC_FULL_BARS ? " gcq" : ""}" title="단순이평 Avg20 이 Avg60 을 위로 뚫는 골든 크로스 뒤 ${gcs.n === 0 ? "지금 막 교차한 봉" : gcs.n + "봉째"} — 지금 20선 ${fmt(gcs.pts[gcs.pts.length - 1].a)} · 60선 ${fmt(gcs.pts[gcs.pts.length - 1].b)}\n20선이 60선 아래로 내려가면 사라짐 · 표시만(매수·매도 규칙 무관)">▲ 골든 유지 · ${gcs.n === 0 ? "방금 교차" : gcs.n + "봉째"}</span>` : "";
+  const gcc = gcs ? `<span class="gcc${gcs.n > GC_FULL_BARS ? " gcq" : ""}" title="단순이평 Avg20 이 Avg60 을 위로 뚫는 골든 크로스 뒤 ${gcs.pre ? "(교차는 보이는 구간 앞이라 첫 비교 봉부터 " + gcs.n + "봉째)" : gcs.n === 0 ? "지금 막 교차한 봉" : gcs.n + "봉째"} — 지금 20선 ${fmt(gcs.pts[gcs.pts.length - 1].a)} · 60선 ${fmt(gcs.pts[gcs.pts.length - 1].b)}\n20선이 60선 아래로 내려가면 사라짐 · 표시만(매수·매도 규칙 무관)">▲ 골든 유지 · ${gcs.pre ? "교차는 구간 앞" : gcs.n === 0 ? "방금 교차" : gcs.n + "봉째"}</span>` : "";
   head.innerHTML = `${tf}분봉 <span>${d.n}봉 · 60선 ${d.above60 === true ? "위" : d.above60 === false ? "아래" : "—"}</span>${gcc}${sma60}${bbs}${trc}${tws}${ixs}`
     + `<span style="color:#2B8A3E">${s("sup")}</span><span style="color:#C2255C">${s("res")}</span>` + pinLegend(d.pins);
   // v506 형 "B안(세로 띠) + 완성된 봉은 봉색을 다른색으로" — 신호 봉이 지금 봉이면 세로 띠가 깜빡, 끝난 봉이면 옅은 띠 + 봉이 보라색으로 남음
