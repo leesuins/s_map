@@ -853,7 +853,7 @@ function gcState(d) {
   const mb = new Map(b.map(x => [x.time, x.value])), pts = [];
   a.forEach(x => { const v = mb.get(x.time); if (v != null && x.value != null) pts.push({ time: x.time, a: x.value, b: v }); });
   const last = pts.length - 1;
-  if (last < 1 || !(pts[last].a > pts[last].b)) return null;          // 지금 20선이 60선 위가 아니면 골든 상태 아님
+  if (last < 0 || !(pts[last].a > pts[last].b)) return null;          // v623 비교 가능한 봉이 1개뿐이어도(60봉 딱 채운 신규 종목) 20선이 위면 골든 상태로 침          // 지금 20선이 60선 위가 아니면 골든 상태 아님
   let i = last;
   while (i > 0 && pts[i - 1].a > pts[i - 1].b) i--;                    // 위쪽 구간이 시작된 봉 = 교차 봉
   if (i === 0) return { pts, cross: pts[0].time, n: last, pre: true };    // v619 보이는 구간 앞에서 이미 위 = 교차는 구간 앞(알멕 120분) → 20선이 60선 위인 첫 봉부터 골든 유지로 칠함
