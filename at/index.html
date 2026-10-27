@@ -845,7 +845,7 @@ class CloudPrim {
    교차 전엔 지금 모양 그대로 · 교차 뒤 GC_FULL_BARS 봉까지: 연초록 배경 + 두 선 사이 초록 부채꼴(봉 뒤 프리미티브) · 단순 20선만 굵은 초록 실선(+빛) ·
    지수선은 교차 뒤 구간만 흐림(교차 전 구간은 원래 색 그대로) · 교차 뒤 봉 진한 초록 테두리 · 교차 봉 고리 + "골든 20/60" 이름표 · 제목줄 "▲ 골든 유지 · N봉째" 알약.
    그 뒤(오래된 골든)는 알약만 옅게. 20선이 60선 아래로 내려가면 전부 원래 모양으로 복귀. 서버·주문 무관 ── */
-const GCTF = tf => tf === 45 || tf === 120;
+const GCTF = tf => tf === 15 || tf === 45 || tf === 120;          // v628 형 "15분에도 그대로 적용" — 15분 추가(45·120분과 같은 표시)
 const GC_FULL_BARS = Infinity;                             // v617 골든 상태가 이어지는 동안은 계속 풀 효과(예전 30봉 제한은 45분이 안 보여서 뺌)
 function gcState(d) {
   const a = d && d.ma && d.ma.sma20, b = d && d.ma && d.ma.sma60;
@@ -896,8 +896,103 @@ class GcPrim {
     c.fill(); c.fillStyle = "#fff"; c.textBaseline = "middle"; c.fillText(t, x + 7, 13.5);
   }
 }
+/* ── v629 형 "15차트에서는 데드 구간도 표현 · 안 A(파랑 거울)에 안 B 하단 띠" — 15분 차트만: 20선이 60선 아래인 구간을 파란 배경·두 선 사이 파란 부채꼴·20선 파랑 굵게·교차 고리+"데드 20/60" 이름표·봉 파랑 테두리로,
+   차트 아래쪽 얇은 상태 띠에는 골든(초록)·데드(검정 흰 사선)를 모든 구간에 이어서 표시. 제목줄엔 데드일 때 "▼ 데드 · N봉째". 표시만 · 매수·매도 규칙 무관 ── */
+const GDTF = tf => tf === 15;
+function gcRuns(d) {                                         // 20선>60선(골든)·그 반대(데드) 구간 전부: [{on, pre, a, b, n, pts}]
+  const a = d && d.ma && d.ma.sma20, b = d && d.ma && d.ma.sma60;
+  if (!a || !b || !a.length || !b.length) return [];
+  const mb = new Map(b.map(x => [x.time, x.value])), pts = [];
+  a.forEach(x => { const v = mb.get(x.time); if (v != null && x.value != null) pts.push({ time: x.time, a: x.value, b: v }); });
+  const runs = []; let s = 0;
+  for (let i = 1; i <= pts.length; i++) {
+    if (i === pts.length || (pts[i].a > pts[i].b) !== (pts[s].a > pts[s].b)) {
+      runs.push({ on: pts[s].a > pts[s].b, pre: s === 0, a: pts[s].time, b: pts[i - 1].time, n: i - 1 - s, pts: pts.slice(s, i) }); s = i;
+    }
+  }
+  return runs;
+}
+class GcDeadPrim {
+  constructor() { this.runs = []; this.segs = []; this.req = null; const me = this;
+    this.vb = { zOrder: () => "bottom", renderer: () => ({ draw: tg => tg.useMediaCoordinateSpace(({ context: c, mediaSize: m }) => me.paintBg(c, m)) }) };
+    this.vt = { zOrder: () => "top", renderer: () => ({ draw: tg => tg.useMediaCoordinateSpace(({ context: c, mediaSize: m }) => me.paintTop(c, m)) }) }; }
+  attached(a) { this.ch = a.chart; this.se = a.series; this.req = a.requestUpdate; }
+  detached() { this.ch = null; this.se = null; this.req = null; }
+  set(runs) { this.runs = runs || []; if (this.req) this.req(); }
+  paneViews() { return this.runs.length ? [this.vb, this.vt] : []; }
+  updateAllViews() {
+    this.segs = [];
+    if (!this.ch || !this.se || !this.runs.length) return;
+    const ts = this.ch.timeScale(), se = this.se, half = Math.max(1, (ts.options().barSpacing || 6) / 2);
+    this.segs = this.runs.map(r => {
+      const pts = r.pts.map(q => ({ x: ts.timeToCoordinate(q.time), ya: se.priceToCoordinate(q.a), yb: se.priceToCoordinate(q.b) })).filter(q => q.x !== null && q.ya !== null && q.yb !== null);
+      return pts.length ? { on: r.on, pre: r.pre, n: r.n, pts, x0: pts[0].x - half, x1: pts[pts.length - 1].x + half } : null;
+    }).filter(Boolean);
+  }
+  paintBg(c, m) {
+    this.segs.forEach(s => {
+      if (s.on) return;                                       // 골든 구간 배경은 기존 GcPrim(지금 골든 구간)이 그림
+      const x0 = Math.max(0, s.x0), x1 = Math.min(m.width, s.x1);
+      if (x1 <= x0) return;
+      if (s.pts.length < 2) return;
+      c.fillStyle = "rgba(28,95,168,.42)"; c.beginPath(); c.moveTo(s.pts[0].x, s.pts[0].ya);
+      for (let i = 1; i < s.pts.length; i++) c.lineTo(s.pts[i].x, s.pts[i].ya);
+      for (let i = s.pts.length - 1; i >= 0; i--) c.lineTo(s.pts[i].x, s.pts[i].yb);
+      c.closePath(); c.fill();
+    });
+  }
+  hatch(c) {
+    if (this._pat) return this._pat;
+    const k = document.createElement("canvas"); k.width = k.height = 6; const g = k.getContext("2d");
+    g.fillStyle = "#fff"; g.fillRect(0, 0, 6, 6); g.strokeStyle = "#141A22"; g.lineWidth = 2.2; g.beginPath(); g.moveTo(-1, 7); g.lineTo(7, -1); g.stroke();
+    return (this._pat = c.createPattern(k, "repeat"));
+  }
+  paintTop(c, m) {
+    this.segs.forEach(s => {                                  // v630 위쪽 얇은 파란 띠 = 데드 구간(전체 파란 배경은 '120선 이탈' 회색 막과 겹쳐 탁해져 뺌)
+      if (s.on) return;
+      const x0 = Math.max(0, s.x0), x1 = Math.min(m.width, s.x1);
+      if (x1 > x0) { c.fillStyle = "#1C5FA8"; c.fillRect(x0, 0, x1 - x0, 6); }
+    });
+    const y = m.height - 11, h = 8;                           // 아래 상태 띠: 초록 = 골든 · 검정 흰 사선 = 데드(일봉 띠·목록과 같은 표시)
+    this.segs.forEach(s => {
+      const x0 = Math.max(0, s.x0), x1 = Math.min(m.width, s.x1);
+      if (x1 <= x0) return;
+      if (s.on) { c.fillStyle = "#2B8A3E"; c.fillRect(x0, y, x1 - x0, h); }
+      else { c.fillStyle = this.hatch(c) || "#555"; c.fillRect(x0, y, x1 - x0, h); c.strokeStyle = "#141A22"; c.lineWidth = 1; c.strokeRect(x0 + .5, y + .5, x1 - x0 - 1, h - 1); }
+    });
+    this.segs.forEach(s => {                                  // 교차 고리 + 이름표(데드 교차만 · 골든 교차는 기존 GcPrim 이 그림)
+      if (s.on || s.pre) return;
+      const cx = s.pts[0].x; if (cx < 0 || cx > m.width) return;
+      c.beginPath(); c.arc(cx, s.pts[0].ya, 6, 0, Math.PI * 2); c.fillStyle = "#fff"; c.fill(); c.lineWidth = 2.5; c.strokeStyle = "#1C5FA8"; c.stroke();
+      c.font = "800 11px sans-serif"; const t = "데드 20/60", w = c.measureText(t).width + 14, x = Math.max(2, Math.min(cx - w / 2, m.width - w - 2));
+      const ty = Math.max(30, Math.min(m.height - 30, s.pts[0].ya - 30));          // 이름표는 고리 위쪽에(맨 위 줄은 기존 ☁ 이름표가 차지함)
+      c.fillStyle = "#1C5FA8"; c.beginPath();
+      if (c.roundRect) c.roundRect(x, ty, w, 18, 9); else c.rect(x, ty, w, 18);
+      c.fill(); c.fillStyle = "#fff"; c.textBaseline = "middle"; c.fillText(t, x + 7, ty + 9.5);
+    });
+  }
+}
+function gcDeadApply(p, d, runs, golden) {                   // runs = gcRuns(d) · 15분 차트만 · golden = 지금 골든 구간이 있나(봉 테두리 유지용)
+  const dead = runs.filter(r => !r.on);
+  if (!p.gdp) { p.gdp = new GcDeadPrim(); p.cs.attachPrimitive(p.gdp); }
+  if (!p.gdl) {
+    const mk = (c, w) => p.ch.addLineSeries({ color: c, lineWidth: w, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
+    p.gdg = mk("rgba(28,95,168,.16)", 8); p.gdl = mk("#1C5FA8", 4);
+  }
+  p.gdp.set(runs);                                            // 띠는 골든·데드 모든 구간
+  const line = [];
+  runs.forEach((r, i) => { if (r.on) { if (line.length && i < runs.length) line.push({ time: r.a }); } else r.pts.forEach(x => line.push({ time: x.time, value: x.a })); });
+  while (line.length && line[line.length - 1].value === undefined) line.pop();
+  p.gdg.setData(line); p.gdl.setData(line);
+  p.cs.applyOptions({ borderVisible: !!(golden || dead.length) });
+}
+function gcDeadClear(p) {
+  if (p.gdp) p.gdp.set([]);
+  [p.gdg, p.gdl].forEach(x => x && x.setData([]));
+}
 function gcClear(p) {
   if (p.gcp) p.gcp.set(null);
+  gcDeadClear(p);
   [p.gcg, p.gcl].forEach(x => x && x.setData([]));
   p.cs.applyOptions({ borderVisible: false });
 }
@@ -917,7 +1012,7 @@ function gcApply(p, d, g) {                                 // g = gcState(d) ·
   ["ma20", "ma60", "sma60"].forEach(k => p.ma[k].setData((d.ma[k] || []).map(x => x.time > g.cross ? { ...x, color: fade[k] } : x)));
 }
 (() => { const st = document.createElement("style");
-  st.textContent = ".gcc{margin-left:6px;font-size:11.5px;font-weight:800;border-radius:11px;padding:0 9px;white-space:nowrap;background:#087F5B;color:#fff;box-shadow:0 0 0 3px rgba(43,138,62,.2)}.gcc.gcq{background:#E6F4EA;color:#087F5B;box-shadow:none;border:1px solid #9AD2AD}";
+  st.textContent = ".gcc{margin-left:6px;font-size:11.5px;font-weight:800;border-radius:11px;padding:0 9px;white-space:nowrap;background:#087F5B;color:#fff;box-shadow:0 0 0 3px rgba(43,138,62,.2)}.gcc.gcq{background:#E6F4EA;color:#087F5B;box-shadow:none;border:1px solid #9AD2AD}.gcc.gcdd{background:#1C5FA8;color:#fff;box-shadow:0 0 0 3px rgba(28,95,168,.2)}";
   document.head.appendChild(st); })();
 // v567 형 "45분 초입선좀 15분차트처럼 그려줄수 있어?" — 초입선(검은 계단선)·구름·☁ 칩·▲안착▼이탈·시도 깜빡을 45분 칸에도(45분 봉 = 08:00 기준 · 서버가 같은 봉으로 계산) · 표시만
 const IXTF = tf => tf === 15 || tf === 45;
@@ -1016,7 +1111,9 @@ function paintPane(tf, d) {
   const trc = nTb || nTs ? `<span class="trtg" role="button" tabindex="0" style="font-size:.9em;cursor:pointer;${trOn ? "" : "opacity:.45;text-decoration:line-through"}" title="주문 일지 기준(읽기만 · 체결 확정 아님) — 지금 보이는 15분봉 기간의 매수·매도 주문. 가격 자리에 ▲매수 · ▼매도 표시\n누르면 차트의 타점 표시 끄기/켜기(${trOn ? "지금 켜짐" : "지금 꺼짐"})"><b style="color:#7048E8">▲매수${nTb}</b> <b style="color:#C2255C">▼매도${nTs}</b></span>` : "";
   const gcs = GCTF(tf) ? gcState(d) : null;                    // v615 골든 크로스(단순 Avg20 > Avg60) — 교차 뒤 봉 수
   const gcc = gcs ? `<span class="gcc${gcs.n > GC_FULL_BARS ? " gcq" : ""}" title="단순이평 Avg20 이 Avg60 을 위로 뚫는 골든 크로스 뒤 ${gcs.pre ? "(교차는 보이는 구간 앞이라 첫 비교 봉부터 " + gcs.n + "봉째)" : gcs.n === 0 ? "지금 막 교차한 봉" : gcs.n + "봉째"} — 지금 20선 ${fmt(gcs.pts[gcs.pts.length - 1].a)} · 60선 ${fmt(gcs.pts[gcs.pts.length - 1].b)}\n20선이 60선 아래로 내려가면 사라짐 · 표시만(매수·매도 규칙 무관)">▲ 골든 유지 · ${gcs.pre ? "교차는 구간 앞" : gcs.n === 0 ? "방금 교차" : gcs.n + "봉째"}</span>` : "";
-  head.innerHTML = `${tf}분봉 <span>${d.n}봉 · 60선 ${d.above60 === true ? "위" : d.above60 === false ? "아래" : "—"}</span>${gcc}${sma60}${bbs}${trc}${tws}${ixs}`
+  const gcr = GDTF(tf) ? gcRuns(d) : [], gcLast = gcr.length ? gcr[gcr.length - 1] : null;       // v629 15분 데드 구간
+  const gdc = gcLast && !gcLast.on ? `<span class="gcc gcdd" title="단순이평 Avg20 이 Avg60 아래로 내려간 데드 구간 ${gcLast.pre ? "(교차는 보이는 구간 앞이라 첫 비교 봉부터 " + gcLast.n + "봉째)" : gcLast.n === 0 ? "지금 막 교차한 봉" : gcLast.n + "봉째"} — 지금 20선 ${fmt(gcLast.pts[gcLast.pts.length - 1].a)} · 60선 ${fmt(gcLast.pts[gcLast.pts.length - 1].b)}\n20선이 60선 위로 올라오면 골든으로 바뀜 · 표시만(매수·매도 규칙 무관)">▼ 데드 · ${gcLast.pre ? "교차는 구간 앞" : gcLast.n === 0 ? "방금 교차" : gcLast.n + "봉째"}</span>` : "";
+  head.innerHTML = `${tf}분봉 <span>${d.n}봉 · 60선 ${d.above60 === true ? "위" : d.above60 === false ? "아래" : "—"}</span>${gcc}${gdc}${sma60}${bbs}${trc}${tws}${ixs}`
     + `<span style="color:#2B8A3E">${s("sup")}</span><span style="color:#C2255C">${s("res")}</span>` + pinLegend(d.pins);
   // v506 형 "B안(세로 띠) + 완성된 봉은 봉색을 다른색으로" — 신호 봉이 지금 봉이면 세로 띠가 깜빡, 끝난 봉이면 옅은 띠 + 봉이 보라색으로 남음
   const twS = tw[twk] || null, twI = twS ? (d.bars || []).findIndex(b => b.time === twS.time) : -1;
@@ -1030,7 +1127,9 @@ function paintPane(tf, d) {
   let barsArr = p.tw.length && !p.tw[0].live && !p.tw[0].hold ? d.bars.map((b, i) => i === twI ? { ...b, color: TW_DONE, wickColor: TW_DONE } : b) : d.bars;
   const gcOn = !!(gcs && gcs.n <= GC_FULL_BARS);               // v615 골든 구간 봉만 진한 초록 테두리(신호 봉 보라색은 그대로 테두리도 보라)
   if (gcOn) barsArr = barsArr.map(b => b.time >= gcs.cross ? { ...b, borderColor: b.color === TW_DONE ? TW_DONE : "#14532D" } : b);
-  p.cs.applyOptions({ borderVisible: gcOn });
+  const gcDeadRuns = gcr.filter(r => !r.on);                                  // v629 15분 데드 구간 봉은 파랑 테두리
+  if (gcDeadRuns.length) barsArr = barsArr.map(b => { const r = gcDeadRuns.find(r => b.time >= r.a && b.time <= r.b); return r ? { ...b, borderColor: b.color === TW_DONE ? TW_DONE : "#1C5FA8" } : b; });
+  p.cs.applyOptions({ borderVisible: gcOn || gcDeadRuns.length > 0 });
   p.cs.setData(barsArr);
   // v528 형 "안착했다고 하면 이렇게 마커 하면 되지 않을까?"(120분 차트 세로 띠 모양) — 15분 가장 최근 ▲안착(파랑)·▼이탈(빨강) 확정 봉에 같은 옅은 세로 띠 + 글자. 신호 수·2봉 확인은 그대로 · 화면만
   if (IXTF(tf) && (d.ichi_ev || []).length && (d.bars || []).length) try {
@@ -1056,6 +1155,7 @@ function paintPane(tf, d) {
   }
   for (const k in p.ma) p.ma[k].setData(d.ma[k] || []);
   if (GCTF(tf)) try { gcApply(p, d, gcs); } catch (e) { /* 골든 표시는 없어도 차트는 그대로 */ }
+  if (GDTF(tf)) try { gcDeadApply(p, d, gcr, gcOn); } catch (e) { /* 데드 표시는 없어도 차트는 그대로 */ }
   // v530 형 "5분봉 볼벤 150 1 · 상단 하단만(중심 빼고)" — 5분 칸에만 볼린저밴드 상단·하단(150봉 · ±1σ). 선 두께 2(이평 선 아래 묻히지 않게) · 화면만
   if (BBTF(tf)) try {
     p.bb = p.bb || ["bbu", "bbl"].reduce((o, k) => (o[k] = p.ch.addLineSeries({ color: "#AE3EC9", lineWidth: 2, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false }), o), {});
