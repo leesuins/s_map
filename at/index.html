@@ -980,10 +980,9 @@ function gcDeadApply(p, d, runs, golden) {                   // runs = gcRuns(d)
     p.gdg = mk("rgba(28,95,168,.16)", 8); p.gdl = mk("#1C5FA8", 4);
   }
   p.gdp.set(runs);                                            // 띠는 골든·데드 모든 구간
-  const line = [];
-  runs.forEach((r, i) => { if (r.on) { if (line.length && i < runs.length) line.push({ time: r.a }); } else r.pts.forEach(x => line.push({ time: x.time, value: x.a })); });
-  while (line.length && line[line.length - 1].value === undefined) line.pop();
-  p.gdg.setData(line); p.gdl.setData(line);
+  const line = [], glow = [];                                  // v631 20선 굵은 선 = 구간 색(데드 파랑 · 지난 골든 초록) 한 줄로 이어 그림 — 예전엔 골든 구간을 빈 점으로 건너뛰어 파란 선이 골든 위로 가로질러 보였음
+  runs.forEach(r => r.pts.forEach(x => { line.push({ time: x.time, value: x.a, color: r.on ? "#087F5B" : "#1C5FA8" }); glow.push({ time: x.time, value: x.a, color: r.on ? "rgba(43,138,62,.16)" : "rgba(28,95,168,.16)" }); }));
+  p.gdg.setData(glow); p.gdl.setData(line);
   p.cs.applyOptions({ borderVisible: !!(golden || dead.length) });
 }
 function gcDeadClear(p) {
@@ -1012,7 +1011,7 @@ function gcApply(p, d, g) {                                 // g = gcState(d) ·
   ["ma20", "ma60", "sma60"].forEach(k => p.ma[k].setData((d.ma[k] || []).map(x => x.time > g.cross ? { ...x, color: fade[k] } : x)));
 }
 (() => { const st = document.createElement("style");
-  st.textContent = ".gcc{margin-left:6px;font-size:11.5px;font-weight:800;border-radius:11px;padding:0 9px;white-space:nowrap;background:#087F5B;color:#fff;box-shadow:0 0 0 3px rgba(43,138,62,.2)}.gcc.gcq{background:#E6F4EA;color:#087F5B;box-shadow:none;border:1px solid #9AD2AD}.gcc.gcdd{background:#1C5FA8;color:#fff;box-shadow:0 0 0 3px rgba(28,95,168,.2)}";
+  st.textContent = ".gcc{margin-left:6px;font-size:11.5px;font-weight:800;border-radius:11px;padding:0 9px;white-space:nowrap;background:#087F5B;color:#fff;box-shadow:0 0 0 3px rgba(43,138,62,.2)}.gcc.gcq{background:#E6F4EA;color:#087F5B;box-shadow:none;border:1px solid #9AD2AD}.gcc.gcdd{background:#1C5FA8;color:#fff;box-shadow:0 0 0 3px rgba(28,95,168,.2)}.ph .gcc{color:#fff;font-weight:800}.ph .gcc.gcq{color:#087F5B}.ph .gcc.gcdd{color:#fff}";
   document.head.appendChild(st); })();
 // v567 형 "45분 초입선좀 15분차트처럼 그려줄수 있어?" — 초입선(검은 계단선)·구름·☁ 칩·▲안착▼이탈·시도 깜빡을 45분 칸에도(45분 봉 = 08:00 기준 · 서버가 같은 봉으로 계산) · 표시만
 const IXTF = tf => tf === 15 || tf === 45;
