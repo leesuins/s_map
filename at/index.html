@@ -1049,9 +1049,10 @@ function buildPanes() {
   const host = $("panes");
   host.innerHTML = "";
   host.className = S.mode === "4" ? "grid4" : "grid1";
+  host.style.gridTemplateRows = S.mode === "515" ? "repeat(2,minmax(0,1fr))" : "";          // v641 선발 모니터 — 위 5분 · 아래 15분 두 칸
   document.querySelectorAll(".btn[data-mode]").forEach(b => b.classList.toggle("on", b.dataset.mode === S.mode));
   if (!S.code) { host.innerHTML = '<div class="empty">왼쪽 목록에서 종목을 누르면 5·15·45·120분 차트가 뜹니다</div>'; return; }
-  (S.mode === "4" ? [5, 15, 45, 120] : [+S.mode]).forEach(tf => {
+  (S.mode === "4" ? [5, 15, 45, 120] : S.mode === "515" ? [5, 15] : [+S.mode]).forEach(tf => {
     const el = document.createElement("div");
     el.className = "pane";
     el.innerHTML = `<div class="ph">${tf}분봉 <span class="ah">불러오는 중…</span></div><div class="cv"></div>`;
@@ -1196,7 +1197,7 @@ function paintPane(tf, d) {
   ov60(p, tf, d);
   if (p.first) { p.first = false; requestAnimationFrame(p.fit); }
   tagLater(p);
-  if (tf === (S.mode === "4" ? 5 : +S.mode)) $("cinfo").textContent = `마지막 봉 ${String(d.last_ts).slice(5, 16).replace("T", " ")} · 저장 ${hm(d.saved_at)}`;
+  if (tf === (S.mode === "4" || S.mode === "515" ? 5 : +S.mode)) $("cinfo").textContent = `마지막 봉 ${String(d.last_ts).slice(5, 16).replace("T", " ")} · 저장 ${hm(d.saved_at)}`;
 }
 async function loadCharts() {
   if (!S.code) return;
@@ -2500,15 +2501,28 @@ $("v2old").onclick = () => v2Apply(false); $("v2new").onclick = () => v2Apply(tr
 try { if (localStorage.getItem("one.v2") === "1") v2Apply(true); } catch (e) { /* 기본 예전 보기 */ }
 /* ── v641 🎯 선발 모니터 — 5분 차트 자리 전환 메뉴([📈 차트 | 🎯 선발 모니터]) · 처음 누를 때만 /one_selmon.js 를 내려받음 · 읽기만(주문·매매 규칙과 무관) ── */
 const CVS = { loading: false };
+/* 선발 모니터가 한화면 15분 차트(#panes)를 자기 오른쪽 칸으로 옮겨 쓰는 다리 — 차트 그림·골든/데드·구름·초입가는 이 파일 것을 그대로 */
+const CVB = {
+  prev: null,
+  panes: () => S.panes, code: () => S.code,
+  park(slot) { const pn = $("panes"); if (pn && slot && pn.parentNode !== slot) slot.appendChild(pn); },
+  enter() { if (CVB.prev == null) CVB.prev = S.mode; S.mode = "515"; buildPanes(); if (S.code) loadCharts(); },
+  leave() {
+    const pn = $("panes"), ac = document.querySelector(".a-chart");
+    if (pn && ac && pn.parentNode !== ac) ac.insertBefore(pn, $("selmon"));
+    if (CVB.prev != null) { S.mode = CVB.prev; CVB.prev = null; buildPanes(); if (S.code) loadCharts(); }
+  },
+};
+window.cvBridge = CVB;
 function cvApply(m) {
   const ac = document.querySelector(".a-chart"), mon = m === "selmon"; if (!ac) return;
-  if (!$("cv-off-css")) { const st = document.createElement("style"); st.id = "cv-off-css"; st.textContent = ".a-chart.cvmon .chead,.a-chart.cvmon #panes,.a-chart.cvmon #srad,.a-chart.cvmon details.legend{display:none!important}.rest.cvwide .a-judge{display:none}.rest.cvwide .a-chart{grid-column:1 / 3}"; document.head.appendChild(st); }
+  if (!$("cv-off-css")) { const st = document.createElement("style"); st.id = "cv-off-css"; st.textContent = ".a-chart.cvmon>.chead,.a-chart.cvmon>#panes,.a-chart.cvmon>#srad,.a-chart.cvmon>details.legend{display:none!important}.rest.cvwide .a-judge{display:none}.rest.cvwide .a-chart{grid-column:1 / 3}"; document.head.appendChild(st); }
   document.querySelectorAll("#cvsw [data-cv]").forEach(b => b.classList.toggle("on", b.dataset.cv === m));
   ac.classList.toggle("cvmon", mon);                                                                   // 차트 칸 숨김은 부모 클래스로(자식 클래스는 다른 코드가 덮어씀)
   const rs = ac.closest(".rest"); if (rs) rs.classList.toggle("cvwide", mon);                       // 모니터는 종목 판단 칸 자리까지 넓게(차트로 돌아오면 원래대로)
   $("selmon").classList.toggle("hide", !mon);
   try { localStorage.setItem("one.cv", m); } catch (e) { /* 기억 못 해도 동작 */ }
-  if (!mon) { if (window.OneSelMon) window.OneSelMon.hide(); window.dispatchEvent(new Event("resize")); return; }
+  if (!mon) { if (window.OneSelMon) window.OneSelMon.hide(); CVB.leave(); window.dispatchEvent(new Event("resize")); return; }
   if (window.OneSelMon) { window.OneSelMon.show(); return; }
   if (CVS.loading) return;
   CVS.loading = true; $("selmon").innerHTML = '<div class="empty">선발 모니터 불러오는 중…</div>';
