@@ -660,7 +660,7 @@ const trOf = (code, name, cells, cls = "") => { const g = pxGo(code); if (g) pxC
 /* ── 차트 공통 ─────────────────────────────────────────────── */
 function autoFit(ch, el, st, custom) {
   // v392 종목·칸을 바꾼 뒤 지운 차트에 맞춤을 부르던 오류('Object is disposed') — 지울 때 관찰을 끊고, 지운 뒤 부르면 무시
-  const fit = () => { if (st.gone || st.user) return; try { (custom || (() => ch.timeScale().fitContent()))(); } catch (e) { /* 지운 차트 */ } };
+  const fit = () => { if (st.gone || st.user) return; try { (custom || (() => { const h = window.cvBridge; if (!(h && h.fit && h.fit(ch))) ch.timeScale().fitContent(); }))(); } catch (e) { /* 지운 차트 */ } };
   ["wheel", "mousedown", "touchstart"].forEach(ev => el.addEventListener(ev, () => { st.user = true; }, { passive: true }));
   try { st.ro = new ResizeObserver(() => requestAnimationFrame(fit)); st.ro.observe(el); } catch (e) { /* 옛 브라우저 */ }
   return fit;
@@ -1133,6 +1133,7 @@ function paintPane(tf, d) {
   if (gcDeadRuns.length) barsArr = barsArr.map(b => { const r = gcDeadRuns.find(r => b.time >= r.a && b.time <= r.b); return r ? { ...b, borderColor: b.color === TW_DONE ? TW_DONE : "#1C5FA8" } : b; });
   p.cs.applyOptions({ borderVisible: gcOn || gcDeadRuns.length > 0 });
   p.cs.setData(barsArr);
+  p.barTimes = (d.bars || []).map(b => b.time); p.barHL = (d.bars || []).map(b => [b.low, b.high]);                       // v642 선발 모니터 — 기준일 종가 근처부터 보이게 맞출 때 쓰는 봉 시각
   // v528 형 "안착했다고 하면 이렇게 마커 하면 되지 않을까?"(120분 차트 세로 띠 모양) — 15분 가장 최근 ▲안착(파랑)·▼이탈(빨강) 확정 봉에 같은 옅은 세로 띠 + 글자. 신호 수·2봉 확인은 그대로 · 화면만
   if (IXTF(tf) && (d.ichi_ev || []).length && (d.bars || []).length) try {
     const bi = new Map(d.bars.map((b, i) => [b.time, i])), evs = d.ichi_ev.filter(e => bi.has(e.time) && !(itry && itry.time === e.time));
@@ -1185,7 +1186,7 @@ function paintPane(tf, d) {
   if (tw[twk]) p.tags.push({ v: tw[twk].ref, col: twc(tw[twk]), raw: true,
     name: tw[twk].on ? "📉 하락 경고 기준가(신호 봉 종가)" : tw[twk].up ? "📈 상승 시도(마감 전 · 위로 마감해야 추세 유지)" : "↗ 추세 유지(기준가 위로 마감)",
     short: tw[twk].on ? "📉기준" : tw[twk].up ? "📈시도" : "↗기준" });
-  (d.trends || []).forEach(x => { if (x.points[0].time < x.points[1].time) { const s2 = lineS(p.ch, x.key ? "#1864AB" : "#8DB4E2", x.key ? 2 : 1, LS.Dashed); s2.setData(x.points); p.trends.push(s2); } });
+  (d.trends || []).forEach(x => { if (x.points[0].time < x.points[1].time) { const s2 = lineS(p.ch, x.key ? "#1864AB" : "#8DB4E2", x.key ? 2 : 1, LS.Dashed); s2.setData(x.points); if (window.cvBridge && window.cvBridge.mon && window.cvBridge.mon()) s2.applyOptions({ autoscaleInfoProvider: () => null }); p.trends.push(s2); } });
   const mk = (d.pins || []).map(x => ({ time: x.time, position: x.kind === "buy" ? "belowBar" : "aboveBar",
     color: x.kind === "met" ? "#D42B2B" : x.kind === "buy" ? "#7048E8" : "#868E96", shape: x.kind === "buy" ? "arrowUp" : "circle", text: "" }))
     .sort((a, b) => a.time - b.time);
@@ -2503,7 +2504,43 @@ try { if (localStorage.getItem("one.v2") === "1") v2Apply(true); } catch (e) { /
 const CVS = { loading: false };
 /* 선발 모니터가 한화면 15분 차트(#panes)를 자기 오른쪽 칸으로 옮겨 쓰는 다리 — 차트 그림·골든/데드·구름·초입가는 이 파일 것을 그대로 */
 const CVB = {
-  prev: null,
+  prev: null, baseDay: "", mon: () => CVB.prev != null,
+  // v642 선발 모니터 — 기본 배율: 기준일 마지막 봉 조금 앞 ~ 지금(며칠치 전체 맞춤이면 봉이 눌려 보여 매번 확대해야 했음). 모니터가 켜져 있을 때만, 휠·드래그로 바꾼 뒤엔 그대로 둠
+  fit(ch) {
+    if (CVB.prev == null || !CVB.baseDay) return false;
+    const tf = Object.keys(S.panes).find(k => S.panes[k].ch === ch), p = tf && S.panes[tf];
+    if (!p || !p.barTimes || !p.barTimes.length || typeof p.barTimes[0] !== "number") return false;
+    const T = p.barTimes, n = T.length, day = String(CVB.baseDay);
+    let li = -1;
+    for (let i = n - 1; i >= 0; i--) { if (new Date(T[i] * 1000).toISOString().slice(0, 10).replace(/-/g, "") <= day) { li = i; break; } }
+    const dk = i => new Date(T[i] * 1000).toISOString().slice(0, 10).replace(/-/g, "");
+    const pre = +tf === 5 ? 36 : 14, later = n > 0 && dk(n - 1) > day;
+    let fi = -1; for (let i = 0; i < n; i++) { if (dk(i) >= day) { fi = i; break; } }
+    // 기준일 뒤 봉이 아직 없으면(장 마감 후·다음날 개장 전) 기준일 하루 전체 + 앞쪽 조금 / 뒤 봉이 있으면 기준일 마지막 봉 조금 앞부터
+    const from = Math.max(0, later && li >= 0 ? li - pre : fi >= 0 ? fi - (+tf === 5 ? 3 : pre) : n - (+tf === 5 ? 80 : 40));
+    ch.timeScale().setVisibleLogicalRange({ from: from - 0.5, to: n - 1 + 3 });
+    // 세로(가격)도 봉 기준으로: 멀리 떨어진 보조선(60선·구름·120선 등)이 눈금을 아래로 끌어내려 봉이 위에 몰리던 것 — 선은 눈금 계산에서만 뺌(화면 안 구간은 그대로 그려짐)
+    const lines = [];
+    (p.trends || []).forEach(v => { if (v && v.applyOptions && v.seriesType) lines.push(v); });                 // 추세선도 눈금에서 뺌
+    Object.values(p).forEach(v => { if (v && typeof v === "object") { if (v.applyOptions && v.seriesType) lines.push(v); else if (!v.nodeType && !v.ch && Object.getPrototypeOf(v) === Object.prototype) Object.values(v).forEach(w => { if (w && w.applyOptions && w.seriesType) lines.push(w); }); } });
+    p.supProv = true;
+    try {                                                              // 눈금 = 보이는 봉 고저(+기준일 종가선)만 — 구름·지지선·보조선이 눈금을 넓히지 않게
+      p.cs.applyOptions({ autoscaleInfoProvider: orig => {
+        const lr = ch.timeScale().getVisibleLogicalRange(), H = p.barHL || [];
+        if (!lr || !H.length) return orig();
+        let lo = Infinity, hi = -Infinity;
+        for (let i = Math.max(0, Math.floor(lr.from)); i <= Math.min(H.length - 1, Math.ceil(lr.to)); i++) { if (H[i][0] < lo) lo = H[i][0]; if (H[i][1] > hi) hi = H[i][1]; }
+        const bp = p.smPL && p.smPL.v; if (isFinite(bp)) { lo = Math.min(lo, bp); hi = Math.max(hi, bp); }
+        return isFinite(lo) && isFinite(hi) && hi > lo ? { priceRange: { minValue: lo, maxValue: hi }, margins: { above: 0.06, below: 0.06 } } : orig();
+      } });
+    } catch (e) { /* 눈금 기본값 */ }
+    lines.forEach(v => { try { if (v !== p.cs && v.seriesType() === "Line") v.applyOptions({ autoscaleInfoProvider: () => null }); } catch (e) { /* 선 하나 못 바꿔도 차트는 그대로 */ } });
+    return true;
+  },
+  setBase(day) {
+    if (CVB.baseDay === day) return; CVB.baseDay = day;
+    Object.values(S.panes || {}).forEach(p => { p.st.user = false; p.fit && requestAnimationFrame(p.fit); });
+  },
   panes: () => S.panes, code: () => S.code,
   park(slot) { const pn = $("panes"); if (pn && slot && pn.parentNode !== slot) slot.appendChild(pn); },
   enter() { if (CVB.prev == null) CVB.prev = S.mode; S.mode = "515"; buildPanes(); if (S.code) loadCharts(); },
