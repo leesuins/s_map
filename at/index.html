@@ -528,6 +528,9 @@ td.hcw:focus-visible{ outline:2px solid #1864AB; outline-offset:-2px; }
 .dutyrow .l{ color:#64748b; font-size:11.5px; }
 .dutyv{ margin-top:6px; padding:5px 8px; border-radius:6px; background:#fffbeb; border:1px solid #fde68a; color:#92400e; }
 .dutyv.go{ background:#f0fdf4; border-color:#bbf7d0; color:#166534; } .dutyv.bad{ background:#fef2f2; border-color:#fecaca; color:#991b1b; }
+.a-ix .card>h3,.a-ix .card>.tabs{ cursor:pointer; user-select:none; }
+.foldb{ border:0; background:none; padding:0 3px 0 0; color:#64748b; cursor:pointer; font-size:11px; line-height:1; flex:none; }
+.card.fold>:not(h3):not(.tabs){ display:none!important; } .card.fold{ min-height:0; }
 </style>
 <div id="dutypop" class="dutypop hide" role="dialog" aria-label="담당 상세"></div>
 
@@ -3575,6 +3578,34 @@ $("tduty").addEventListener("click", e => { e.stopPropagation(); const p = $("du
 document.addEventListener("click", e => { if (!e.target.closest("#dutypop")) $("dutypop").classList.add("hide"); });
 document.addEventListener("keydown", e => { if (e.key === "Escape") $("dutypop").classList.add("hide"); });
 dutyLoad(); setInterval(() => { if (visible()) dutyLoad(); }, 30000);
+
+// ── v670 우측 칸 접기 — 🛰 지수 경계 · 💼 보유 · 🔔 오늘 알림 · 🌓 그림자: 제목을 누르면 접고 펼침(접으면 아랫 칸이 그 자리를 씀) · 브라우저에 기억 · 표시만
+const FOLD = { keys: ["ix", "hold", "alerts", "shadow"], rows: ["minmax(0,2.3fr)", "minmax(0,0.9fr)", "minmax(0,0.9fr)", "auto"] };
+function foldLoad() { try { return JSON.parse(localStorage.getItem("one.fold") || "{}") || {}; } catch (e) { return {}; } }
+function foldApply() {
+  const box = document.querySelector(".a-ix"); if (!box) return;
+  const st = foldLoad(), cards = [...box.children].filter(c => c.classList.contains("card"));
+  cards.forEach((c, i) => {
+    const k = FOLD.keys[i], on = !!st[k], b = c.querySelector(".foldb");
+    c.classList.toggle("fold", on);
+    if (b) { b.textContent = on ? "▸" : "▾"; b.setAttribute("aria-expanded", on ? "false" : "true"); b.title = on ? "눌러서 펼치기" : "눌러서 접기"; }
+  });
+  box.style.gridTemplateRows = cards.some(c => c.classList.contains("fold")) ? cards.map((c, i) => c.classList.contains("fold") ? "auto" : FOLD.rows[i]).join(" ") : "";
+  try { window.dispatchEvent(new Event("resize")); } catch (e) { /* 차트가 다시 크기를 맞춤 */ }
+}
+(function foldInit() {
+  const box = document.querySelector(".a-ix"); if (!box) return;
+  [...box.children].filter(c => c.classList.contains("card")).forEach((c, i) => {
+    const hd = c.querySelector(":scope>h3, :scope>.tabs"); if (!hd) return;
+    const b = document.createElement("button"); b.type = "button"; b.className = "foldb"; hd.insertBefore(b, hd.firstChild);
+    hd.addEventListener("click", () => {
+      const st = foldLoad(), k = FOLD.keys[i]; st[k] = !st[k];
+      try { localStorage.setItem("one.fold", JSON.stringify(st)); } catch (e) { /* 기억 못 해도 이번엔 동작 */ }
+      foldApply();
+    });
+  });
+  foldApply();
+})();
 
 </script>
 </body></html>
