@@ -3549,13 +3549,13 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") closeXP(); }
 
 // ── v669 ⚙ 담당 위젯 — 10분 회차·1분 감시·왕관·리포트·텔레그램을 지금 누가 돌리나(엔진 · Tk 창) · 읽기만(서버 /api/one/duty = engine_mode.json·엔진 상태 파일을 읽기만 · 바꾸기 버튼 없음)
 const DUTY = { d: null };
-const DUTY_WHO = { engine: ["엔진", "e", "eng"], dashboard: ["Tk 창", "d", "dash"], takeover: ["창 이어받음", "t", "warn"], stalled: ["엔진 멈춤", "s", "bad"] };
+const DUTY_WHO = { engine: ["엔진", "e", "eng"], dashboard: ["Tk 창", "d", "dash"], takeover: ["창 이어받음", "t", "warn"], stalled: ["엔진 멈춤", "s", "bad"], idle: ["시간 외", "d", "dash"] };
 function dutyDraw() {
   const d = DUTY.d, el = $("tduty"); if (!d) { el.classList.add("hide"); return; }
   const lv = (d.verdict || {}).level, eng = d.engine || {};
   const cls = lv === "bad" ? "bd" : (d.n_engine ? "on" : "");
   el.className = "chip duty " + cls;
-  const st = eng.state === "on" ? "" : eng.state === "stalled" ? "멈춤" : "꺼짐";   // 정상이면 글자 없음(헤더 폭 아낌 · 상태는 눌러서)
+  const st = eng.state === "on" ? "" : eng.state === "stalled" ? "멈춤" : d.idle ? "시간 외" : "꺼짐";   // 정상이면 글자 없음(헤더 폭 아낌 · 상태는 눌러서)
   el.title = `${eng.text || ""} — 누르면 칸별 담당`;
   el.innerHTML = `<span class="dd ${lv === "bad" ? "bad" : d.n_engine ? "eng" : "dash"}"></span><b>⚙ 엔진 ${d.n_engine}/${d.total}</b>${st ? `<span class="mut">${esc(st)}</span>` : ""}`;
   const p = $("dutypop");
