@@ -345,6 +345,7 @@ td.hcw:focus-visible{ outline:2px solid #1864AB; outline-offset:-2px; }
  <div class="top">
   <span class="brand">📈 한화면</span><span class="tag">읽기 전용 · 이 PC만 · 주문 없음</span>
   <span id="tchips" class="flex items-center gap-2"></span>
+  <button id="tduty" class="chip duty hide" type="button" title="10분 회차 · 1분 감시 · 왕관 · 리포트 · 텔레그램을 지금 누가 돌리나(보기만 · 설정을 바꾸지 않음)"></button>
   <button class="btn b50" id="b50" type="button" title="검증 단계 10개 종합 순위(보기만 · 주문 없음)">🏅 TOP50</button>
   <button class="btn b50" id="bea" type="button" title="상위 수익 공통분모(기간별) · TOP50 적중률(보기만)">🔬 분석</button>
   <button class="btn b50" id="brs" type="button" title="감시 종목 전체에서 지금 15분 ▲안착·시도 · 45·120분 상승 시도 중인 종목(보기만 · 주문 없음)">📈 상승 진입</button>
@@ -516,6 +517,19 @@ td.hcw:focus-visible{ outline:2px solid #1864AB; outline-offset:-2px; }
   <div class="dmft">시스템 출력이며 매수·매도 추천이 아닙니다 · 읽기 전용 · 이 창은 어떤 주문도 내지 않습니다</div>
  </div>
 </div>
+<style>
+.duty{ cursor:pointer; } .duty.on{ border-color:#c4b5fd; background:#f5f3ff; } .duty.wn{ border-color:#fcd34d; background:#fffbeb; } .duty.bd{ border-color:#fca5a5; background:#fef2f2; }
+.dd{ width:8px; height:8px; border-radius:50%; display:inline-block; background:#94a3b8; flex:none; }
+.dd.eng{ background:#7c3aed; } .dd.dash{ background:#94a3b8; } .dd.warn{ background:#d97706; } .dd.bad{ background:#dc2626; }
+.dutypop{ position:fixed; z-index:60; min-width:380px; max-width:92vw; background:#fff; border:1px solid #e2e8f0; border-radius:8px; box-shadow:0 6px 18px rgba(15,23,42,.14); padding:8px 10px; }
+.dutypop h4{ margin:0 0 6px; font-size:12px; font-weight:700; }
+.dutyrow{ display:grid; grid-template-columns:14px 150px 76px 1fr; gap:6px; align-items:center; padding:3px 0; border-top:1px solid #f1f5f9; }
+.dutyrow .w{ font-weight:700; } .dutyrow .w.e{ color:#7c3aed; } .dutyrow .w.d{ color:#64748b; } .dutyrow .w.t{ color:#d97706; } .dutyrow .w.s{ color:#dc2626; }
+.dutyrow .l{ color:#64748b; font-size:11.5px; }
+.dutyv{ margin-top:6px; padding:5px 8px; border-radius:6px; background:#fffbeb; border:1px solid #fde68a; color:#92400e; }
+.dutyv.go{ background:#f0fdf4; border-color:#bbf7d0; color:#166534; } .dutyv.bad{ background:#fef2f2; border-color:#fecaca; color:#991b1b; }
+</style>
+<div id="dutypop" class="dutypop hide" role="dialog" aria-label="담당 상세"></div>
 
 <script>
 /*!
@@ -3530,6 +3544,37 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") closeXP(); }
     inp.addEventListener("blur", () => setTimeout(() => { lst.style.display = "none"; }, 150));
   } catch (e) { /* 찾기 칸만 없음 */ }
 })();
+
+// ── v669 ⚙ 담당 위젯 — 10분 회차·1분 감시·왕관·리포트·텔레그램을 지금 누가 돌리나(엔진 · Tk 창) · 읽기만(서버 /api/one/duty = engine_mode.json·엔진 상태 파일을 읽기만 · 바꾸기 버튼 없음)
+const DUTY = { d: null };
+const DUTY_WHO = { engine: ["엔진", "e", "eng"], dashboard: ["Tk 창", "d", "dash"], takeover: ["창 이어받음", "t", "warn"], stalled: ["엔진 멈춤", "s", "bad"] };
+function dutyDraw() {
+  const d = DUTY.d, el = $("tduty"); if (!d) { el.classList.add("hide"); return; }
+  const lv = (d.verdict || {}).level, eng = d.engine || {};
+  const cls = lv === "bad" ? "bd" : (d.n_engine ? "on" : "");
+  el.className = "chip duty " + cls;
+  const st = eng.state === "on" ? "" : eng.state === "stalled" ? "멈춤" : "꺼짐";   // 정상이면 글자 없음(헤더 폭 아낌 · 상태는 눌러서)
+  el.title = `${eng.text || ""} — 누르면 칸별 담당`;
+  el.innerHTML = `<span class="dd ${lv === "bad" ? "bad" : d.n_engine ? "eng" : "dash"}"></span><b>⚙ 엔진 ${d.n_engine}/${d.total}</b>${st ? `<span class="mut">${esc(st)}</span>` : ""}`;
+  const p = $("dutypop");
+  p.innerHTML = `<h4>⚙ 누가 돌리나 <span class="mut" style="font-weight:400">· ${esc(eng.text || "")} · 보기만 · ${esc(d.at || "")}</span></h4>` +
+    (d.rows || []).map(r => { const w = DUTY_WHO[r.state] || DUTY_WHO.dashboard;
+      return `<div class="dutyrow"><span class="dd ${w[2]}"></span><span>${esc(r.label)}</span><span class="w ${w[1]}">${w[0]}</span><span class="l">${esc(r.last)}</span></div>`; }).join("") +
+    `<div class="dutyv ${lv === "go" ? "go" : lv === "bad" ? "bad" : ""}">🪶 Tk 창 닫아도 되나: ${esc((d.verdict || {}).text || "")}</div>`;
+}
+async function dutyLoad() {
+  try { DUTY.d = await api("/api/one/duty"); } catch (e) { DUTY.d = null; $("dutypop").classList.add("hide"); }   // 서버에 이 칸이 없으면(옛 서버 · 밖에서 보기) 칩만 숨김
+  dutyDraw();
+}
+function dutyPlace() {
+  const b = $("tduty").getBoundingClientRect(), p = $("dutypop");
+  p.style.top = Math.round(b.bottom + 6) + "px";
+  p.style.left = Math.max(8, Math.min(Math.round(b.left), window.innerWidth - p.offsetWidth - 8)) + "px";
+}
+$("tduty").addEventListener("click", e => { e.stopPropagation(); const p = $("dutypop"); p.classList.toggle("hide"); if (!p.classList.contains("hide")) { dutyLoad().then(dutyPlace); dutyPlace(); } });
+document.addEventListener("click", e => { if (!e.target.closest("#dutypop")) $("dutypop").classList.add("hide"); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") $("dutypop").classList.add("hide"); });
+dutyLoad(); setInterval(() => { if (visible()) dutyLoad(); }, 30000);
 
 </script>
 </body></html>
