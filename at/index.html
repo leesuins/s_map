@@ -3560,7 +3560,7 @@ function dutyDraw() {
   p.innerHTML = `<h4>⚙ 누가 돌리나 <span class="mut" style="font-weight:400">· ${esc(eng.text || "")} · 보기만 · ${esc(d.at || "")}</span></h4>` +
     (d.rows || []).map(r => { const w = DUTY_WHO[r.state] || DUTY_WHO.dashboard;
       return `<div class="dutyrow"><span class="dd ${w[2]}"></span><span>${esc(r.label)}</span><span class="w ${w[1]}">${w[0]}</span><span class="l">${esc(r.last)}</span></div>`; }).join("") +
-    `<div class="dutyv ${lv === "go" ? "go" : lv === "bad" ? "bad" : ""}">🪶 Tk 창 닫아도 되나: ${esc((d.verdict || {}).text || "")}</div>`;
+    `<div class="dutyv ${lv === "go" ? "go" : lv === "bad" ? "bad" : ""}">🖥 Tk 창 닫아도 되나: ${esc((d.verdict || {}).text || "")}</div>`;
 }
 async function dutyLoad() {
   try { DUTY.d = await api("/api/one/duty"); } catch (e) { DUTY.d = null; $("dutypop").classList.add("hide"); }   // 서버에 이 칸이 없으면(옛 서버 · 밖에서 보기) 칩만 숨김
