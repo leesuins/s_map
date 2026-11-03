@@ -407,7 +407,7 @@ td.hcw:focus-visible{ outline:2px solid #1864AB; outline-offset:-2px; }
      <div id="ttemp" class="tline hide"></div>
      <div id="ipanes" class="ixgrid"></div>
     </div>
-    <div class="card"><h3>💼 보유 <span class="was">이름·수익률만</span></h3><ul class="list body" id="hold"></ul></div>
+    <div class="card"><h3>💼 보유 <span class="was">수익 중인 종목만</span></h3><ul class="list body" id="hold"></ul></div>
     <div class="card"><h3>🔔 오늘 알림</h3><ul class="list body" id="alerts"></ul></div>
     <div class="card"><h3>🌓 그림자</h3><ul class="list body" id="shadow"></ul></div>
    </div>
@@ -552,6 +552,7 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": 
 const fmt = v => (typeof v === "number" && isFinite(v)) ? Math.round(v).toLocaleString("ko-KR") : "—";
 const f1 = (v, d = 1) => (typeof v === "number" && isFinite(v)) ? v.toFixed(d) : "—";
 const UP = "#D32F2F", DOWN = "#1565C0";
+const pctOnly = v => (v > 0 ? "+" : "") + v.toFixed(2) + "%";   // v678
 const pctS = (v, d = 2) => (typeof v === "number" && isFinite(v)) ? `<b style="color:${v > 0 ? UP : v < 0 ? DOWN : "#495057"}">${v > 0 ? "+" : ""}${v.toFixed(d)}%</b>` : '<span class="mut">—</span>';
 const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 const hm = iso => iso ? String(iso).slice(11, 16) : "—";
@@ -2192,8 +2193,10 @@ function paintMarket(d) {
 
 /* ── 아랫줄 ───────────────────────────────────────────────── */
 function paintBottom(d) {
-  $("hold").innerHTML = (d.holdings || []).map(r => `<li data-c="${esc(r.ticker)}" data-n="${esc(r.name)}" style="cursor:pointer"><b>${esc(r.name)}</b><span style="flex:1"></span>${pctS(r.pnl_pct)}</li>`).join("")
-    || '<li class="mut">보유 없음(또는 잔고 기록 없음)</li>';
+  /* v678 보유 칸 — 수익 중(+)인 종목만 · 큰 글씨 · 수익률 높은 순(웹은 손실 종목을 안 보임 · 표시만 · 매매·손절 규칙 무관) */
+  const holdUp = (d.holdings || []).filter(r => typeof r.pnl_pct === "number" && isFinite(r.pnl_pct) && r.pnl_pct > 0).sort((a, b) => b.pnl_pct - a.pnl_pct);
+  $("hold").innerHTML = holdUp.map(r => `<li data-c="${esc(r.ticker)}" data-n="${esc(r.name)}" style="cursor:pointer;padding-top:7px;padding-bottom:7px;background:${r.pnl_pct >= 5 ? "#FDE8E8" : "#FFF5F5"}" title="${esc(r.name)} ${pctOnly(r.pnl_pct)} — 수익 중인 보유 종목만 보여요"><b style="font-size:15px">${esc(r.name)}</b><span style="flex:1"></span><b style="font-size:18px;font-weight:800;color:${UP}">+${r.pnl_pct.toFixed(2)}%</b></li>`).join("")
+    || '<li class="mut">수익 중인 보유 종목이 없어요</li>';
   const k = d.risk || {};
   const pc = v => typeof v === "number" ? (v * 100).toFixed(2) + "%" : "—";
   // 한도 대비 얼마나 왔나(막대) — 50%↑ 주황 · 80%↑ 빨강
