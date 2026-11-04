@@ -624,6 +624,7 @@ const tw3Sg = v => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(1) +
 const tw3Chip = c => {
   const t = S.tw3 && S.tw3[c]; if (!t || t.k45 == null) return "";
   const k = +t.k45, dn = k < 0, k2 = t.k120 == null ? null : +t.k120;
+  if (!dn) return "";                                   // v688 형 11/5 「매수에 참고할 것만」 — 45분 유지선 위(정상)는 안 띄움(기록은 그대로 · 아래일 때만 경고 칩)
   const tip = `공격형 매수 ${String(t.at).slice(5, 16)} · ${fmt(t.px)}원\n매수 시점 45분 유지선 ${tw3Sg(k)} (${dn ? "아래" : "위"})` +
     (k2 == null ? "" : ` · 120분 유지선 ${tw3Sg(k2)} (${k2 < 0 ? "아래" : "위"})`) + "\n표시만 · 매수·매도 규칙 무관";
   return `<em class="tw3c ${dn ? "dn" : "up"}" title="${esc(tip)}">공${dn ? "↓" : "↑"}${tw3Sg(k)}</em>`;
@@ -1221,6 +1222,7 @@ function paintPane(tf, d) {
   iev.forEach((e, i) => mk.push({ time: e.time, position: e.kind === "up" ? "belowBar" : "aboveBar", color: e.kind === "up" ? "#2B8A3E" : "#D92D20",
     shape: e.kind === "up" ? "arrowUp" : "arrowDown", text: i === iev.length - 1 ? (e.kind === "up" ? "안착" : "이탈") : "" }));
   (d.tw3buy || []).forEach(x => { const k = x.k45 == null ? null : +x.k45, dn = k != null && k < 0;       // v687 공격형 매수 지점 — 매수 시점 45분 유지선 위치(표시만)
+    if (!dn) return;                                    // v688 위(정상)는 차트에도 안 띄움 · 아래만
     mk.push({ time: x.time, position: "aboveBar", shape: "circle", color: dn ? "#E8890C" : "#6B7280", text: k == null ? "공" : "공" + (dn ? "↓" : "↑") + tw3Sg(k) }); });
   mk.sort((a, b) => a.time - b.time);
   p.cs.setMarkers(mk);
