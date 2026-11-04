@@ -618,6 +618,16 @@ const twTip = (k, s) => s.up ? `📈 ${k}분봉 상승 시도 — ${s.at} 신호
   : `↗ ${k}분봉 추세 유지 — ${s.at} 신호 뒤 ${s.rel} 봉이 기준가 ${fmt(s.ref)} 위로 마감\n형 HTS 신호검색식 · 표시만 · HTS 캡처 3건 같은 봉 확인(검증 대기)`;
 const twOne = (k, s, mini) => `<span class="tw ${s.on ? "twr" : "twg"}${s.on ? " twn" : s.up ? " twu" : ""}${mini ? " twm" : ""}" title="${esc(twTip(k, s))}">${s.on ? (mini ? "▼" : "📉") : s.up ? (mini ? "▲" : "📈") : "↗"}${k}</span>`;   // v510 📈 상승 시도(초록 깜빡)
 const twChip = (c, mini) => { const t = S.tw && S.tw[c]; return t ? ["45", "120"].filter(k => t[k]).map(k => " " + twOne(k, t[k], mini)).join("") : ""; };
+// v687 공격형(TW3) 매수 시점 45분 유지선 위치 칩 — 형 11/4 양지사 "다 이탈인데 매수 근거": 35건 중 45분 유지선 아래에서 산 11건은 수익 0건 · 위·같음 24건은 14건 수익.
+//   아래 = 주황 "공↓−5.4%" · 위 = 회색 "공↑+5.1%" · 마우스 = 매수 시각·가격·45분/120분 위치 · 표시만(주문·점수·등급·청산 규칙과 무관 · 값은 매수 시각 앞 끝난 봉으로 다시 계산)
+const tw3Sg = v => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(1) + "%";
+const tw3Chip = c => {
+  const t = S.tw3 && S.tw3[c]; if (!t || t.k45 == null) return "";
+  const k = +t.k45, dn = k < 0, k2 = t.k120 == null ? null : +t.k120;
+  const tip = `공격형 매수 ${String(t.at).slice(5, 16)} · ${fmt(t.px)}원\n매수 시점 45분 유지선 ${tw3Sg(k)} (${dn ? "아래" : "위"})` +
+    (k2 == null ? "" : ` · 120분 유지선 ${tw3Sg(k2)} (${k2 < 0 ? "아래" : "위"})`) + "\n표시만 · 매수·매도 규칙 무관";
+  return `<em class="tw3c ${dn ? "dn" : "up"}" title="${esc(tip)}">공${dn ? "↓" : "↑"}${tw3Sg(k)}</em>`;
+};
 // v562c 형 "언제 후보군에 노출 · 몇 번 · 첫 노출 이후 ±% 를 목록에 약식으로" — 후보 노출 추적 칩(쌍분석과 별개)(경과일·첫 노출 이후 %·▶ 매수 구간) · 표시만
 // ▶(매수 구간)만 보라로 서서히 깜빡(v562j) · 레이더 악화는 빨간 테두리 ⚠보류 · 자세한 건 마우스(또는 후보노출_보기.vbs)
 const pxCss = () => {
@@ -1210,6 +1220,8 @@ function paintPane(tf, d) {
   const iev = d.ichi_ev || [];                                  // v511 15분 칸 ▲안착(초록)·▼이탈(빨강) — 가장 최근 것만 글자
   iev.forEach((e, i) => mk.push({ time: e.time, position: e.kind === "up" ? "belowBar" : "aboveBar", color: e.kind === "up" ? "#2B8A3E" : "#D92D20",
     shape: e.kind === "up" ? "arrowUp" : "arrowDown", text: i === iev.length - 1 ? (e.kind === "up" ? "안착" : "이탈") : "" }));
+  (d.tw3buy || []).forEach(x => { const k = x.k45 == null ? null : +x.k45, dn = k != null && k < 0;       // v687 공격형 매수 지점 — 매수 시점 45분 유지선 위치(표시만)
+    mk.push({ time: x.time, position: "aboveBar", shape: "circle", color: dn ? "#E8890C" : "#6B7280", text: k == null ? "공" : "공" + (dn ? "↓" : "↑") + tw3Sg(k) }); });
   mk.sort((a, b) => a.time - b.time);
   p.cs.setMarkers(mk);
   ov60(p, tf, d);
@@ -1902,6 +1914,7 @@ function paintLists(d) {
   try { msPaint(); } catch (e) { console.error("📶 다중 분봉 칸", e); }
   S.rt = d.retest || {};
   S.tw = d.twarn || {};
+  S.tw3 = d.tw3buy || {};          // v687 공격형 매수 시점 유지선 칩(표시만)
   S.bd = d.badges || {};          // v593 초록(손실 억제 필터 통과)·주황(업종 쏠림) 타일 재료 — 허브 밖 목록에도(표시만)
   S.px = d.expo || {};
   try { xpPaint(); } catch (e) { /* 팝업이 닫혀 있거나 아직 없음 */ }
