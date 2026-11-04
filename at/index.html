@@ -2533,11 +2533,14 @@ const CVB = {
     let li = -1;
     for (let i = n - 1; i >= 0; i--) { if (new Date(T[i] * 1000).toISOString().slice(0, 10).replace(/-/g, "") <= day) { li = i; break; } }
     const dk = i => new Date(T[i] * 1000).toISOString().slice(0, 10).replace(/-/g, "");
-    const pre = +tf === 5 ? 312 : 286, later = n > 0 && dk(n - 1) > day;
+    /* v685 */ // 형 11/4 「차트 앞부분(봉 진행 방향) 보이게」 B안 — 기준일 하루 + 다음 거래일 한 칸만 크게(하루 봉 수: 5분 78 · 15분 26 · 45분 9 · 120분 3). 기준일 뒤 거래일이 2일 이상이면 앞쪽 3봉 여백
+    const DB = Math.max(2, Math.round(390 / +tf)), pre = +tf === 5 ? 312 : 286, later = n > 0 && dk(n - 1) > day;
     let fi = -1; for (let i = 0; i < n; i++) { if (dk(i) >= day) { fi = i; break; } }
-    // 기준일 뒤 봉이 아직 없으면(장 마감 후·다음날 개장 전) 기준일 하루 전체 + 앞쪽 조금 / 뒤 봉이 있으면 기준일 마지막 봉 조금 앞부터
-    const from = Math.max(0, later && li >= 0 ? li - pre : fi >= 0 ? fi - (+tf === 5 ? 312 : 286) : n - (+tf === 5 ? 390 : 312));   /* v684 */ // 형 "15분 12거래일" — 15분만 기준일 11거래일 전(286봉)부터 = 화면에 약 12거래일(5분은 v683 그대로 약 5일) /* v683 */ // 형 "5분 5거래일 · 15분 8거래일" — 기준일이 어제면 5분 4거래일 전(312봉)·15분 7거래일 전(182봉)부터 = 화면에 5분 약 5일 · 15분 약 8일(v682 값 234·130봉) /* v682 */ // 형 "5분 4일 · 15분 6일 정도" — 기준일이 어제면 5분 기준일 3거래일 전(234봉)·15분 5거래일 전(130봉)부터 = 화면에 5분 약 4거래일 · 15분 약 6거래일(v681 첫 값 156·78봉) · 기준일 뒤 봉이 없으면 같은 폭으로 기준일 앞에서
-    ch.timeScale().setVisibleLogicalRange({ from: from - 0.5, to: n - 1 + 3 });
+    let wi = -1; if (later) for (let i = Math.max(0, li + 1); i < n; i++) { if (dk(i) > day) { wi = i; break; } }
+    /* v686 */ // 형 「며칠치는 어제 지정했는데」 — 며칠치 폭은 v684 값 그대로(5분 기준일 4거래일 전 312봉 · 15분 11거래일 전 286봉부터 = 5분 약 5일 · 15분 약 12일) + 오른쪽에 다음 거래일 한 칸만 더(A안)
+    const from = Math.max(0, later && li >= 0 ? li - pre : fi >= 0 ? fi - pre : n - (+tf === 5 ? 390 : 312)), one = later && wi >= 0 && dk(n - 1) === dk(wi);
+    const to = !later ? n - 1 + DB : one ? wi + DB : n - 1 + 3;
+    ch.timeScale().setVisibleLogicalRange({ from: from - 0.5, to });
     // 세로(가격)도 봉 기준으로: 멀리 떨어진 보조선(60선·구름·120선 등)이 눈금을 아래로 끌어내려 봉이 위에 몰리던 것 — 선은 눈금 계산에서만 뺌(화면 안 구간은 그대로 그려짐)
     const lines = [];
     (p.trends || []).forEach(v => { if (v && v.applyOptions && v.seriesType) lines.push(v); });                 // 추세선도 눈금에서 뺌
