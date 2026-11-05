@@ -2147,8 +2147,84 @@ function ixB(p, m) {
   if (!ft) { ft = document.createElement("div"); ft.className = "ixft"; lg.after(ft); }
   ft.innerHTML = `<span title="${esc(ixKo(m.line1))}">${esc(ixKo(m.line1))}</span>` + (m.line2 ? `<span style="flex:1"></span><span class="${m.full_break ? "fb" : ""}" title="${esc(ixKo(m.line2))}">${esc(ixKo(m.line2))}</span>` : "");
 }
+/* ── v690 ⚠ 시장 지속 하락 / ✅ 반등 진행 카드 — 형 11/5 「조합 ②」(사다리 + 차트). 오른쪽 위에 떠 있고 접을 수 있음(아무것도 막지 않음).
+   자료 = 이미 받는 /api/one/market 의 지수 rec_view(회복 조건 ✓/✗)·오늘 5분봉·VWAP·EMA20 — 읽기만 · 표시만 · 주문·점수·매수 규칙과 무관(신규 매수를 막지 않음).
+   단계 기준(시안 값 · 형이 바꿀 수 있음): ① 하락 지속 = EMA20·느린26선 아래 · ② 바닥 다지기 = 둘 위(VWAP 아래) · ③ 반등 확인 = VWAP 위 · ④ 추세 회복 = 일봉 20일선 위.
+   보이는 때: 오늘 5분봉이 있고 두 지수 중 하나가 시가 대비 −1.0% 이하일 때만(평소엔 숨김). 단계가 바뀌면 접어 둔 것도 다시 펼침. */
+const MW_MIN = -1.0, MW_STG = ["하락 지속", "바닥 다지기", "반등 확인", "추세 회복"], MW_COL = ["#E0252B", "#E08A00", "#7AB317", "#16994A"], MW_NO = "①②③④";
+const MW = { fold: false, sig: "" };
+function mwStage(m) {
+  const it = (m.rec_view && m.rec_view.items) || []; if (!it.length) return null;
+  const ok = n => it.some(x => x.label === n && x.ok);
+  let s = 0; if (ok("EMA20") && ok("느린26")) { s = 1; if (ok("VWAP")) { s = 2; if (ok("일봉20일")) s = 3; } }
+  return s;
+}
+function mwNeed(m, s) {                                            // 다음 단계로 가려고 아직 올라가야 하는 선들 [라벨, 거리%]
+  const want = s === 0 ? ["EMA20", "느린26"] : s === 1 ? ["VWAP"] : s === 2 ? ["일봉20일"] : [];
+  return ((m.rec_view && m.rec_view.items) || []).filter(x => want.includes(x.label) && !x.ok && isFinite(Number(x.need))).map(x => [x.label, Number(x.need)]);
+}
+function mwSpark(m, col, W, H) {
+  const bars = (m.bars || []).filter(b => typeof b.close === "number"); if (bars.length < 2) return "";
+  const t0 = bars[0].time - (bars[0].time % 86400) + 9 * 3600, T = 77 * 300, pad = 5, ln = k => ((m.lines || {})[k] || []).filter(p => typeof p.value === "number");
+  const vw = ln("vwap"), em = ln("ema20"), all = bars.map(b => b.close).concat(vw.map(p => p.value), em.map(p => p.value));
+  let lo = Math.min(...all), hi = Math.max(...all); const sp = (hi - lo) || 1; lo -= sp * .06; hi += sp * .06;
+  const X = t => pad + (W - 2 * pad) * Math.max(0, Math.min(1, (t - t0) / T)), Y = v => pad + (H - 2 * pad) * (1 - (v - lo) / (hi - lo));
+  const pl = (a, g) => a.map(g).map((q, i) => (i ? "L" : "M") + q[0].toFixed(1) + "," + q[1].toFixed(1)).join("");
+  const last = bars[bars.length - 1], vl = vw.length ? vw[vw.length - 1].value : null;
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-hidden="true" style="display:block;background:#F7F8FA;border-radius:6px">`
+    + (vw.length ? `<path d="${pl(vw, p => [X(p.time), Y(p.value)])}" fill="none" stroke="#E08A00" stroke-width="1.7" stroke-dasharray="4 3"/>` : "")
+    + (em.length ? `<path d="${pl(em, p => [X(p.time), Y(p.value)])}" fill="none" stroke="#2F6FDE" stroke-width="1.6"/>` : "")
+    + `<path d="${pl(bars, b => [X(b.time), Y(b.close)])}" fill="none" stroke="#1B2430" stroke-width="2.1" stroke-linejoin="round"/>`
+    + `<circle cx="${X(last.time).toFixed(1)}" cy="${Y(last.close).toFixed(1)}" r="3.8" fill="${col}" stroke="#fff" stroke-width="1"/></svg>`;
+}
+function mwCss() {
+  if ($("mwcss")) return;
+  const st = document.createElement("style"); st.id = "mwcss";
+  st.textContent = `
+#mktwarn{position:fixed;right:14px;top:112px;z-index:30;width:440px;max-width:calc(100vw - 28px);background:#fff;border:4px solid var(--mc);border-radius:11px;box-shadow:0 6px 18px rgba(0,0,0,.30);overflow:hidden;font-family:inherit;color:#1B2430}
+#mktwarn.red{animation:mwp 1.4s infinite}
+@keyframes mwp{0%,100%{box-shadow:0 0 0 0 rgba(224,37,43,.65),0 6px 18px rgba(0,0,0,.30)}50%{box-shadow:0 0 0 10px rgba(224,37,43,0),0 6px 18px rgba(0,0,0,.30)}}
+@media (prefers-reduced-motion:reduce){#mktwarn.red{animation:none}}
+#mktwarn .mwh{display:flex;align-items:center;gap:8px;background:var(--mc);color:#fff;padding:8px 8px 8px 11px;font-size:18px;font-weight:900;line-height:1.2}
+#mktwarn .mwh .mwt{flex:1;min-width:0}#mktwarn .mwh .mwx{border:0;border-radius:6px;background:rgba(255,255,255,.25);color:#fff;font-size:15px;font-weight:900;width:26px;height:24px;cursor:pointer;line-height:1}
+#mktwarn .mwb{display:grid;grid-template-columns:138px 1fr;gap:8px;padding:6px 10px 2px;align-items:start}
+#mktwarn .mwn{font-size:15px;font-weight:900}#mktwarn .mwn small{font-size:12px;font-weight:800;color:#C62828;margin-left:3px}
+#mktwarn .mwl{display:flex;flex-direction:column;gap:2px;margin-top:3px}
+#mktwarn .mwl span{display:block;height:17px;line-height:17px;border-radius:9px;padding:0 6px;font-size:11px;font-weight:700;background:#E6EAF0;color:#8A94A4;white-space:nowrap;overflow:hidden}
+#mktwarn .mwl span.on,#mktwarn .mwl span.dn{color:#fff;background:var(--sc)}#mktwarn .mwl span.on{font-weight:900}
+#mktwarn .mwf{padding:3px 10px 9px;font-size:11px;font-weight:700;color:#4A5668;line-height:1.35}
+#mktwarn .mwf b{color:#1B2430}
+#mktwarn.pill{width:auto;cursor:pointer;border-radius:999px;border-width:3px}
+#mktwarn.pill .mwh{font-size:13px;padding:5px 12px;gap:6px}#mktwarn.pill .mwx{display:none}`;
+  document.head.appendChild(st);
+}
+function mktWarn(d) {
+  mwCss();
+  let el = $("mktwarn"); if (!el) { el = document.createElement("div"); el.id = "mktwarn"; el.hidden = true; document.body.appendChild(el);
+    el.addEventListener("click", e => { if (e.target.closest(".mwx")) MW.fold = true; else if (el.classList.contains("pill")) MW.fold = false; else return; mktWarn(S.market || d); }); }
+  const ix = (d && d.index) || {}, today = todayStr();
+  const L = ["KOSPI", "KOSDAQ"].map(k => ({ k, m: ix[k] || {} })).filter(o => o.m.day === today && typeof o.m.day_pct === "number" && (o.m.bars || []).length > 1);
+  const stg = L.map(o => ({ ...o, s: mwStage(o.m) })).filter(o => o.s !== null);
+  if (!stg.length || !L.some(o => o.m.day_pct <= MW_MIN)) { el.hidden = true; return; }
+  const mx = Math.max(...stg.map(o => o.s)), up = mx >= 2, c = MW_COL[Math.max(0, Math.min(3, mx === 1 ? 1 : mx))];
+  const head = mx === 0 ? "⚠ 시장 지속 하락 — 1단계" : mx === 1 ? "⚠ 시장 지속 하락 — 2단계 · 바닥 다지기" : mx === 2 ? "✅ 반등 진행 — 매수 고려" : "✅ 추세 회복 — 매수 고려";
+  const sig = stg.map(o => o.k + o.s).join(); if (sig !== MW.sig) { MW.sig = sig; MW.fold = false; }
+  const hc = up ? "#16994A" : mx === 1 ? "#C77700" : "#E0252B";
+  el.style.setProperty("--mc", hc); el.classList.toggle("red", mx === 0); el.classList.toggle("pill", MW.fold); el.hidden = false;
+  if (MW.fold) { el.innerHTML = `<div class="mwh" title="눌러서 펼치기"><span class="mwt">${esc(head)} · ${stg.map(o => esc(o.m.name || o.k) + " " + esc(ixPcW(o.m.day_pct))).join(" ")} ▸</span></div>`; return; }
+  const need = stg.map(o => ({ o, n: mwNeed(o.m, o.s) })).filter(x => x.n.length).map(x => `${esc(x.o.m.name || x.o.k)} ${x.n.map(([l, v]) => esc(l) + " +" + v.toFixed(2) + "%").join(" · ")}`);
+  const blk = o => `<div class="mwb" style="--sc:${MW_COL[o.s]}"><div><div class="mwn">${esc(o.m.name || o.k)}<small>${esc(ixPcW(o.m.day_pct))}</small></div><div class="mwl">`
+    + [3, 2, 1, 0].map(i => `<span class="${i === o.s ? "on" : i < o.s ? "dn" : ""}" style="${i < o.s || i === o.s ? "" : ""}--sc:${MW_COL[i]}">${MW_NO[i]} ${MW_STG[i]}${i === o.s ? " ◀" : ""}</span>`).join("")
+    + `</div></div>${mwSpark(o.m, MW_COL[o.s], 250, 92)}</div>`;
+  el.innerHTML = `<div class="mwh"><span class="mwt">${esc(head)}</span><button class="mwx" type="button" title="접기 — 단계가 바뀌면 다시 펼쳐져요">–</button></div>`
+    + stg.map(blk).join("")
+    + `<div class="mwf"><b>━</b> 지수 <b style="color:#E08A00">╌</b> VWAP <b style="color:#2F6FDE">━</b> EMA20 · ${need.length ? "다음 단계까지 — " + need.join(" · ") : "5분봉 조건 충족"}${up ? "<br><b>신규 매수는 평소 규칙대로 판단 — 이 카드는 표시만 합니다.</b>" : ""}</div>`;
+  el.title = "표시만 · 주문·점수·매수 규칙과 무관 · 단계 기준은 시안 값(바꿀 수 있음) · 시스템 출력이며 추천 아님";
+}
+const ixPcW = v => (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(2) + "%";
 function paintMarket(d) {
   S.market = d;
+  try { mktWarn(d); } catch (e) { /* v690 경고 카드는 없어도 됨 */ }
   try { d1Bar(); } catch (e) { /* v573 시장 5칸은 없어도 됨 */ }
   const host = $("ipanes");
   ["KOSPI", "KOSDAQ"].forEach(k => {
