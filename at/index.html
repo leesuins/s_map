@@ -617,6 +617,7 @@ const twTip = (k, s) => s.up ? `📈 ${k}분봉 상승 시도 — ${s.at} 신호
   : s.on ? `📉 ${k}분봉 추세 하락 경고 — ${s.at} 봉에서 신호\n기준가 ${fmt(s.ref)}(그 봉 종가) · 이 위로 마감하면 추세 유지로 풀림\n형 HTS 신호검색식 · 표시만 · HTS 캡처 3건 같은 봉 확인(검증 대기)`
   : `↗ ${k}분봉 추세 유지 — ${s.at} 신호 뒤 ${s.rel} 봉이 기준가 ${fmt(s.ref)} 위로 마감\n형 HTS 신호검색식 · 표시만 · HTS 캡처 3건 같은 봉 확인(검증 대기)`;
 const twOne = (k, s, mini) => `<span class="tw ${s.on ? "twr" : "twg"}${s.on ? " twn" : s.up ? " twu" : ""}${mini ? " twm" : ""}" title="${esc(twTip(k, s))}">${s.on ? (mini ? "▼" : "📉") : s.up ? (mini ? "▲" : "📈") : "↗"}${k}</span>`;   // v510 📈 상승 시도(초록 깜빡)
+const twRaw = c => (S.tw && S.tw[c]) || null;   // v695 선발 모니터(one_selmon.js)가 PRO15 신호(S.tw)를 읽기만 하려고 — 표시만
 const twChip = (c, mini) => { const t = S.tw && S.tw[c]; return t ? ["45", "120"].filter(k => t[k]).map(k => " " + twOne(k, t[k], mini)).join("") : ""; };
 // v687 공격형(TW3) 매수 시점 45분 유지선 위치 칩 — 형 11/4 양지사 "다 이탈인데 매수 근거": 35건 중 45분 유지선 아래에서 산 11건은 수익 0건 · 위·같음 24건은 14건 수익.
 //   아래 = 주황 "공↓−5.4%" · 위 = 회색 "공↑+5.1%" · 마우스 = 매수 시각·가격·45분/120분 위치 · 표시만(주문·점수·등급·청산 규칙과 무관 · 값은 매수 시각 앞 끝난 봉으로 다시 계산)
