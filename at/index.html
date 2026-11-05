@@ -2147,11 +2147,14 @@ function ixB(p, m) {
   if (!ft) { ft = document.createElement("div"); ft.className = "ixft"; lg.after(ft); }
   ft.innerHTML = `<span title="${esc(ixKo(m.line1))}">${esc(ixKo(m.line1))}</span>` + (m.line2 ? `<span style="flex:1"></span><span class="${m.full_break ? "fb" : ""}" title="${esc(ixKo(m.line2))}">${esc(ixKo(m.line2))}</span>` : "");
 }
-/* ── v690 ⚠ 시장 지속 하락 / ✅ 반등 진행 카드 — 형 11/5 「조합 ②」(사다리 + 차트). 오른쪽 위에 떠 있고 접을 수 있음(아무것도 막지 않음).
-   자료 = 이미 받는 /api/one/market 의 지수 rec_view(회복 조건 ✓/✗)·오늘 5분봉·VWAP·EMA20 — 읽기만 · 표시만 · 주문·점수·매수 규칙과 무관(신규 매수를 막지 않음).
+/* ── v690 ⚠ 시장 지속 하락 / ✅ 반등 진행 큰 패널 — 형 11/5 「조합 ② → 빈 영역 크게 → 시안 3-③(타임라인 막대형)」.
+   v691 큰 패널: 오른쪽 위에 떠 있고 접을 수 있음(아무것도 막지 않음). 오늘 시가 대비 두 지수 선 + 5분 골든/데드 구간 막대(전환5·기준13) + 4단계 + 매수 고려 체크.
+   자료 = 이미 받는 /api/one/market(지수 5분봉·선·rec_view·rebound·수급) + /api/one/bottom 의 계좌 리스크 — 읽기만 · 표시만 · 주문·점수·매수 규칙과 무관(신규 매수를 막지 않음).
    단계 기준(시안 값 · 형이 바꿀 수 있음): ① 하락 지속 = EMA20·느린26선 아래 · ② 바닥 다지기 = 둘 위(VWAP 아래) · ③ 반등 확인 = VWAP 위 · ④ 추세 회복 = 일봉 20일선 위.
+   골든/데드 = 5분 전환5선이 기준13선 위(골든)/아래(데드) — 주식 5분 차트의 단순 20/60 기준과 다름(지수엔 오늘 봉만 있어 60봉이 13:55에야 생김).
    보이는 때: 오늘 5분봉이 있고 두 지수 중 하나가 시가 대비 −1.0% 이하일 때만(평소엔 숨김). 단계가 바뀌면 접어 둔 것도 다시 펼침. */
 const MW_MIN = -1.0, MW_STG = ["하락 지속", "바닥 다지기", "반등 확인", "추세 회복"], MW_COL = ["#E0252B", "#E08A00", "#7AB317", "#16994A"], MW_NO = "①②③④";
+const MW_G = "#16994A", MW_D = "#2F6FDE", MW_LC = { KOSPI: "#1B2430", KOSDAQ: "#8A2BE2" };
 const MW = { fold: false, sig: "" };
 function mwStage(m) {
   const it = (m.rec_view && m.rec_view.items) || []; if (!it.length) return null;
@@ -2159,66 +2162,109 @@ function mwStage(m) {
   let s = 0; if (ok("EMA20") && ok("느린26")) { s = 1; if (ok("VWAP")) { s = 2; if (ok("일봉20일")) s = 3; } }
   return s;
 }
-function mwNeed(m, s) {                                            // 다음 단계로 가려고 아직 올라가야 하는 선들 [라벨, 거리%]
-  const want = s === 0 ? ["EMA20", "느린26"] : s === 1 ? ["VWAP"] : s === 2 ? ["일봉20일"] : [];
-  return ((m.rec_view && m.rec_view.items) || []).filter(x => want.includes(x.label) && !x.ok && isFinite(Number(x.need))).map(x => [x.label, Number(x.need)]);
+const mwHm = t => { const x = new Date(t * 1000); return String(x.getUTCHours()).padStart(2, "0") + ":" + String(x.getUTCMinutes()).padStart(2, "0"); };
+const mwIdxHm = i => { const t = 540 + i * 5; return String(Math.floor(t / 60)).padStart(2, "0") + ":" + String(t % 60).padStart(2, "0"); };
+function mwData(m) {                                              // 시가 대비 % 선 + 골든/데드 구간 + 저점
+  const B = (m.bars || []).filter(b => typeof b.close === "number" && typeof b.open === "number"); if (B.length < 2) return null;
+  const o = B[0].open, t0 = B[0].time - (B[0].time % 86400) + 9 * 3600, idx = t => Math.round((t - t0) / 300);
+  const ln = k => new Map(((m.lines || {})[k] || []).map(p => [p.time, p.value])), cv = ln("conv"), bs = ln("base");
+  const pts = B.map(b => ({ i: idx(b.time), t: b.time, v: (b.close / o - 1) * 100 })), zones = [];
+  B.forEach(b => { const c = cv.get(b.time), s = bs.get(b.time); if (c == null || s == null) return; const g = c > s, i = idx(b.time), z = zones[zones.length - 1];
+    if (z && z.g === g) z.i1 = i; else zones.push({ g, i0: i, i1: i }); });
+  let li = 0; pts.forEach((p, j) => { if (p.v <= pts[li].v) li = j; });
+  const mb = /^(\d\d):(\d\d)\s.*MAJOR_TREND_BREAK/.exec(String(m.line1 || ""));
+  return { pts, zones, low: pts[li], last: pts[pts.length - 1], brk: mb ? (+mb[1] * 60 + +mb[2] - 540) / 5 : null };
 }
-function mwSpark(m, col, W, H) {
-  const bars = (m.bars || []).filter(b => typeof b.close === "number"); if (bars.length < 2) return "";
-  const t0 = bars[0].time - (bars[0].time % 86400) + 9 * 3600, T = 77 * 300, pad = 5, ln = k => ((m.lines || {})[k] || []).filter(p => typeof p.value === "number");
-  const vw = ln("vwap"), em = ln("ema20"), all = bars.map(b => b.close).concat(vw.map(p => p.value), em.map(p => p.value));
-  let lo = Math.min(...all), hi = Math.max(...all); const sp = (hi - lo) || 1; lo -= sp * .06; hi += sp * .06;
-  const X = t => pad + (W - 2 * pad) * Math.max(0, Math.min(1, (t - t0) / T)), Y = v => pad + (H - 2 * pad) * (1 - (v - lo) / (hi - lo));
-  const pl = (a, g) => a.map(g).map((q, i) => (i ? "L" : "M") + q[0].toFixed(1) + "," + q[1].toFixed(1)).join("");
-  const last = bars[bars.length - 1], vl = vw.length ? vw[vw.length - 1].value : null;
-  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-hidden="true" style="display:block;background:#F7F8FA;border-radius:6px">`
-    + (vw.length ? `<path d="${pl(vw, p => [X(p.time), Y(p.value)])}" fill="none" stroke="#E08A00" stroke-width="1.7" stroke-dasharray="4 3"/>` : "")
-    + (em.length ? `<path d="${pl(em, p => [X(p.time), Y(p.value)])}" fill="none" stroke="#2F6FDE" stroke-width="1.6"/>` : "")
-    + `<path d="${pl(bars, b => [X(b.time), Y(b.close)])}" fill="none" stroke="#1B2430" stroke-width="2.1" stroke-linejoin="round"/>`
-    + `<circle cx="${X(last.time).toFixed(1)}" cy="${Y(last.close).toFixed(1)}" r="3.8" fill="${col}" stroke="#fff" stroke-width="1"/></svg>`;
+function mwZoneTxt(D) {                                           // 지금 구간: ▼ 데드 41봉째 · 12:00~ (3시간 25분)
+  const z = D.zones[D.zones.length - 1]; if (!z) return ["", "#6B7687"];
+  const n = D.last.i - z.i0 + 1, h = Math.floor(n * 5 / 60), mi = (n * 5) % 60;
+  return [`${z.g ? "▲ 골든" : "▼ 데드"} ${n}봉째 · ${mwIdxHm(z.i0)}~ (${h ? h + "시간 " : ""}${mi}분)`, z.g ? MW_G : MW_D];
+}
+function mwChart(L) {                                             // L = [{k,m,D}] · 오늘 시가 대비 % 선 두 개 + 아래 골든/데드 막대 두 줄
+  const W = 650, H = 196, pl = 36, pr = 100, pt = 12, pb = 62, all = L.flatMap(o => o.D.pts.map(p => p.v));
+  const lo = Math.floor((Math.min(...all, -1) - 0.4) / 2) * 2, hi = Math.max(0.6, Math.max(...all) + 0.3), step = (hi - lo) > 7 ? 2 : 1;
+  const X = i => pl + (W - pl - pr) * Math.max(0, Math.min(1, i / 77)), Y = v => pt + (H - pt - pb) * (1 - (v - lo) / (hi - lo));
+  let s = `<rect width="${W}" height="${H}" rx="8" fill="#F7F8FA"/>`;
+  for (let g = 0; g >= lo; g -= step) s += `<line x1="${pl}" x2="${W - pr}" y1="${Y(g).toFixed(1)}" y2="${Y(g).toFixed(1)}" stroke="${g === 0 ? "#7B8697" : "#DDE3EB"}"/><text x="${pl - 5}" y="${(Y(g) + 4).toFixed(1)}" text-anchor="end" font-size="12" font-weight="800" fill="#6B7687">${g < 0 ? "−" : ""}${Math.abs(g)}%</text>`;
+  L.forEach(o => { s += `<polyline points="${o.D.pts.map(p => X(p.i).toFixed(1) + "," + Y(p.v).toFixed(1)).join(" ")}" fill="none" stroke="${MW_LC[o.k] || "#1B2430"}" stroke-width="3.4" stroke-linejoin="round"/>`; });
+  const ev = (i, txt, anc) => i == null || i < 0 || i > 77 ? "" : `<line x1="${X(i).toFixed(1)}" x2="${X(i).toFixed(1)}" y1="${pt}" y2="${H - pb}" stroke="#E0252B" stroke-dasharray="4 3" stroke-width="2"/><text x="${(X(i) + (anc === "end" ? -4 : 4)).toFixed(1)}" y="${pt + 11}" text-anchor="${anc}" font-size="12" font-weight="900" fill="#E0252B">${txt}</text>`;
+  const brks = [...new Set(L.map(o => o.D.brk).filter(v => v != null))], lows = [...new Set(L.map(o => o.D.low.i))];
+  if (brks.length) s += ev(brks[0], mwIdxHm(brks[0]) + " 완전 이탈", "start");
+  if (lows.length) s += ev(lows[0], mwIdxHm(lows[0]) + " 저점", "end");
+  L.forEach(o => { const p = o.D.last; s += `<text x="${(X(77) + 8).toFixed(1)}" y="${(Y(p.v) + 5).toFixed(1)}" font-size="13" font-weight="900" fill="${MW_LC[o.k] || "#1B2430"}">${esc(o.m.name || o.k)} ${esc(ixPcW(o.m.day_pct))}</text>`; });
+  L.forEach((o, r) => { const y0 = H - pb + 8 + r * 19;
+    s += `<text x="${pl - 5}" y="${y0 + 13}" text-anchor="end" font-size="11.5" font-weight="900" fill="#4A5668">${esc(o.m.name || o.k)}</text>`;
+    o.D.zones.forEach(z => { const x0 = X(z.i0), x1 = X(z.i1 + 1), c = z.g ? MW_G : MW_D;
+      s += `<rect x="${x0.toFixed(1)}" y="${y0}" width="${Math.max(x1 - x0 - 1, 2).toFixed(1)}" height="16" rx="4" fill="${c}"/>` + (x1 - x0 > 40 ? `<text x="${((x0 + x1) / 2).toFixed(1)}" y="${y0 + 12.5}" text-anchor="middle" font-size="11.5" font-weight="900" fill="#fff">${z.g ? "골든" : "데드"} ${mwIdxHm(z.i0)}</text>` : ""); }); });
+  for (let h = 9; h <= 15; h++) s += `<text x="${X((h - 9) * 12).toFixed(1)}" y="${H - 6}" text-anchor="middle" font-size="12" font-weight="800" fill="#6B7687">${String(h).padStart(2, "0")}시</text>`;
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block" aria-hidden="true">${s}</svg>`;
 }
 function mwCss() {
   if ($("mwcss")) return;
   const st = document.createElement("style"); st.id = "mwcss";
   st.textContent = `
-#mktwarn{position:fixed;right:14px;top:112px;z-index:30;width:440px;max-width:calc(100vw - 28px);background:#fff;border:4px solid var(--mc);border-radius:11px;box-shadow:0 6px 18px rgba(0,0,0,.30);overflow:hidden;font-family:inherit;color:#1B2430}
+#mktwarn{position:fixed;right:16px;top:100px;z-index:30;width:min(1110px,calc(100vw - 32px));background:#fff;border:5px solid var(--mc);border-radius:14px;box-shadow:0 10px 28px rgba(0,0,0,.35);overflow:hidden;font-family:inherit;color:#1B2430;max-height:calc(100vh - 116px);overflow-y:auto}
 #mktwarn.red{animation:mwp 1.4s infinite}
-@keyframes mwp{0%,100%{box-shadow:0 0 0 0 rgba(224,37,43,.65),0 6px 18px rgba(0,0,0,.30)}50%{box-shadow:0 0 0 10px rgba(224,37,43,0),0 6px 18px rgba(0,0,0,.30)}}
+@keyframes mwp{0%,100%{box-shadow:0 0 0 0 rgba(224,37,43,.65),0 10px 28px rgba(0,0,0,.35)}50%{box-shadow:0 0 0 12px rgba(224,37,43,0),0 10px 28px rgba(0,0,0,.35)}}
 @media (prefers-reduced-motion:reduce){#mktwarn.red{animation:none}}
-#mktwarn .mwh{display:flex;align-items:center;gap:8px;background:var(--mc);color:#fff;padding:8px 8px 8px 11px;font-size:18px;font-weight:900;line-height:1.2}
-#mktwarn .mwh .mwt{flex:1;min-width:0}#mktwarn .mwh .mwx{border:0;border-radius:6px;background:rgba(255,255,255,.25);color:#fff;font-size:15px;font-weight:900;width:26px;height:24px;cursor:pointer;line-height:1}
-#mktwarn .mwb{display:grid;grid-template-columns:138px 1fr;gap:8px;padding:6px 10px 2px;align-items:start}
-#mktwarn .mwn{font-size:15px;font-weight:900}#mktwarn .mwn small{font-size:12px;font-weight:800;color:#C62828;margin-left:3px}
-#mktwarn .mwl{display:flex;flex-direction:column;gap:2px;margin-top:3px}
-#mktwarn .mwl span{display:block;height:17px;line-height:17px;border-radius:9px;padding:0 6px;font-size:11px;font-weight:700;background:#E6EAF0;color:#8A94A4;white-space:nowrap;overflow:hidden}
-#mktwarn .mwl span.on,#mktwarn .mwl span.dn{color:#fff;background:var(--sc)}#mktwarn .mwl span.on{font-weight:900}
-#mktwarn .mwf{padding:3px 10px 9px;font-size:11px;font-weight:700;color:#4A5668;line-height:1.35}
-#mktwarn .mwf b{color:#1B2430}
-#mktwarn.pill{width:auto;cursor:pointer;border-radius:999px;border-width:3px}
-#mktwarn.pill .mwh{font-size:13px;padding:5px 12px;gap:6px}#mktwarn.pill .mwx{display:none}`;
+#mktwarn .mwh{display:flex;align-items:center;gap:12px;height:44px;background:var(--mc);color:#fff;padding:0 10px 0 16px;font-weight:900}
+#mktwarn .mwh .mwt{font-size:25px;letter-spacing:-.5px;white-space:nowrap}#mktwarn .mwh .mwr{flex:1;text-align:right;font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#mktwarn .mwh .mwx{border:0;border-radius:7px;background:rgba(255,255,255,.28);color:#fff;font-size:18px;font-weight:900;width:30px;height:28px;cursor:pointer;line-height:1}
+#mktwarn .mwbody{display:flex;gap:16px;padding:8px 14px;flex-wrap:wrap}
+#mktwarn .mwlf{flex:1 1 520px;min-width:0}#mktwarn .mwrt{flex:0 1 392px;min-width:300px;border-left:2px solid #E3E8EF;padding-left:14px}
+#mktwarn .mwk{font-size:13px;font-weight:800;color:#6B7687;margin-bottom:3px}
+#mktwarn .mwtx{font-size:12.5px;font-weight:700;color:#4A5668;line-height:1.38;margin-top:4px}#mktwarn .mwtx b{color:#1B2430}
+#mktwarn .mwnm{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px;font-size:17px;font-weight:900}
+#mktwarn .mwnm small{font-size:13px;font-weight:900;margin-left:4px}
+#mktwarn .mwlad{display:flex;gap:5px;margin-bottom:4px}
+#mktwarn .mwlad i{flex:1;height:16px;line-height:16px;border-radius:8px;text-align:center;font-size:11px;font-style:normal;font-weight:700;color:#8A94A4;background:#E1E6EE;white-space:nowrap;overflow:hidden}
+#mktwarn .mwlad i.dn,#mktwarn .mwlad i.on{color:#fff;background:var(--sc)}#mktwarn .mwlad i.on{font-weight:900;outline:3px solid #1B2430;outline-offset:1px}
+#mktwarn .mwck{display:flex;gap:8px;align-items:flex-start;margin-top:3px;font-size:13px;font-weight:700;color:#4A5668;line-height:1.3}#mktwarn .mwck b{color:#1B2430}
+#mktwarn .mwck u{flex:none;width:20px;height:20px;border-radius:10px;color:#fff;font-weight:900;text-align:center;line-height:20px;font-size:13px;text-decoration:none}
+#mktwarn.pill{width:auto;cursor:pointer;border-radius:999px;border-width:3px;overflow:hidden;max-height:none}
+#mktwarn.pill .mwh{font-size:13px;height:auto;padding:5px 12px;gap:6px}#mktwarn.pill .mwx{display:none}`;
   document.head.appendChild(st);
+}
+function mwUnmet(m, labels) {                                      // 아직 올라가야 하는 선들 → ["느린26 +0.18%"]
+  return ((m.rec_view && m.rec_view.items) || []).filter(x => labels.includes(x.label) && !x.ok && isFinite(Number(x.need))).map(x => `${x.label} +${Number(x.need).toFixed(2)}%`);
 }
 function mktWarn(d) {
   mwCss();
   let el = $("mktwarn"); if (!el) { el = document.createElement("div"); el.id = "mktwarn"; el.hidden = true; document.body.appendChild(el);
     el.addEventListener("click", e => { if (e.target.closest(".mwx")) MW.fold = true; else if (el.classList.contains("pill")) MW.fold = false; else return; mktWarn(S.market || d); }); }
   const ix = (d && d.index) || {}, today = todayStr();
-  const L = ["KOSPI", "KOSDAQ"].map(k => ({ k, m: ix[k] || {} })).filter(o => o.m.day === today && typeof o.m.day_pct === "number" && (o.m.bars || []).length > 1);
-  const stg = L.map(o => ({ ...o, s: mwStage(o.m) })).filter(o => o.s !== null);
-  if (!stg.length || !L.some(o => o.m.day_pct <= MW_MIN)) { el.hidden = true; return; }
-  const mx = Math.max(...stg.map(o => o.s)), up = mx >= 2, c = MW_COL[Math.max(0, Math.min(3, mx === 1 ? 1 : mx))];
+  const L = ["KOSPI", "KOSDAQ"].map(k => ({ k, m: ix[k] || {} })).filter(o => o.m.day === today && typeof o.m.day_pct === "number" && (o.m.bars || []).length > 1)
+    .map(o => ({ ...o, s: mwStage(o.m), D: mwData(o.m) })).filter(o => o.s !== null && o.D);
+  if (!L.length || !L.some(o => o.m.day_pct <= MW_MIN)) { el.hidden = true; return; }
+  const mx = Math.max(...L.map(o => o.s)), up = mx >= 2;
   const head = mx === 0 ? "⚠ 시장 지속 하락 — 1단계" : mx === 1 ? "⚠ 시장 지속 하락 — 2단계 · 바닥 다지기" : mx === 2 ? "✅ 반등 진행 — 매수 고려" : "✅ 추세 회복 — 매수 고려";
-  const sig = stg.map(o => o.k + o.s).join(); if (sig !== MW.sig) { MW.sig = sig; MW.fold = false; }
-  const hc = up ? "#16994A" : mx === 1 ? "#C77700" : "#E0252B";
-  el.style.setProperty("--mc", hc); el.classList.toggle("red", mx === 0); el.classList.toggle("pill", MW.fold); el.hidden = false;
-  if (MW.fold) { el.innerHTML = `<div class="mwh" title="눌러서 펼치기"><span class="mwt">${esc(head)} · ${stg.map(o => esc(o.m.name || o.k) + " " + esc(ixPcW(o.m.day_pct))).join(" ")} ▸</span></div>`; return; }
-  const need = stg.map(o => ({ o, n: mwNeed(o.m, o.s) })).filter(x => x.n.length).map(x => `${esc(x.o.m.name || x.o.k)} ${x.n.map(([l, v]) => esc(l) + " +" + v.toFixed(2) + "%").join(" · ")}`);
-  const blk = o => `<div class="mwb" style="--sc:${MW_COL[o.s]}"><div><div class="mwn">${esc(o.m.name || o.k)}<small>${esc(ixPcW(o.m.day_pct))}</small></div><div class="mwl">`
-    + [3, 2, 1, 0].map(i => `<span class="${i === o.s ? "on" : i < o.s ? "dn" : ""}" style="${i < o.s || i === o.s ? "" : ""}--sc:${MW_COL[i]}">${MW_NO[i]} ${MW_STG[i]}${i === o.s ? " ◀" : ""}</span>`).join("")
-    + `</div></div>${mwSpark(o.m, MW_COL[o.s], 250, 92)}</div>`;
-  el.innerHTML = `<div class="mwh"><span class="mwt">${esc(head)}</span><button class="mwx" type="button" title="접기 — 단계가 바뀌면 다시 펼쳐져요">–</button></div>`
-    + stg.map(blk).join("")
-    + `<div class="mwf"><b>━</b> 지수 <b style="color:#E08A00">╌</b> VWAP <b style="color:#2F6FDE">━</b> EMA20 · ${need.length ? "다음 단계까지 — " + need.join(" · ") : "5분봉 조건 충족"}${up ? "<br><b>신규 매수는 평소 규칙대로 판단 — 이 카드는 표시만 합니다.</b>" : ""}</div>`;
+  const sig = L.map(o => o.k + o.s).join(); if (sig !== MW.sig) { MW.sig = sig; MW.fold = false; }
+  el.style.setProperty("--mc", up ? "#16994A" : mx === 1 ? "#C77700" : "#E0252B"); el.classList.toggle("red", mx === 0); el.classList.toggle("pill", MW.fold); el.hidden = false;
+  const pcs = L.map(o => `${esc(o.m.name || o.k)} <b>${esc(ixPcW(o.m.day_pct))}</b>`).join(" · ");
+  if (MW.fold) { el.innerHTML = `<div class="mwh" title="눌러서 펼치기"><span class="mwt">${esc(head)} · ${pcs} ▸</span></div>`; return; }
+  const lt = mwHm(Math.max(...L.map(o => o.D.last.t)));
+  const names = L.map(o => esc(o.m.name || o.k));
+  const ladder = o => [0, 1, 2, 3].map(i => `<i class="${i === o.s ? "on" : i < o.s ? "dn" : ""}" style="--sc:${MW_COL[i]}">${MW_NO[i]} ${MW_STG[i]}</i>`).join("");
+  const stBlk = L.map(o => { const [zt, zc] = mwZoneTxt(o.D);
+    return `<div style="margin-bottom:4px"><div class="mwnm"><span>${esc(o.m.name || o.k)}<small style="color:${zc}">${esc(zt)}</small></span><span style="font-size:15px;color:${MW_COL[o.s]}">${MW_NO[o.s]} ${MW_STG[o.s]}</span></div><div class="mwlad">${ladder(o)}</div></div>`; }).join("");
+  const ck = (ok, t, desc) => `<div class="mwck"><u style="background:${ok ? "#16994A" : "#E0252B"}">${ok ? "✓" : "✗"}</u><span><b>${t}</b> ${desc}</span></div>`;
+  const per = labels => { const arr = L.map(o => { const u = mwUnmet(o.m, labels); return `${esc(o.m.name || o.k)} ${u.length ? u.map(esc).join(" · ") : "✓"}`; }); return { ok: L.every(o => !mwUnmet(o.m, labels).length && labels.every(l => ((o.m.rec_view.items || []).find(x => x.label === l) || {}).ok)), txt: arr.join(" · ") }; };
+  const c1 = per(["EMA20", "느린26"]), c2 = per(["VWAP"]), c3 = per(["일봉20일"]), rk = S.risk;
+  let c4 = ck(true, "계좌 한도 여유", '<span style="color:#8A94A4">(자료 아직 없음)</span>');
+  if (rk && rk.has && typeof rk.daily_change === "number" && typeof rk.daily_limit === "number") {
+    const room = (rk.daily_change - rk.daily_limit) * 100, pc = v => (v * 100).toFixed(2).replace("-", "−") + "%";
+    c4 = ck(!!rk.buy_ok, "계좌 한도 여유", `신규 매수 <b>${rk.buy_ok ? "정상" : "중단"}</b> · 오늘 ${pc(rk.daily_change)}/한도 ${pc(rk.daily_limit)} → <b>${room.toFixed(2)}%p</b> 남음`); }
+  const rb = L.map(o => { const r = o.m.rebound; return r && r.cond ? `${esc(o.m.name || o.k)} ${["A", "B", "C", "D"].map(x => x + (r.cond[x] ? "✓" : "✗")).join("")}` : ""; }).filter(Boolean).join(" · ");
+  const r0 = (L[0].m.rebound || {}), trust = /신뢰도\s*(\d+)점/.exec(String(r0.trust_text || ""));
+  const fm = ((d.flow || {}).markets || {}).KOSPI, nf = v => typeof v !== "number" ? "—" : (v > 0 ? "+" : v < 0 ? "−" : "") + Math.round(Math.abs(v)).toLocaleString("ko-KR");
+  const flow = fm ? `<b>수급(억)</b> 코스피 외 ${nf(fm.foreign)} · 기 ${nf(fm.institution)} · 개 ${nf(fm.individual)}${d.global_line ? " · " + esc(String(d.global_line).replace(/^🌎\s*/, "").replace(/\s*▸\s*$/, "")) : ""}` : "";
+  el.innerHTML = `<div class="mwh"><span class="mwt">${esc(head)}</span><span class="mwr">${pcs} · ${esc(lt)} 기준</span><button class="mwx" type="button" title="접기 — 단계가 바뀌면 다시 펼쳐져요">–</button></div>`
+    + `<div class="mwbody"><div class="mwlf"><div class="mwk">오늘 시가 대비 · 아래 막대 = 5분 골든/데드 구간(막대 안 글씨 = 시작 시각)</div>${mwChart(L)}`
+    + `<div class="mwtx"><b style="color:#16994A">■</b> 골든(전환5가 기준13 위) <b style="color:#2F6FDE">■</b> 데드(아래) · 5분봉${flow ? " · " + flow : ""}</div></div>`
+    + `<div class="mwrt"><div class="mwk">지금 단계 · 5분 골든/데드</div>${stBlk}<div class="mwk" style="margin-top:3px;border-top:2px solid #E3E8EF;padding-top:3px">매수 고려 체크</div>`
+    + ck(c1.ok, "5분 EMA20·느린26 위", c1.txt) + ck(c2.ok, "VWAP 위 안착", c2.txt) + ck(c3.ok, "일봉 20일선 위", c3.txt) + c4
+    + `<div class="mwtx"><b>반등 관찰 ⑬</b> ${rb}${r0.signal ? " · 신호 켜짐" : " · 신호 꺼짐"}${trust ? " · 신뢰도 " + trust[1] + "점" : ""}</div>`
+    + `<div class="mwtx" style="color:#8A94A4">${up ? "<b style='color:#1B2430'>신규 매수는 평소 규칙대로 판단 — 이 패널은 표시만 합니다.</b>" : "표시만 · 주문·점수·매수 규칙과 무관 · 신규 매수를 막지 않음"}</div></div></div>`;
   el.title = "표시만 · 주문·점수·매수 규칙과 무관 · 단계 기준은 시안 값(바꿀 수 있음) · 시스템 출력이며 추천 아님";
 }
 const ixPcW = v => (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(2) + "%";
@@ -2289,6 +2335,7 @@ function paintBottom(d) {
   $("hold").innerHTML = holdUp.map(r => `<li data-c="${esc(r.ticker)}" data-n="${esc(r.name)}" style="cursor:pointer;padding-top:7px;padding-bottom:7px;background:${r.pnl_pct >= 5 ? "#FDE8E8" : "#FFF5F5"}" title="${esc(r.name)} ${pctOnly(r.pnl_pct)} — 수익 중인 보유 종목만 보여요"><b style="font-size:15px">${esc(r.name)}</b><span style="flex:1"></span><b style="font-size:18px;font-weight:800;color:${UP}">+${r.pnl_pct.toFixed(2)}%</b></li>`).join("")
     || '<li class="mut">수익 중인 보유 종목이 없어요</li>';
   const k = d.risk || {};
+  S.risk = d.risk || null;                          // v691 시장 패널의 계좌 한도 줄이 읽음(표시만)
   const pc = v => typeof v === "number" ? (v * 100).toFixed(2) + "%" : "—";
   // 한도 대비 얼마나 왔나(막대) — 50%↑ 주황 · 80%↑ 빨강
   const gauge = (v, lim) => { const r = (typeof v === "number" && typeof lim === "number" && lim < 0) ? Math.max(0, Math.min(1, v / lim)) : 0;
@@ -2315,6 +2362,7 @@ function paintBottom(d) {
     || '<li class="mut">오늘 알림 없음</li>';
   const sh = d.shadow || {};
   $("shadow").innerHTML = (sh.lines || []).map(t => `<li style="white-space:normal">${esc(t)}</li>`).join("") || `<li class="mut" style="white-space:normal">${esc(sh.note || "기록 없음")}</li>`;
+  try { if (S.market) mktWarn(S.market); } catch (e) { /* v691 계좌 한도 줄 새로 그리기 — 없어도 됨 */ }
 }
 
 /* ── 새로고침 ─────────────────────────────────────────────── */
