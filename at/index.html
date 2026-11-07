@@ -3741,6 +3741,8 @@ $("tixfold").addEventListener("click", () => {
 let ixRz = null; window.addEventListener("resize", () => { if (!$("tixfold").classList.contains("on")) return; clearTimeout(ixRz); ixRz = setTimeout(() => { const rs = document.querySelector(".rest"); if (rs && rs.classList.contains("ixoff")) { rs.classList.remove("ixoff"); rs.style.gridTemplateColumns = ""; const c = getComputedStyle(rs).gridTemplateColumns.split(" "); rs.classList.add("ixoff"); rs.style.gridTemplateColumns = `${c[0]} minmax(0,1fr) 0px`; } }, 150); });
 ixApply();
 
+/* ── v701 🔁 RSN 반등 선발 — 상세정보 창의 RSN 카드·섹션(/one_rsn.js)을 화면이 뜬 뒤 한 번 내려받음 · 읽기·표시만(주문·매매 규칙과 무관) ── */
+(() => { try { const sc = document.createElement("script"); sc.src = "/one_rsn.js?" + Date.now(); sc.async = true; document.body.appendChild(sc); } catch (e) { /* 못 받아도 상세정보는 그대로 */ } })();
 
 </script>
 </body></html>
