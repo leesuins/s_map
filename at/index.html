@@ -393,7 +393,7 @@ td.hcw:focus-visible{ outline:2px solid #1864AB; outline-offset:-2px; }
     <div class="body hide" data-p="why" id="why"><div class="empty">종목을 누르면 나와요</div></div>
    </div>
    <div class="card a-chart">
-   <div class="cvsw" id="cvsw" role="group" aria-label="차트 자리 보기" style="display:flex;gap:4px;padding:4px 6px 0"><button type="button" class="btn on" data-cv="chart">📈 차트</button><button type="button" class="btn" data-cv="selmon" title="관심3단(1단·2단·3단) 종목이 기준일 종가 뒤(다음 거래일) 지금 오르고 있는지 — 5분봉 기준(보기만 · 주문 없음)">🎯 선발 모니터 <span id="cvn" class="num"></span></button></div>
+   <div class="cvsw" id="cvsw" role="group" aria-label="차트 자리 보기" style="display:flex;gap:4px;padding:4px 6px 0"><button type="button" class="btn on" data-cv="chart">📈 차트</button><button type="button" class="btn" data-cv="selmon" title="관심3단(1단·2단·3단) 종목이 기준일 종가 뒤(다음 거래일) 지금 오르고 있는지 — 5분봉 기준(보기만 · 주문 없음)">🎯 선발 모니터 <span id="cvn" class="num"></span></button><button type="button" class="btn" data-cv="rsn" title="선택한 종목의 15분 차트 — 받침 구간 · 진입/목표/손절 · 돌파/이탈 표시(RSN 반등 판단 · 보기만 · 주문 없음)">🔁 RSN 15분</button></div>
    <div class="chead"><span class="nm whitespace-nowrap" id="cname">종목을 누르세요</span><span id="ccode" class="mut"></span><span class="sp"></span><small id="cinfo" class="mut num"></small><button class="btn dbtn" id="dbtn" type="button" title="상세정보 (종목 더블클릭으로도 열려요)">ⓘ<span class="wide"> 상세정보</span></button>
     <button class="btn" id="spm" type="button" title="차트 기간 줄이기 (4칸 모두 · 봉 수 배수)">−</button><span id="spl" class="num mut" style="white-space:nowrap;font-size:.85em" title="차트 기간(4칸 모두)">기간 ×1</span><button class="btn" id="spp" type="button" title="차트 기간 늘리기 (4칸 모두 · 봉 수 배수)">＋</button><button class="btn on" data-mode="4">▦ 4칸</button><button class="btn" data-mode="5">5분</button><button class="btn" data-mode="15">15분</button><button class="btn" data-mode="45">45분</button><button class="btn" data-mode="120">120분</button></div>
    <div id="srad" class="srad hide" aria-live="polite"></div>
@@ -2714,7 +2714,12 @@ const CVB = {
 };
 window.cvBridge = CVB;
 function cvApply(m) {
-  const ac = document.querySelector(".a-chart"), mon = m === "selmon"; if (!ac) return;
+  const ac = document.querySelector(".a-chart"), mon = m === "selmon", rsn = m === "rsn"; if (!ac) return;
+  /* v725 [🔁 RSN 15분] — 5분 차트 칸 자리에 RSN 15분 차트(상세정보 창과 같은 그림)를 보여 줌(보기만) */
+  if (!$("cv-rsn-css")) { const st = document.createElement("style"); st.id = "cv-rsn-css"; st.textContent = ".a-chart.cvrsn>.chead,.a-chart.cvrsn>#panes,.a-chart.cvrsn>#srad,.a-chart.cvrsn>details.legend{display:none!important}"; document.head.appendChild(st); }
+  if (!$("rsnview")) { const dv = document.createElement("div"); dv.id = "rsnview"; dv.className = "hide"; ac.insertBefore(dv, $("selmon")); }
+  ac.classList.toggle("cvrsn", rsn); $("rsnview").classList.toggle("hide", !rsn); RSV.on = rsn;
+  if (rsn) rsvPaint(true);
   if (!$("cv-off-css")) { const st = document.createElement("style"); st.id = "cv-off-css"; st.textContent = ".a-chart.cvmon>.chead,.a-chart.cvmon>#panes,.a-chart.cvmon>#srad,.a-chart.cvmon>details.legend{display:none!important}.rest.cvwide .a-judge{display:none}.rest.cvwide .a-chart{grid-column:1 / 3}"; document.head.appendChild(st); }
   document.querySelectorAll("#cvsw [data-cv]").forEach(b => b.classList.toggle("on", b.dataset.cv === m));
   ac.classList.toggle("cvmon", mon);                                                                   // 차트 칸 숨김은 부모 클래스로(자식 클래스는 다른 코드가 덮어씀)
@@ -2730,6 +2735,21 @@ function cvApply(m) {
   sc.onerror = () => { CVS.loading = false; $("selmon").innerHTML = '<div class="empty">선발 모니터 파일을 못 받았어요 — 웹 대시보드(서버)가 켜져 있는지 확인</div>'; };
   document.head.appendChild(sc);
 }
+const RSV = { on: false, code: "", t: 0 };
+async function rsvPaint(force) {
+  const box = $("rsnview"); if (!box || !RSV.on) return;
+  if (!S.code) { box.innerHTML = '<div class="empty">왼쪽 목록에서 종목을 고르면 15분 차트가 보여요</div>'; RSV.code = ""; return; }
+  const code = S.code, same = RSV.code === code;
+  if (!force && same && Date.now() - RSV.t < 30000) return;
+  RSV.code = code; RSV.t = Date.now();
+  if (!window.__rsnChartHtml) { box.innerHTML = '<div class="empty">RSN 차트 파일을 아직 못 받았어요 — Ctrl+F5 로 새로고침</div>'; return; }
+  if (!same || force) box.innerHTML = '<div class="empty">15분 차트 불러오는 중…</div>';
+  let html = "";
+  try { html = await window.__rsnChartHtml(code); } catch (e) { html = '<div class="empty">15분 차트를 못 그렸어요 — 잠시 뒤 다시 눌러 보세요</div>'; }
+  if (RSV.on && S.code === code) box.innerHTML = '<div style="font-size:12px;font-weight:700;padding:6px 8px 0">' + esc2(S.name || code) + ' <span style="color:#8A95A5;font-weight:500">' + code + '</span></div>' + html;
+}
+const esc2 = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+setInterval(() => { if (RSV.on && visible()) rsvPaint(false); }, 1500);   // 종목을 바꾸면 바로 · 같은 종목은 30초마다 다시
 window.cvApply = cvApply;
 $("cvsw").addEventListener("click", e => { const b = e.target.closest("[data-cv]"); if (b) cvApply(b.dataset.cv); });
 try { if (localStorage.getItem("one.cv") === "selmon") cvApply("selmon"); } catch (e) { /* 기본 차트 */ }
