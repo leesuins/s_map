@@ -347,6 +347,7 @@ td.hcw:focus-visible{ outline:2px solid #1864AB; outline-offset:-2px; }
   <span id="tchips" class="flex items-center gap-2"></span>
   <button id="tduty" class="chip duty hide" type="button" title="10분 회차 · 1분 감시 · 왕관 · 리포트 · 텔레그램을 지금 누가 돌리나(보기만 · 설정을 바꾸지 않음)"></button>
   <button class="btn b50" id="b50" type="button" title="검증 단계 10개 종합 순위(보기만 · 주문 없음)">🏅 TOP50</button>
+  <button class="btn b50" id="bmw" type="button" title="시장 패널(코스피·코스닥 시가 대비 선·4단계) 항상 보기 ↔ 지수가 −1% 이하일 때만 보기 · 화면 표시만">🛰 시장 패널</button>
   <button class="btn b50" id="bea" type="button" title="상위 수익 공통분모(기간별) · TOP50 적중률(보기만)">🔬 분석</button>
   <button class="btn b50" id="brs" type="button" title="감시 종목 전체에서 지금 15분 ▲안착·시도 · 45·120분 상승 시도 중인 종목(보기만 · 주문 없음)">📈 상승 진입</button>
   <button class="btn b50" id="bspk" type="button" title="10/23에 고른 선별 10종목 · 120분 60선 위 45종목 — 기준일 종가 대비 지금 상태(보기만 · 주문 없음)">🎯 선별 10</button>
@@ -2188,7 +2189,7 @@ function ixB(p, m) {
    보이는 때: 오늘 5분봉이 있고 두 지수 중 하나가 시가 대비 −1.0% 이하일 때만(평소엔 숨김). 단계가 바뀌면 접어 둔 것도 다시 펼침. */
 const MW_MIN = -1.0, MW_STG = ["하락 지속", "바닥 다지기", "반등 확인", "추세 회복"], MW_COL = ["#E0252B", "#E08A00", "#7AB317", "#16994A"], MW_NO = "①②③④";
 const MW_G = "#16994A", MW_D = "#2F6FDE", MW_LC = { KOSPI: "#1B2430", KOSDAQ: "#8A2BE2" };
-const MW = { fold: false, sig: "" };
+const MW = { fold: false, sig: "", all: (() => { try { return localStorage.getItem("one.mwall") !== "0"; } catch (e) { return true; } })() };   // v761 형 11/9 「시장 패널이 안 떠」 — 기본 항상 보기(끄면 예전처럼 지수 −1% 이하일 때만)
 function mwStage(m) {
   const it = (m.rec_view && m.rec_view.items) || []; if (!it.length) return null;
   const ok = n => it.some(x => x.label === n && x.ok);
@@ -2261,6 +2262,12 @@ function mwCss() {
 function mwUnmet(m, labels) {                                      // 아직 올라가야 하는 선들 → ["느린26 +0.18%"]
   return ((m.rec_view && m.rec_view.items) || []).filter(x => labels.includes(x.label) && !x.ok && isFinite(Number(x.need))).map(x => `${x.label} +${Number(x.need).toFixed(2)}%`);
 }
+(function () {                                                    // v761 시장 패널 항상 보기 스위치
+  const b = document.getElementById("bmw"); if (!b) return;
+  const paint = () => { b.textContent = "🛰 시장 패널 " + (MW.all ? "항상 ON" : "조건부(−1%)"); b.setAttribute("aria-pressed", MW.all ? "true" : "false"); };
+  b.addEventListener("click", () => { MW.all = !MW.all; try { localStorage.setItem("one.mwall", MW.all ? "1" : "0"); } catch (e) { /* 저장 못 해도 이번 화면은 됨 */ } paint(); try { if (S.market) mktWarn(S.market); } catch (e) { /* 패널은 없어도 됨 */ } });
+  paint();
+})();
 function mktWarn(d) {
   mwCss();
   let el = $("mktwarn"); if (!el) { el = document.createElement("div"); el.id = "mktwarn"; el.hidden = true; document.body.appendChild(el);
@@ -2268,11 +2275,13 @@ function mktWarn(d) {
   const ix = (d && d.index) || {}, today = todayStr();
   const L = ["KOSPI", "KOSDAQ"].map(k => ({ k, m: ix[k] || {} })).filter(o => o.m.day === today && typeof o.m.day_pct === "number" && (o.m.bars || []).length > 1)
     .map(o => ({ ...o, s: mwStage(o.m), D: mwData(o.m) })).filter(o => o.s !== null && o.D);
-  if (!L.length || !L.some(o => o.m.day_pct <= MW_MIN)) { el.hidden = true; return; }
+  const calm = !L.some(o => o.m.day_pct <= MW_MIN);                // v761 −1% 안 걸린 날 = 참고용(깜빡임·경고 문구 없이)
+  if (!L.length || (calm && !MW.all)) { el.hidden = true; return; }
   const mx = Math.max(...L.map(o => o.s)), up = mx >= 2;
-  const head = mx === 0 ? "⚠ 시장 지속 하락 — 1단계" : mx === 1 ? "⚠ 시장 지속 하락 — 2단계 · 바닥 다지기" : mx === 2 ? "✅ 반등 진행 — 매수 고려" : "✅ 추세 회복 — 매수 고려";
+  const head0 = mx === 0 ? "⚠ 시장 지속 하락 — 1단계" : mx === 1 ? "⚠ 시장 지속 하락 — 2단계 · 바닥 다지기" : mx === 2 ? "✅ 반등 진행 — 매수 고려" : "✅ 추세 회복 — 매수 고려";
+  const head = calm ? "🛰 시장 패널(참고 · 지수 −1% 아님) · " + head0.replace(/^[⚠✅] /, "") : head0;
   const sig = L.map(o => o.k + o.s).join(); if (sig !== MW.sig) { MW.sig = sig; MW.fold = false; }
-  el.style.setProperty("--mc", up ? "#16994A" : mx === 1 ? "#C77700" : "#E0252B"); el.classList.toggle("red", mx === 0); el.classList.toggle("pill", MW.fold); el.hidden = false;
+  el.style.setProperty("--mc", up ? "#16994A" : mx === 1 ? "#C77700" : "#E0252B"); el.classList.toggle("red", mx === 0 && !calm); el.classList.toggle("pill", MW.fold); el.hidden = false;
   const pcs = L.map(o => `${esc(o.m.name || o.k)} <b>${esc(ixPcW(o.m.day_pct))}</b>`).join(" · ");
   if (MW.fold) { el.innerHTML = `<div class="mwh" title="눌러서 펼치기"><span class="mwt">${esc(head)} · ${pcs} ▸</span></div>`; return; }
   const lt = mwHm(Math.max(...L.map(o => o.D.last.t)));
