@@ -1131,7 +1131,11 @@ function lvWeekBlock(r){const ids=["kospi","kosdaq","ndx","spx"].filter(id=>resu
   const w0=String(r.week||"").slice(0,10),days=["월","화","수","목","금"],dts=days.map((_,k)=>{if(!/^\d{4}-\d\d-\d\d$/.test(w0))return"";const t=new Date(w0+"T12:00:00Z");t.setUTCDate(t.getUTCDate()+k);return t.toISOString().slice(5,10).replace("-","/")});
   const per=days.map(()=>[]),far=[];
   ids.forEach(id=>{const L=lvInfo(results.find(x=>x.id===id));if(!L)return;[L.dn,L.up].forEach(x=>{if(!x)return;const k=Math.max(1,Math.ceil(x.days));const t=`${NM[id]} <b class="${x.p<L.g.close?"dn":"up"}">${fmtN(x.p)}</b> (${fmtP(x.dist,1)})`;if(k<=5)per[k-1].push(t);else far.push(t)})});
-  const plan=days.map((d,k)=>`<div class="lvp-r"><b>${d}${dts[k]?` <small>${dts[k]}</small>`:""}</b><span>${per[k].length?per[k].join(" · ")+` <small class="muted">닿을 수 있는 날 후보</small>`:`<span class="muted">${k===4?"주간 채점: 5일 경계 안에서 마감했나 · 건드린 레벨 기록":"가까운 레벨 없음"}</span>`}</span></div>`).join("");
+  const hubTxt=k=>{try{if(!/^\d{4}-\d\d-\d\d$/.test(w0))return"";const t=new Date(w0+"T12:00:00Z");t.setUTCDate(t.getUTCDate()+k);const pd=predDay(t.toISOString().slice(0,10));if(!pd||!pd.m)return"";
+    const J=j=>/^CASH/.test(j)?"관망":j==="WAIT LONG"?"매수 대기":j==="WAIT SHORT"?"매도 대기":/LONG/.test(j)?"매수":"매도",NM2={kospi:"코스피",kosdaq:"코스닥",ndx:"나스닥",spx:"S&P"};
+    const parts=["kospi","kosdaq","ndx","spx"].filter(id=>pd.m[id]).map(id=>`${NM2[id]} ${J(pd.m[id].j)} <small class="muted">(오름 ${pd.m[id].pU}·내림 ${pd.m[id].pD})</small>`);
+    return`<div class="lvp-h">🧭 <b>허브 예측</b>${pd.long!=null?` · 매수 비중 ${pd.long}%`:""}${pd.alert?` · 경보 ${esc(pd.alert)}`:""}<br>${parts.join(" · ")}${pd.src==="D"?"":' <small class="muted">(가정 기반)</small>'}</div>`}catch(e){return""}};
+  const plan=days.map((d,k)=>`<div class="lvp-r"><b>${d}${dts[k]?` <small>${dts[k]}</small>`:""}</b><span>${hubTxt(k)}${per[k].length?per[k].join(" · ")+` <small class="muted">닿을 수 있는 날 후보</small>`:`<span class="muted">${k===4?"주간 채점: 5일 경계 안에서 마감했나 · 건드린 레벨 기록":"가까운 레벨 없음"}</span>`}</span></div>`).join("");
   return`<details class="lvw" open><summary>📍 주간 레벨 지도 · 요일별 점검 <small class="muted">표시 전용 — 비중·판단은 그대로</small></summary>
     <div class="lvw-ax"><span>−8%</span><span>−4%</span><span>0</span><span>+4%</span><span>+8%</span></div>${rows}
     <p class="note">가운데 검정 선 = 현재가, 회색 띠 = 5일 1σ 경계, 파랑 = 지지, 빨강 = 저항(진한 눈금 = 가장 가까운 레벨). 시장 기준 ${esc(String(r.base||""))} 종가.</p>
